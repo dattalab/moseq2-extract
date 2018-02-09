@@ -8,7 +8,9 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
                   strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                   strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
                   min_height=10,max_height=200,
-                  mask_ll_threshold=-30,bground_file=None,roi_file=None):
+                  mask_ll_threshold=-30,
+                  bground_file=None,roi_file=None,
+                  rho_mean=0,rho_cov=0):
 
 
     # if we pass bground or roi files, be sure to use 'em...
@@ -25,7 +27,7 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
 
     if use_em_tracker:
         print('Computing EM parameters...')
-        parameters=em_tracking(filtered_frames)
+        parameters=em_tracking(filtered_frames,rho_mean=rho_mean,rho_cov=rho_cov)
         ll=em_get_ll(chunk,**parameters)
 
     print('Getting centroid and orientation...')
@@ -34,4 +36,4 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
     print('Cropping frames...')
     cropped_frames=crop_and_rotate_frames(chunk,features)
 
-    return cropped_frames
+    return cropped_frames,features,ll

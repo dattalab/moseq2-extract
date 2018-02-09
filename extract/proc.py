@@ -30,8 +30,16 @@ def get_bground_im_file(frames_file,frame_stride=500,med_scale=5):
     bground=np.median(frame_store,0)
     return bground
 
-def get_roi(depth_image,dilate_size=10,dilate_iters=1,noise_tolerance=30,nrois=1,**kwargs):
-    """Boilerplate
+def get_bbox(roi):
+    """Given a binary mask, return an array with the x and y boundaries
+    """
+    y,x = np.where(roi>0)
+    bbox=np.array([[y.min(),x.min()],[y.max(),x.max()]])
+    return bbox
+
+def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30)),
+            noise_tolerance=30,nrois=1,**kwargs):
+    """Get an ROI using RANSAC plane fitting and simple blob features
     """
 
     roi_plane , dists=moseq2.extract.roi.plane_ransac(depth_image,noise_tolerance=noise_tolerance,**kwargs)
@@ -64,8 +72,6 @@ def get_roi(depth_image,dilate_size=10,dilate_iters=1,noise_tolerance=30,nrois=1
                      scipy.stats.rankdata(dists,method='min')))
     shape_index=np.mean(ranks,0).argsort()[:nrois]
 
-    strel=skimage.morphology.disk(dilate_size)
-
     # expansion microscopy on the roi
 
     rois=[]
@@ -74,19 +80,20 @@ def get_roi(depth_image,dilate_size=10,dilate_iters=1,noise_tolerance=30,nrois=1
     for shape in shape_index:
         roi=np.zeros_like(depth_image)
         roi[region_properties[shape].coords[:,0],region_properties[shape].coords[:,1]]=1
-        y,x = np.where(roi>0)
-        bbox=np.array([[y.min(),x.min()],[y.max(),x.max()]])
+        roi=cv2.dilate(roi,strel_dilate,iterations=1)
+        #roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
-        bboxes.append(bbox)
+        bboxes.append(get_bbox(roi))
 
     return rois , bboxes
 
 
-def apply_roi(frames,roi,bbox):
+def apply_roi(frames,roi):
     """Apply ROI to data, consider adding constraints (e.g. mod32==0)
     """
     # yeah so fancy indexing slows us down by 3-5x
     cropped_frames=frames*roi
+    bbox=get_bbox(roi)
     #cropped_frames[:,roi==0]=0
     cropped_frames=cropped_frames[:,bbox[0,0]:bbox[1,0],bbox[0,1]:bbox[1,1]]
     return cropped_frames
@@ -185,10 +192,13 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
         rr=np.arange(features[i]['centroid'][1]-40,features[i]['centroid'][1]+41).astype('int16')
         cc=np.arange(features[i]['centroid'][0]-40,features[i]['centroid'][0]+41).astype('int16')
 
-        if np.any(rr>=frames.shape[1]) or np.any(rr<1) or np.any(cc>=frames.shape[2]) or np.any(cc<1):
+        rr=rr+80
+        cc=cc+80
+
+        if np.any(rr>=padded_frames.shape[1]) or np.any(rr<1) or np.any(cc>=padded_frames.shape[2]) or np.any(cc<1):
             continue
 
         rot_mat=cv2.getRotationMatrix2D((40,40),-np.rad2deg(features[i]['orientation']),1)
-        cropped_frames[i,:,:]=cv2.warpAffine(frames[i,rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
+        cropped_frames[i,:,:]=cv2.warpAffine(padded_frames[i,rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
 
     return cropped_frames

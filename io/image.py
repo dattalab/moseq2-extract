@@ -2,7 +2,7 @@ from skimage.external import tifffile
 import numpy as np
 import json
 
-def write_image(filename, image, scale=True, dtype='uint16', metadata={}):
+def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', metadata={}):
     """Save image data, possibly with scale factor for easy display
     """
 
@@ -11,11 +11,21 @@ def write_image(filename, image, scale=True, dtype='uint16', metadata={}):
     if scale:
         iinfo=np.iinfo(dtype)
         image=image.astype(dtype)
-        scale_factor=np.floor(iinfo.max/image.max()).astype(dtype)
-        scaled_image=image*scale_factor
+
+        if not scale_factor:
+            scale_factor=np.floor(iinfo.max/image.max()).astype(dtype)
+            image=image*scale_factor
+        elif type(scale_factor) is tuple:
+            image=image.astype('float32')
+            image=(image-scale_factor[0])/(scale_factor[1]-scale_factor[0])
+            image[image<0]=0
+            image[image>1]=1
+            image=image*iinfo.max
+            image=image.astype(dtype)
+
         metadata={'scale_factor':str(scale_factor)}
 
-    tifffile.imsave(filename, scaled_image, compress=0, metadata=metadata)
+    tifffile.imsave(filename, image, compress=0, metadata=metadata)
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
     """Load image data, possibly with scale factor...
