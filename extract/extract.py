@@ -1,5 +1,6 @@
 from moseq2.extract.proc import crop_and_rotate_frames,\
- clean_frames, get_roi, apply_roi,get_bground_im_file, get_frame_features,get_bground_im
+ clean_frames, get_roi, apply_roi,get_bground_im_file, get_frame_features,\
+ get_bground_im, get_flips
 from moseq2.extract.track import em_tracking, em_get_ll
 from moseq2.io.image import read_image, write_image
 import cv2
@@ -10,10 +11,10 @@ import numpy as np
 def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters=1,
                   strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                   strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
-                  min_height=10,max_height=200,
-                  mask_threshold=-30,use_cc=False,
+                  min_height=10,max_height=100,
+                  mask_threshold=-15,use_cc=False,
                   bground_file=None,roi_file=None,
-                  rho_mean=0,rho_cov=0,flip_classifier=None,
+                  rho_mean=0,rho_cov=0,flip_classifier=None,flip_smoothing=51,
                   save_path=os.path.join(os.getcwd(),'proc')):
 
 
@@ -52,10 +53,7 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
     features , mask=get_frame_features(filtered_frames,frame_threshold=min_height, mask=ll,
                                 mask_threshold=mask_threshold, use_cc=use_cc)
 
-    tmp=np.unwrap(np.array([x['orientation'] for x in features])*2)/2
-
-    for i in range(tmp.shape[0]):
-        features[i]['orientation']=tmp[i]
+    features['orientation']=np.unwrap(features['orientation']*2)/2
 
     # crop and rotate the frames
 
@@ -63,7 +61,10 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
     cropped_frames=crop_and_rotate_frames(chunk,features)
     mask=crop_and_rotate_frames(mask,features)
 
-    #if flip_classifier:
-
+    if flip_classifier:
+        print('Fixing flips...')
+        flips=get_flips(cropped_frames,flip_classifier,flip_smoothing)
+        cropped_frames[flips,...]=np.flip(cropped_frames[flips,...],axis=2)
+        mask[flips,...]=np.flip(mask[flips,...],axis=2)
 
     return cropped_frames,features,mask

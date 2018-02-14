@@ -4,6 +4,7 @@ import numpy as np
 import skimage.measure
 import skimage.morphology
 import scipy.stats
+import scipy.signal
 import cv2
 import os
 import tqdm
@@ -12,15 +13,34 @@ import joblib
 from copy import copy,deepcopy
 
 
-#def classify_flips(frame,flip_file=None,)
+def get_flips(frames,flip_file=None,smoothing=None):
+    """
+    """
 
-def get_largest_cc(frame,progress_bar=False):
+    try:
+        clf=joblib.load(flip_file)
+    except IOError:
+        print("Could not open file {}".format(flip_file))
+        raise
+
+    flip_class=np.where(clf.classes_==1)[0]
+    probas=clf.predict_proba(frames.reshape((-1,frames.shape[1]*frames.shape[2])))
+
+    if smoothing:
+        for i in range(probas.shape[1]):
+            probas[:,i]=scipy.signal.medfilt(probas[:,i],smoothing)
+
+    flips=probas.argmax(axis=1)==flip_class
+
+    return flips
+
+def get_largest_cc(frames,progress_bar=False):
     """Returns the largest connected component in an image
     """
-    foreground_obj=np.zeros((frame.shape),'bool')
+    foreground_obj=np.zeros((frames.shape),'bool')
 
-    for i in tqdm.tqdm(range(frame.shape[0]),disable=not progress_bar):
-        nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frame[i,...], connectivity=4)
+    for i in tqdm.tqdm(range(frames.shape[0]),disable=not progress_bar):
+        nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frames[i,...], connectivity=4)
         szs=stats[:,-1]
         foreground_obj[i,...]=output==szs[1:].argmax()+1
 
@@ -54,8 +74,8 @@ def get_bbox(roi):
     bbox=np.array([[y.min(),x.min()],[y.max(),x.max()]])
     return bbox
 
-def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30)),
-            noise_tolerance=30,nrois=1,**kwargs):
+def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT,(15,15)),
+            noise_tolerance=30,**kwargs):
     """Get an ROI using RANSAC plane fitting and simple blob features
     """
 
@@ -188,6 +208,7 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
     """
 
     features=[]
+    nframes=frames.shape[0]
 
     if type(mask) is np.ndarray and mask.size>0:
         has_mask=True
@@ -195,7 +216,14 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
         has_mask=False
         mask=np.zeros((frames.shape),'uint8')
 
-    for i in tqdm.tqdm(range(frames.shape[0])):
+
+    features={
+        'centroid':np.zeros((nframes,2),'float32'),
+        'orientation':np.zeros((nframes,),'float32'),
+        'axis_length':np.zeros((nframes,2),'float32')
+    }
+
+    for i in tqdm.tqdm(range(nframes)):
 
         frame_mask=frames[i,...]>frame_threshold
 
@@ -212,7 +240,9 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
                                             cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         tmp=np.array([cv2.contourArea(x) for x in cnts])
         mouse_cnt=tmp.argmax()
-        features.append(im_moment_features(cnts[mouse_cnt]))
+
+        for key,value in im_moment_features(cnts[mouse_cnt]).items():
+            features[key][i]=value
 
     return features, mask
 
@@ -228,8 +258,8 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
 
         use_frame=np.pad(frames[i,...],(crop_size,crop_size),'constant',constant_values=0)
 
-        rr=np.arange(features[i]['centroid'][1]-40,features[i]['centroid'][1]+41).astype('int16')
-        cc=np.arange(features[i]['centroid'][0]-40,features[i]['centroid'][0]+41).astype('int16')
+        rr=np.arange(features['centroid'][i,1]-40,features['centroid'][i,1]+41).astype('int16')
+        cc=np.arange(features['centroid'][i,0]-40,features['centroid'][i,0]+41).astype('int16')
 
         rr=rr+crop_size[0]
         cc=cc+crop_size[1]
@@ -237,7 +267,7 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
         if np.any(rr>=use_frame.shape[0]) or np.any(rr<1) or np.any(cc>=use_frame.shape[1]) or np.any(cc<1):
             continue
 
-        rot_mat=cv2.getRotationMatrix2D((40,40),-np.rad2deg(features[i]['orientation']),1)
+        rot_mat=cv2.getRotationMatrix2D((40,40),-np.rad2deg(features['orientation'][i]),1)
         cropped_frames[i,:,:]=cv2.warpAffine(use_frame[rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
 
     return cropped_frames
