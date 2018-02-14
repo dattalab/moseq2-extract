@@ -8,7 +8,8 @@ import os
 import numpy as np
 
 # one stop shopping for taking some frames and doing stuff
-def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters=1,
+def extract_chunk(chunk,use_em_tracker=False,prefilter_space=(3,),prefilter_time=None,
+                  strel_iters=1,min_iters=0,
                   strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                   strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
                   min_height=10,max_height=100,
@@ -32,7 +33,8 @@ def extract_chunk(chunk,use_em_tracker=False,med_scale=3,strel_iters=2,min_iters
 
     print('Cleaning frames...')
     filtered_frames=clean_frames(chunk,
-                             med_scale=med_scale,
+                             prefilter_space=prefilter_space,
+                             prefilter_time=prefilter_time,
                              iterations=strel_iters,
                              strel=strel,
                              iterations_min=min_iters,

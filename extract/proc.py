@@ -163,7 +163,7 @@ def im_moment_features(IM):
     return features
 
 
-def clean_frames(frames,med_scale=3,
+def clean_frames(frames,prefilter_space=(3,),prefilter_time=None,
                  strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                  iterations=2,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
@@ -187,11 +187,16 @@ def clean_frames(frames,med_scale=3,
         if iterations_min:
             filtered_frames[i,...]=cv2.erode(filtered_frames[i,...],strel_min,iterations_min)
 
-        if med_scale:
-            filtered_frames[i,...]=cv2.medianBlur(filtered_frames[i,...],med_scale)
+        if prefilter_space:
+            for j in range(len(prefilter_space)):
+                filtered_frames[i,...]=cv2.medianBlur(filtered_frames[i,...],prefilter_space[j])
 
         if iterations:
             filtered_frames[i,...]=cv2.morphologyEx(filtered_frames[i,...],cv2.MORPH_OPEN,strel,iterations)
+
+    if prefilter_time:
+        for j in range(len(prefilter_time)):
+            filtered_frames=scipy.signal.medfilt(filtered_frames,[prefilter_time[j],1,1])
 
     return filtered_frames
 
@@ -251,8 +256,6 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
 
     nframes=frames.shape[0]
     cropped_frames=np.zeros((nframes,80,80),frames.dtype)
-
-    #padded_frames=np.pad(frames,((0,0),crop_size,crop_size),'constant',constant_values=0)
 
     for i in tqdm.tqdm(range(frames.shape[0])):
 
