@@ -7,7 +7,24 @@ import scipy.stats
 import cv2
 import os
 import tqdm
+import pdb
+import joblib
 from copy import copy,deepcopy
+
+
+#def classify_flips(frame,flip_file=None,)
+
+def get_largest_cc(frame,progress_bar=False):
+    """Returns the largest connected component in an image
+    """
+    foreground_obj=np.zeros((frame.shape),'bool')
+
+    for i in tqdm.tqdm(range(frame.shape[0]),disable=not progress_bar):
+        nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frame[i,...], connectivity=4)
+        szs=stats[:,-1]
+        foreground_obj[i,...]=output==szs[1:].argmax()+1
+
+    return foreground_obj
 
 def get_bground_im(frames):
     """Get background from frames
@@ -25,7 +42,7 @@ def get_bground_im_file(frames_file,frame_stride=500,med_scale=5):
     frame_store=np.zeros((len(frame_idx),finfo['dims'][0],finfo['dims'][1]))
 
     for i,frame in enumerate(frame_idx):
-        frame_store[i,...]=moseq2.io.video.read_frames_raw(frames_file,int(frame)).squeeze()
+        frame_store[i,...]=cv2.medianBlur(moseq2.io.video.read_frames_raw(frames_file,int(frame)).squeeze(),med_scale)
 
     bground=np.median(frame_store,0)
     return bground
@@ -67,10 +84,10 @@ def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE
 
     # rank features
 
-    ranks=np.vstack((scipy.stats.rankdata(-areas,method='max'),
-                     scipy.stats.rankdata(-extents,method='max'),
-                     scipy.stats.rankdata(dists,method='min')))
-    shape_index=np.mean(ranks,0).argsort()[:nrois]
+    ranks=np.vstack((scipy.stats.rankdata(-areas,method='average'),
+                     scipy.stats.rankdata(-extents,method='average'),
+                     scipy.stats.rankdata(dists,method='average')))
+    shape_index=np.mean(ranks.astype('float32')*np.array([[1],[.5],[1]]),0).argsort()
 
     # expansion microscopy on the roi
 
@@ -85,7 +102,7 @@ def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE
         rois.append(roi)
         bboxes.append(get_bbox(roi))
 
-    return rois , bboxes
+    return rois , bboxes, label_im, ranks, shape_index
 
 
 def apply_roi(frames,roi):
@@ -106,7 +123,7 @@ def im_moment_features(IM):
         IM (2d numpy array): depth image
 
     Returns:
-        Features (dictionary): returns a dictionary with orientation, centroid, and axis length
+        Features (dictionary): returns a dictionary with orientation, centroid, and ellipse axis length
 
     """
 
@@ -144,17 +161,21 @@ def clean_frames(frames,med_scale=3,
     """
     # seeing enormous speed gains w/ opencv
     filtered_frames=deepcopy(frames).astype('uint8')
+
     for i in tqdm.tqdm(range(frames.shape[0])):
 
         if iterations_min:
             filtered_frames[i,...]=cv2.erode(filtered_frames[i,...],strel_min,iterations_min)
 
-        filtered_frames[i,...]=cv2.medianBlur(filtered_frames[i,...],med_scale)
-        filtered_frames[i,...]=cv2.morphologyEx(filtered_frames[i,...],cv2.MORPH_OPEN,strel,iterations)
+        if med_scale:
+            filtered_frames[i,...]=cv2.medianBlur(filtered_frames[i,...],med_scale)
+
+        if iterations:
+            filtered_frames[i,...]=cv2.morphologyEx(filtered_frames[i,...],cv2.MORPH_OPEN,strel,iterations)
 
     return filtered_frames
 
-def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshold=-30):
+def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshold=-30,use_cc=False):
     """Use image moments to compute features of the largest object in the frame
 
     Args:
@@ -168,17 +189,32 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
 
     features=[]
 
+    if type(mask) is np.ndarray and mask.size>0:
+        has_mask=True
+    else:
+        has_mask=False
+        mask=np.zeros((frames.shape),'uint8')
+
     for i in tqdm.tqdm(range(frames.shape[0])):
+
         frame_mask=frames[i,...]>frame_threshold
-        if type(mask) is np.ndarray and mask.size>0:
+
+        if use_cc:
+            cc_mask=get_largest_cc((frames[[i],...]>mask_threshold).astype('uint8')).squeeze()
+            frame_mask=np.logical_and(cc_mask,frame_mask)
+
+        if has_mask:
             frame_mask=np.logical_and(frame_mask,mask[i,...]>mask_threshold)
+        else:
+            mask[i,...]=frame_mask
+
         im2,cnts,hierarchy=cv2.findContours((frame_mask).astype('uint8'),
                                             cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         tmp=np.array([cv2.contourArea(x) for x in cnts])
         mouse_cnt=tmp.argmax()
         features.append(im_moment_features(cnts[mouse_cnt]))
 
-    return features
+    return features, mask
 
 
 def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
@@ -186,19 +222,22 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
     nframes=frames.shape[0]
     cropped_frames=np.zeros((nframes,80,80),frames.dtype)
 
-    padded_frames=np.pad(frames,((0,0),crop_size,crop_size),'constant',constant_values=0)
+    #padded_frames=np.pad(frames,((0,0),crop_size,crop_size),'constant',constant_values=0)
 
     for i in tqdm.tqdm(range(frames.shape[0])):
+
+        use_frame=np.pad(frames[i,...],(crop_size,crop_size),'constant',constant_values=0)
+
         rr=np.arange(features[i]['centroid'][1]-40,features[i]['centroid'][1]+41).astype('int16')
         cc=np.arange(features[i]['centroid'][0]-40,features[i]['centroid'][0]+41).astype('int16')
 
-        rr=rr+80
-        cc=cc+80
+        rr=rr+crop_size[0]
+        cc=cc+crop_size[1]
 
-        if np.any(rr>=padded_frames.shape[1]) or np.any(rr<1) or np.any(cc>=padded_frames.shape[2]) or np.any(cc<1):
+        if np.any(rr>=use_frame.shape[0]) or np.any(rr<1) or np.any(cc>=use_frame.shape[1]) or np.any(cc<1):
             continue
 
         rot_mat=cv2.getRotationMatrix2D((40,40),-np.rad2deg(features[i]['orientation']),1)
-        cropped_frames[i,:,:]=cv2.warpAffine(padded_frames[i,rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
+        cropped_frames[i,:,:]=cv2.warpAffine(use_frame[rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
 
     return cropped_frames

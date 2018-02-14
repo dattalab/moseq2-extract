@@ -1,6 +1,7 @@
 from skimage.external import tifffile
 import numpy as np
 import json
+import os
 
 def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', metadata={}):
     """Save image data, possibly with scale factor for easy display
@@ -25,6 +26,10 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
 
         metadata={'scale_factor':str(scale_factor)}
 
+    directory=os.path.dirname(filename)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
     tifffile.imsave(filename, image, compress=0, metadata=metadata)
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
