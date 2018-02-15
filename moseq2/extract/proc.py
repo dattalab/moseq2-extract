@@ -8,7 +8,6 @@ import scipy.signal
 import cv2
 import os
 import tqdm
-import pdb
 import joblib
 from copy import copy,deepcopy
 
@@ -39,7 +38,7 @@ def get_largest_cc(frames,progress_bar=False):
     """
     foreground_obj=np.zeros((frames.shape),'bool')
 
-    for i in tqdm.tqdm(range(frames.shape[0]),disable=not progress_bar):
+    for i in tqdm.tqdm(range(frames.shape[0]),disable=not progress_bar,desc='CC'):
         nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frames[i,...], connectivity=4)
         szs=stats[:,-1]
         foreground_obj[i,...]=output==szs[1:].argmax()+1
@@ -107,7 +106,7 @@ def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT,(1
     ranks=np.vstack((scipy.stats.rankdata(-areas,method='average'),
                      scipy.stats.rankdata(-extents,method='average'),
                      scipy.stats.rankdata(dists,method='average')))
-    shape_index=np.mean(ranks.astype('float32')*np.array([[1],[.5],[1]]),0).argsort()
+    shape_index=np.mean(ranks.astype('float32')*np.array([[1],[.4],[1]]),0).argsort()
 
     # expansion microscopy on the roi
 
@@ -167,7 +166,7 @@ def clean_frames(frames,prefilter_space=(3,),prefilter_time=None,
                  strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                  iterations=2,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
-                 iterations_min=None):
+                 iterations_min=None,progress_bar=True):
     """Simple filtering, median filter and morphological opening
 
     Args:
@@ -182,7 +181,7 @@ def clean_frames(frames,prefilter_space=(3,),prefilter_time=None,
     # seeing enormous speed gains w/ opencv
     filtered_frames=deepcopy(frames).astype('uint8')
 
-    for i in tqdm.tqdm(range(frames.shape[0])):
+    for i in tqdm.tqdm(range(frames.shape[0]),disable=not progress_bar,desc='Cleaning frames'):
 
         if iterations_min:
             filtered_frames[i,...]=cv2.erode(filtered_frames[i,...],strel_min,iterations_min)
@@ -200,7 +199,8 @@ def clean_frames(frames,prefilter_space=(3,),prefilter_time=None,
 
     return filtered_frames
 
-def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshold=-30,use_cc=False):
+def get_frame_features(frames,frame_threshold=10,mask=np.array([]),
+                       mask_threshold=-30,use_cc=False,progress_bar=True):
     """Use image moments to compute features of the largest object in the frame
 
     Args:
@@ -223,12 +223,15 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
 
 
     features={
-        'centroid':np.zeros((nframes,2),'float32'),
-        'orientation':np.zeros((nframes,),'float32'),
-        'axis_length':np.zeros((nframes,2),'float32')
+        'centroid':np.empty((nframes,2)),
+        'orientation':np.empty((nframes,)),
+        'axis_length':np.empty((nframes,2))
     }
 
-    for i in tqdm.tqdm(range(nframes)):
+    for k,v in features.items():
+        features[k][:]=np.nan
+
+    for i in tqdm.tqdm(range(nframes),disable=not progress_bar,desc='Computing moments'):
 
         frame_mask=frames[i,...]>frame_threshold
 
@@ -244,7 +247,13 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
         im2,cnts,hierarchy=cv2.findContours((frame_mask).astype('uint8'),
                                             cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         tmp=np.array([cv2.contourArea(x) for x in cnts])
+
+        if tmp.size==0:
+            continue
+
         mouse_cnt=tmp.argmax()
+
+
 
         for key,value in im_moment_features(cnts[mouse_cnt]).items():
             features[key][i]=value
@@ -252,12 +261,15 @@ def get_frame_features(frames,frame_threshold=10,mask=np.array([]),mask_threshol
     return features, mask
 
 
-def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
+def crop_and_rotate_frames(frames,features,crop_size=(80,80),progress_bar=True):
 
     nframes=frames.shape[0]
     cropped_frames=np.zeros((nframes,80,80),frames.dtype)
 
-    for i in tqdm.tqdm(range(frames.shape[0])):
+    for i in tqdm.tqdm(range(frames.shape[0]),disable=not progress_bar,desc='Rotating'):
+
+        if np.any(np.isnan(features['centroid'][i,:])):
+            continue
 
         use_frame=np.pad(frames[i,...],(crop_size,crop_size),'constant',constant_values=0)
 
@@ -274,3 +286,42 @@ def crop_and_rotate_frames(frames,features,crop_size=(80,80)):
         cropped_frames[i,:,:]=cv2.warpAffine(use_frame[rr[0]:rr[-1],cc[0]:cc[-1]],rot_mat,(80,80))
 
     return cropped_frames
+
+
+def compute_scalars(frames,track_features,min_height=10,max_height=100):
+
+    nframes=frames.shape[0]
+
+    features={
+        'centroid_x':np.zeros((nframes,),'float32'),
+        'centroid_y':np.zeros((nframes,),'float32'),
+        'angle':np.zeros((nframes,),'float32'),
+        'width':np.zeros((nframes,),'float32'),
+        'length':np.zeros((nframes,),'float32'),
+        'height_ave':np.zeros((nframes,),'float32'),
+        'velocity_mag':np.zeros((nframes,),'float32'),
+        'velocity_theta':np.zeros((nframes,)),
+        'area':np.zeros((nframes,)),
+        'velocity_mag_3d':np.zeros((nframes,),'float32'),
+    }
+
+    features['centroid_x']=track_features['centroid'][:,0]
+    features['centroid_y']=track_features['centroid'][:,1]
+    features['angle']=track_features['orientation']
+    features['width']=np.min(track_features['axis_length'],axis=1)
+    features['length']=np.max(track_features['axis_length'],axis=1)
+    masked_frames=np.logical_and(frames>min_height,frames<max_height)
+    features['area']=np.sum(masked_frames,axis=(1,2))
+
+    for i in range(nframes):
+        features['height_ave'][i]=np.mean(frames[i,masked_frames[i,...]])
+
+    vel_x=np.diff(np.pad(features['centroid_x'],(1,0),'edge'))
+    vel_y=np.diff(np.pad(features['centroid_y'],(1,0),'edge'))
+    vel_z=np.diff(np.pad(features['height_ave'],(1,0),'edge'))
+
+    features['velocity_mag']=np.hypot(vel_x,vel_y)
+    features['velocity_mag_3d']=np.sqrt(np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
+    features['velocity_theta']=np.arctan2(vel_y,vel_x)
+
+    return features

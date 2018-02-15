@@ -151,6 +151,12 @@ def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,p
                slices=24,slicecrc=1,frame_size=None,depth_min=0,depth_max=80,get_cmd=False,cmap='jet'):
     """Writes out a false-colored mp4 video
     """
+    if not np.mod(frames.shape[1],2)==0:
+        frames=np.pad(frames,((0,0),(0,1),(0,0)),'constant',constant_values=0)
+
+    if not np.mod(frames.shape[2],2)==0:
+        frames=np.pad(frames,((0,0),(0,0),(0,1)),'constant',constant_values=0)
+
     if not frame_size and type(frames) is np.ndarray:
         frame_size='{0:d}x{1:d}'.format(frames.shape[2],frames.shape[1])
     elif not frame_size and type(frames) is tuple:
@@ -191,3 +197,22 @@ def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,p
 
     pipe.stdin.close()
     pipe.wait()
+
+def load_movie_data(filename,frames):
+
+    if filename.lower().endswith('.dat'):
+        frame_data=read_frames_raw(filename,frames)
+    elif filename.lower().endswith('.avi'):
+        frame_data=read_frames(filename,frames)
+
+    return frame_data
+
+
+def get_movie_info(filename):
+
+    if filename.lower().endswith('.dat'):
+        metadata=get_raw_info(filename)
+    elif filename.lower().endswith('.avi'):
+        metadata=get_video_info(filename)
+
+    return metadata

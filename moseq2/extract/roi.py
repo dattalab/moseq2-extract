@@ -27,7 +27,7 @@ def plane_fit3(points):
     return plane
 
 
-def plane_ransac(depth_image,depth_range=(650,750),iters=1000,noise_tolerance=30,in_ratio=.1):
+def plane_ransac(depth_image,depth_range=(650,750),iters=1000,noise_tolerance=30,in_ratio=.1,progress_bar=True):
     """Naive RANSAC implementation for plane fitting
     Args:
         depth_image (2d numpy array): hxw, background image to fit plane to
@@ -51,7 +51,7 @@ def plane_ransac(depth_image,depth_range=(650,750),iters=1000,noise_tolerance=30
 
     npoints=np.sum(use_points)
 
-    for i in tqdm.tqdm(np.arange(iters)):
+    for i in tqdm.tqdm(np.arange(iters),disable=not progress_bar, desc='Finding plane'):
 
         sel=coords[np.random.choice(coords.shape[0],3,replace=True),:].T
         tmp_plane=plane_fit3(sel)

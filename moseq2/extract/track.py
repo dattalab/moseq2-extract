@@ -31,7 +31,7 @@ def em_iter(data,mean,cov,lamd=.1,epsilon=1e-1,max_iter=25):
     return mean , cov
 
 
-def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_floor=10):
+def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_floor=10,progress_bar=True):
         """The dead-simple tracker, use EM update rules to follow a 3D Gaussian around the room!
         Args:
             frames (3d numpy array): nframes x r x c
@@ -60,7 +60,7 @@ def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_
         }
 
         frames=frames.reshape(frames.shape[0],frames.shape[1]*frames.shape[2])
-        pbar=tqdm.tqdm(total=nframes)
+        pbar=tqdm.tqdm(total=nframes,disable=not progress_bar,desc='Computing EM')
         i=0
 
         while i<nframes:
@@ -106,7 +106,7 @@ def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_
         return model_parameters
 
 
-def em_get_ll(frames,mean,cov):
+def em_get_ll(frames,mean,cov,progress_bar=True):
     """Get the likelihoods associated with model parameters
     """
     xx , yy =np.meshgrid(np.arange(frames.shape[2]),np.arange(frames.shape[1]))
@@ -116,7 +116,7 @@ def em_get_ll(frames,mean,cov):
 
     ll=np.zeros(frames.shape,dtype='float64')
 
-    for i in tqdm.tqdm(range(nframes)):
+    for i in tqdm.tqdm(range(nframes),disable=not progress_bar,desc='Computing EM likelihoods'):
         xyz=np.vstack((coords,frames[i,...].ravel()))
         ll[i,...]=scipy.stats.multivariate_normal.logpdf(xyz.T,mean[i,...],cov[i,...]).reshape((r,c))
 
