@@ -35,6 +35,8 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
 
     # get the basic metadata
 
+    np.seterr(invalid='raise')
+
     video_metadata=get_movie_info(input_file)
     nframes=video_metadata['nframes']
     extraction_metadata=load_metadata(os.path.join(os.path.dirname(input_file),'metadata.json'))
@@ -104,10 +106,16 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
 
             # if desired, write out a movie
 
+            # todo: cut out first part of overhang
+
+            if i>1:
+                frame_range[0]=frame[0]+chunk_overlap
+
             for scalar in scalars:
                 f['scalars/{}'.format(scalar)][frame_range]=results['scalars'][scalar]
             f['frames'][frame_range]=results['depth_frames']
 
+    print('\n')
 
 
 if __name__ == '__main__':

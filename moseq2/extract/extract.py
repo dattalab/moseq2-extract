@@ -54,7 +54,8 @@ def extract_chunk(chunk,use_em_tracker=False,prefilter_space=(3,),prefilter_time
     features , mask=get_frame_features(filtered_frames,frame_threshold=min_height, mask=ll,
                                 mask_threshold=mask_threshold, use_cc=use_cc,progress_bar=progress_bar)
 
-    features['orientation']=np.unwrap(features['orientation']*2)/2
+    incl=~np.isnan(features['orientation'])
+    features['orientation'][incl]=np.unwrap(features['orientation'][incl]*2)/2
 
     # crop and rotate the frames
 

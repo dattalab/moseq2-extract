@@ -313,8 +313,11 @@ def compute_scalars(frames,track_features,min_height=10,max_height=100):
     masked_frames=np.logical_and(frames>min_height,frames<max_height)
     features['area']=np.sum(masked_frames,axis=(1,2))
 
+    nmask=np.sum(masked_frames,axis=(1,2))
+
     for i in range(nframes):
-        features['height_ave'][i]=np.mean(frames[i,masked_frames[i,...]])
+        if nmask[i]>0:
+            features['height_ave'][i]=np.mean(frames[i,masked_frames[i,...]])
 
     vel_x=np.diff(np.pad(features['centroid_x'],(1,0),'edge'))
     vel_y=np.diff(np.pad(features['centroid_y'],(1,0),'edge'))
