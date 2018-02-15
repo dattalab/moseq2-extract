@@ -109,11 +109,15 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
             # todo: cut out first part of overhang
 
             if i>1:
-                frame_range=frame_range[chunk_overlap:]
+                offset=chunk_overlap
+            else:
+                offset=0
+
+            frame_range=frame_range[offset:]
 
             for scalar in scalars:
-                f['scalars/{}'.format(scalar)][frame_range]=results['scalars'][scalar]
-            f['frames'][frame_range]=results['depth_frames']
+                f['scalars/{}'.format(scalar)][frame_range]=results['scalars'][scalar][offset:,...]
+            f['frames'][frame_range]=results['depth_frames'][offset:,...]
 
     print('\n')
 
