@@ -13,7 +13,7 @@ def extract_chunk(chunk,use_em_tracker=False,prefilter_space=(3,),prefilter_time
                   strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)),
                   strel_min=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5)),
                   min_height=10,max_height=100,
-                  mask_threshold=-15,use_cc=False,
+                  mask_threshold=-20,use_cc=False,
                   bground=None,roi=None,
                   rho_mean=0,rho_cov=0,flip_classifier=None,flip_smoothing=51,
                   save_path=os.path.join(os.getcwd(),'proc'),

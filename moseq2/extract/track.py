@@ -55,13 +55,17 @@ def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_
         cov=stats_tools.cov_nearest(np.cov(xyz[:,xyz[2,:]>depth_floor]))
 
         model_parameters={
-            'mean':np.zeros((nframes,3),'float64'),
-            'cov':np.zeros((nframes,3,3),'float64')
+            'mean':np.empty((nframes,3),'float64'),
+            'cov':np.empty((nframes,3,3),'float64')
         }
+
+        for k,v in model_parameters.items():
+            model_parameters[k][:]=np.nan
 
         frames=frames.reshape(frames.shape[0],frames.shape[1]*frames.shape[2])
         pbar=tqdm.tqdm(total=nframes,disable=not progress_bar,desc='Computing EM')
         i=0
+        repeat=False
 
         while i<nframes:
 
@@ -70,10 +74,13 @@ def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_
 
             # segment to find pixels with likely mice, only use those for updating
 
-            if segment:
+            if segment and not repeat:
                 im2,cnts,hierarchy=cv2.findContours((pxtheta_im>ll_threshold).astype('uint8'),
                                                     cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
                 tmp=np.array([cv2.contourArea(x) for x in cnts])
+                if tmp.size==0:
+                    repeat=True
+                    continue
                 use_cnt=tmp.argmax()
                 mask=np.zeros_like(pxtheta_im)
                 cv2.drawContours(mask,cnts,use_cnt,(255),cv2.FILLED)
@@ -97,6 +104,7 @@ def em_tracking(frames,segment=True,ll_threshold=-30,rho_mean=0,rho_cov=0,depth_
 
             # TODO: add the walk-back where we use the raw frames in case our update craps out...
 
+            repeat=False
             i+=1
             pbar.update(1)
 

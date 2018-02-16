@@ -1,4 +1,4 @@
-from moseq2.io.video import get_movie_info, load_movie_data
+from moseq2.io.video import get_movie_info, load_movie_data, write_frames_preview
 from moseq2.io.image import write_image, read_image
 from moseq2.extract.extract import extract_chunk
 from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
@@ -25,7 +25,7 @@ import numpy as np
 @click.option('--prefilter-space',default=(3,),type=tuple)
 @click.option('--prefilter-time',default=(),type=tuple)
 @click.option('--chunk-size',default=1000,type=int)
-@click.option('--chunk-overlap',default=10,type=int)
+@click.option('--chunk-overlap',default=60,type=int)
 @click.option('--output-dir',default=None)
 @click.option('--write-movie',default=True,type=bool)
 @click.option('--temp-dir',default=None)
@@ -63,26 +63,32 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
 
     # get the background and roi, which will be used across all batches
 
-    print('Getting background...')
-    bground_im=get_bground_im_file(input_file)
+    if os.path.exists(os.path.join(output_dir,'bground.tiff')):
+        print('Loading background...')
+        bground_im=read_image(os.path.join(output_dir,'bground.tiff'),scale=True)
+    else:
+        print('Getting background...')
+        bground_im=get_bground_im_file(input_file)
+        write_image(os.path.join(output_dir,'bground.tiff'),bground_im,scale=True)
 
-    write_image(os.path.join(output_dir,'bground.tiff'),bground_im,scale=True)
     first_frame=load_movie_data(input_file,0)
-
     write_image(os.path.join(output_dir,'first_frame.tiff'),first_frame,scale=True,scale_factor=(650,750))
 
-    if roi_shape[0].lower()=='e':
-        strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(roi_dilate,roi_dilate))
-    elif roi_shape[0].lower()=='r':
-        strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT,(roi_dilate,roi_dilate))
+    if os.path.exists(os.path.join(output_dir,'roi.tiff')):
+        print('Loading ROI...')
+        roi=read_image(os.path.join(output_dir,'roi.tiff'),scale=True)>0
     else:
-        strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(roi_dilate,roi_dilate))
+        print('Getting roi...')
+        if roi_shape[0].lower()=='e':
+            strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(roi_dilate,roi_dilate))
+        elif roi_shape[0].lower()=='r':
+            strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT,(roi_dilate,roi_dilate))
+        else:
+            strel_dilate=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(roi_dilate,roi_dilate))
 
-    print('Getting roi...')
-    rois,_,_,_,_=get_roi(bground_im,strel_dilate=strel_dilate)
-    roi=rois[roi_index]
-
-    write_image(os.path.join(output_dir,'roi.tiff'),roi,scale=True,dtype='uint8')
+        rois,_,_,_,_=get_roi(bground_im,strel_dilate=strel_dilate)
+        roi=rois[roi_index]
+        write_image(os.path.join(output_dir,'roi.tiff'),roi,scale=True,dtype='uint8')
 
     # farm out the batches and write to an hdf5 file
 
@@ -91,7 +97,9 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
         for i in range(len(scalars)):
             f.create_dataset('scalars/{}'.format(scalars[i]),(nframes,),'float32',compression='gzip')
 
+        f.create_dataset('metadata/timestamps',compression='gzip',data=timestamps)
         f.create_dataset('frames',(nframes,crop_size[0],crop_size[1]),'i1',compression='gzip')
+        video_pipe=None
 
         for i,frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
             raw_frames=load_movie_data(input_file,frame_range)
@@ -118,6 +126,18 @@ def extract(input_file,crop_size,roi_dilate,roi_shape,roi_index,min_height,max_h
             for scalar in scalars:
                 f['scalars/{}'.format(scalar)][frame_range]=results['scalars'][scalar][offset:,...]
             f['frames'][frame_range]=results['depth_frames'][offset:,...]
+
+            nframes,rows,cols=raw_frames[offset:,...].shape
+            output_movie=np.zeros((nframes,rows+crop_size[0],cols+crop_size[1]),'uint16')
+            output_movie[:,:crop_size[0],:crop_size[1]]=results['depth_frames'][offset:,...]
+            output_movie[:,crop_size[0]:,crop_size[1]:]=raw_frames[offset:,...]
+
+            video_pipe=write_frames_preview(os.path.join(output_dir,'results.mp4'),output_movie,
+                                            pipe=video_pipe,close_pipe=False)
+
+        if video_pipe:
+            video_pipe.stdin.close()
+            video_pipe.wait()
 
     print('\n')
 

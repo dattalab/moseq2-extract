@@ -103,10 +103,10 @@ def get_roi(depth_image,strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT,(1
 
     # rank features
 
-    ranks=np.vstack((scipy.stats.rankdata(-areas,method='average'),
-                     scipy.stats.rankdata(-extents,method='average'),
-                     scipy.stats.rankdata(dists,method='average')))
-    shape_index=np.mean(ranks.astype('float32')*np.array([[1],[.4],[1]]),0).argsort()
+    ranks=np.vstack((scipy.stats.rankdata(-areas,method='max'),
+                     scipy.stats.rankdata(-extents,method='max'),
+                     scipy.stats.rankdata(dists,method='max')))
+    shape_index=np.mean(ranks.astype('float32')*np.array([[1],[.2],[1]]),0).argsort()
 
     # expansion microscopy on the roi
 
@@ -152,12 +152,18 @@ def im_moment_features(IM):
 
     common=np.sqrt(4*np.square(tmp['mu11'])+np.square(den))
 
-    features={
-        'orientation':-.5*np.arctan2(num,den),
-        'centroid':[tmp['m10']/tmp['m00'],tmp['m01']/tmp['m00']],
-        'axis_length':[2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
-                       2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
-    }
+    if tmp['m00']==0:
+        features= {
+            'orientation':np.nan,
+            'centroid':np.nan,
+            'axis_length':[np.nan,np.nan]}
+    else:
+        features={
+            'orientation':-.5*np.arctan2(num,den),
+            'centroid':[tmp['m10']/tmp['m00'],tmp['m01']/tmp['m00']],
+            'axis_length':[2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
+                           2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
+        }
 
     return features
 

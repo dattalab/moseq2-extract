@@ -3,6 +3,7 @@ import tqdm
 import subprocess
 import matplotlib.pyplot as plt
 import os
+import datetime
 from copy import deepcopy
 
 def get_raw_info(filename,bytes_per_frame=int((424*512*16)/8),frame_dims=[424,512]):
@@ -15,15 +16,22 @@ def get_raw_info(filename,bytes_per_frame=int((424*512*16)/8),frame_dims=[424,51
 
     return file_info
 
-def read_frames_raw(filename,frames,frame_dims=(424,512)):
+def read_frames_raw(filename,frames=None,frame_dims=(424,512)):
     """Read in binary data
     """
+
+    vid_info=get_raw_info(filename)
+
     if type(frames) is int:
         frames=[frames]
+    elif not frames or (type(frames) is range) and len(frames)==0:
+        frames=range(0,vid_info['nframes'])
 
     bytes_per_frame=int((frame_dims[0]*frame_dims[1]*16)/8)
     seek_point=np.maximum(0,frames[0]*bytes_per_frame)
     read_points=len(frames)*frame_dims[0]*frame_dims[1]
+
+
 
     with open(filename,"rb") as f:
         f.seek(seek_point)
@@ -95,7 +103,7 @@ def write_frames(filename,frames,threads=6,camera_fs=30,pixel_format='gray16le',
     pipe.stdin.close()
     pipe.wait()
 
-def read_frames(filename,frames=np.empty((0,)),threads=6,camera_fs=30,pixel_format='gray16le',frame_size=None,
+def read_frames(filename,frames=range(0,),threads=6,camera_fs=30,pixel_format='gray16le',frame_size=None,
               slices=24,slicecrc=1,get_cmd=False):
     """Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
     Args:
@@ -114,7 +122,7 @@ def read_frames(filename,frames=np.empty((0,)),threads=6,camera_fs=30,pixel_form
 
     finfo=get_video_info(filename)
 
-    if frames.size==0:
+    if len(frames)==0 or not frames:
         finfo=get_video_info(filename)
         frames=np.arange(finfo['duration']).astype('int16')
 
@@ -147,8 +155,9 @@ def read_frames(filename,frames=np.empty((0,)),threads=6,camera_fs=30,pixel_form
     return video
 
 # simple command to pipe frames to an ffv1 file
-def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,pixel_format='rgb24',codec='h264',
-               slices=24,slicecrc=1,frame_size=None,depth_min=0,depth_max=80,get_cmd=False,cmap='jet'):
+def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,pixel_format='rgb24',
+                         codec='h264',slices=24,slicecrc=1,frame_size=None,depth_min=0,depth_max=80,
+                         get_cmd=False,cmap='jet',pipe=None,close_pipe=True):
     """Writes out a false-colored mp4 video
     """
     if not np.mod(frames.shape[1],2)==0:
@@ -181,13 +190,14 @@ def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,p
     if get_cmd:
         return command
 
-    pipe=subprocess.Popen(command,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
+    if not pipe:
+        pipe=subprocess.Popen(command,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
 
     # scale frames d00d
 
     use_cmap=plt.get_cmap(cmap)
 
-    for i in tqdm.tqdm(range(frames.shape[0])):
+    for i in tqdm.tqdm(range(frames.shape[0]),desc="Writing frames"):
         disp_img=deepcopy(frames[i,...].astype('float32'))
         disp_img=(disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img<0]=0
@@ -195,8 +205,44 @@ def write_frames_preview(filename,frames=np.empty((0,)),threads=6,camera_fs=30,p
         disp_img=np.delete(use_cmap(disp_img),3,2)*255
         pipe.stdin.write(disp_img.astype('uint8').tostring())
 
-    pipe.stdin.close()
-    pipe.wait()
+    if close_pipe:
+        pipe.stdin.close()
+        return None
+    else:
+        return pipe
+
+def encode_raw_frames_chunk(src_filename,bground_im,roi,bbox,chunk_size=1000,overlap=0,depth_min=5,depth_max=100):
+
+    save_dir=os.path.join(os.path.dirname(src_filename),'_chunks')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    base_filename=os.path.splitext(os.path.basename(src_filename))[0]
+
+    file_bytes=os.stat(use_file).st_size
+    file_nframes=int(file_bytes/bytes_per_frame)
+    steps=np.append(np.arange(0,file_nframes,chunk_size),file_nframes)
+
+    # need to write out a manifest so we know the location of every frame
+    dest_filename=[]
+
+    for i in tqdm.tqdm(range(steps.shape[0]-1)):
+        if i==1:
+            chunk = read_frames_raw(use_file,np.arange(steps[i],steps[i+1]))
+        else:
+            chunk = read_frames_raw(use_file,np.arange(steps[i]-overlap,steps[i+1]))
+            
+        chunk=(bground_im-chunk).astype('uint8')
+        chunk[chunk<depth_min]=0
+        chunk[chunk>depth_max]=0
+        chunk=apply_roi(chunk,roi,bbox)
+
+        dest_filename.append(os.path.join(save_dir,base_filename+'chunk{:05d}.avi'.format(i)))
+        write_frames(dest_filename[-1],chunk)
+
+    return dest_filename
+
 
 def load_movie_data(filename,frames):
 
