@@ -1,4 +1,3 @@
-import pytest
 import numpy.testing as npt
 import numpy as np
 from moseq2.extract.roi import plane_fit3, plane_ransac
