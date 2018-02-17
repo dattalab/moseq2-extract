@@ -18,7 +18,8 @@ def plane_fit3(points):
                     [a[0]*b[1]-a[1]*b[0]]])
     denom=np.sum(np.square(normal))
     if denom<np.spacing(1):
-        plane=np.empty
+        plane=np.empty((4,))
+        plane[:]=np.nan
     else:
         normal /= np.sqrt(denom)
         d=np.dot(-points[0,:],normal)
@@ -53,10 +54,13 @@ def plane_ransac(depth_image,depth_range=(650,750),iters=1000,noise_tolerance=30
 
     for i in tqdm.tqdm(np.arange(iters),disable=not progress_bar, desc='Finding plane'):
 
-        sel=coords[np.random.choice(coords.shape[0],3,replace=True),:].T
+        sel=coords[np.random.choice(coords.shape[0],3,replace=True),:]
         tmp_plane=plane_fit3(sel)
-        dist=np.abs(np.dot(coords,tmp_plane[:3])+tmp_plane[3])
 
+        if np.all(np.isnan(tmp_plane)):
+            continue
+
+        dist=np.abs(np.dot(coords,tmp_plane[:3])+tmp_plane[3])
         inliers=dist<noise_tolerance
         ninliers=np.sum(inliers)
 
@@ -64,12 +68,18 @@ def plane_ransac(depth_image,depth_range=(650,750),iters=1000,noise_tolerance=30
 
             best_dist=np.mean(dist)
             best_num=ninliers
+            #best_plane=tmp_plane
+
+            # use all consensus samples to fit a better model
+
             all_data=coords[inliers.flatten(),:]
             mu=np.mean(all_data,0)
             u,s,v=np.linalg.svd(all_data-mu)
+            v=v.conj().T
             best_plane=np.hstack((v[:,-1],np.dot(-mu,v[:,-1])))
 
     # fit the plane to our x,y,z coordinates
+
 
     coords=np.vstack((xx.ravel(),yy.ravel(),depth_image.ravel())).T
     dist=np.abs(np.dot(coords,best_plane[:3])+best_plane[3])
