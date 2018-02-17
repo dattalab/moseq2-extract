@@ -29,7 +29,7 @@ def test_plane_fit3():
     npt.assert_almost_equal(norma[[0,1,3]],np.array([1,50,3]),3)
     #npt.assert_almost_equal(np.dot(a[:3],xyz.T-a[3]),[0,0,0],3)
 
-def test_plan_ransac():
+def test_plane_ransac():
 
     # make a plane where we can test adding noise...
 
