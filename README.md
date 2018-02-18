@@ -15,6 +15,8 @@ Moseq has been tested with Python 3.4 and later.  All requirements can be instal
 
 ```sh
 conda create -n moseq2 python=3.6
+git clone https://github.com/jmarkow/moseq2.git
+cd moseq2/
 pip install -e .
 ```
 
