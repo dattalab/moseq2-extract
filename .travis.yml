@@ -10,5 +10,7 @@ install:
 # install what we need for testing
 before_install:
   - pip install pytest pytest-cov
+  - export PYTHONPATH=$PYTHONPATH:$(pwd)
+
 # script for tests... (eventually add coveralls)
 script: pytest
