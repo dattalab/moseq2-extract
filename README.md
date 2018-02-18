@@ -4,10 +4,10 @@ Welcome to moseq2, the latest version of a software package for mouse tracking i
 
 ## Table of Contents  
 
-- [Installation][#installation]
-- [Usage][#usage]
-- [Support][#support]
-- [Contributing][#contributing]
+- [Installation](#installation)
+- [Usage](#usage)
+- [Support](#support)
+- [Contributing](#contributing)
 
 ## Installation
 
