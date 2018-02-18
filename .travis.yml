@@ -1,0 +1,13 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+# get the dependencies
+install:
+  - pip install .
+# install what we need for testing
+before_install:
+  - pip install pytest pytest-cov
+# script for tests... (eventually add coveralls)
+script: pytest
