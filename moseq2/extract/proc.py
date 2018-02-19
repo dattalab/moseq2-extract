@@ -177,9 +177,9 @@ def im_moment_features(IM):
             'orientation': -.5*np.arctan2(num, den),
             'centroid': [tmp['m10']/tmp['m00'], tmp['m01']/tmp['m00']],
             'axis_length': [2*np.sqrt(2)*np.sqrt(
-                                (tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
-                            2*np.sqrt(2)*np.sqrt(
-                                (tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
+                (tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
+                2*np.sqrt(2)*np.sqrt(
+                (tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
         }
 
     return features
