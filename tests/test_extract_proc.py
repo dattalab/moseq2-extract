@@ -30,9 +30,12 @@ def test_get_roi(script_loc):
                                                     fname).group())
 
         ground_truth = read_image(os.path.join(dirname, roi_file), scale=True)
-        frac_nonoverlap = np.mean(np.logical_xor(ground_truth, roi[0][0]))
 
-        assert(frac_nonoverlap < .1)
+        frac_nonoverlap_roi1 = np.empty((2,))
+        frac_nonoverlap_roi2 = np.empty((2,))
+
+        frac_nonoverlap_roi1[0] = np.mean(
+            np.logical_xor(ground_truth, roi[0][0]))
 
         roi_file2 = 'roi{}_02.tiff'.format(re.search(r'\_[a-z|A-Z]*',
                                                      fname).group())
@@ -40,6 +43,13 @@ def test_get_roi(script_loc):
         if os.path.exists(os.path.join(dirname, roi_file2)):
             ground_truth = read_image(
                 os.path.join(dirname, roi_file2), scale=True)
-            frac_nonoverlap = np.mean(np.logical_xor(ground_truth, roi[0][1]))
+            frac_nonoverlap_roi2[0] = np.mean(np.logical_xor(ground_truth,
+                                                             roi[0][1]))
+            frac_nonoverlap_roi2[1] = np.mean(np.logical_xor(ground_truth,
+                                                             roi[0][0]))
+            frac_nonoverlap_roi1[1] = np.mean(np.logical_xor(ground_truth,
+                                                             roi[0][1]))
 
-            assert(frac_nonoverlap < .1)
+            assert(np.min(frac_nonoverlap_roi2) < .1)
+
+        assert(np.min(frac_nonoverlap_roi1) < .1)
