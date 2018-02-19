@@ -40,7 +40,6 @@ def test_plane_ransac():
                 np.random.normal(0, noise_scale, size=(xy.shape[0],)))
 
     xx, yy = np.meshgrid(np.arange(0, 50), np.arange(0, 50))
-
     xy = np.vstack((xx.ravel(), yy.ravel()))
 
     # low noise regime
@@ -60,7 +59,7 @@ def test_plane_ransac():
     tmp_img = z.reshape(xx.shape)
 
     a = plane_ransac(tmp_img, depth_range=(0, 1000),
-                     iters=10000, noise_tolerance=10)
+                     iters=10000, noise_tolerance=5)
     norma = -a[0]/a[0][2]
 
     npt.assert_almost_equal(norma[[0, 1]], np.array([2, 5]), 1)

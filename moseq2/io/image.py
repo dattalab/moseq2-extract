@@ -6,7 +6,8 @@ import ast
 
 
 def write_image(filename, image, scale=True,
-                scale_factor=None, dtype='uint16', metadata={}):
+                scale_factor=None, dtype='uint16',
+                metadata={}, compress=0):
     """Save image data, possibly with scale factor for easy display
     """
 
@@ -33,7 +34,7 @@ def write_image(filename, image, scale=True,
     if directory and not os.path.exists(directory):
         os.makedirs(directory)
 
-    tifffile.imsave(filename, image, compress=0, metadata=metadata)
+    tifffile.imsave(filename, image, compress=compress, metadata=metadata)
 
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
