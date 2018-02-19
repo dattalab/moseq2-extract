@@ -60,7 +60,7 @@ def test_plane_ransac():
     tmp_img = z.reshape(xx.shape)
 
     a = plane_ransac(tmp_img, depth_range=(0, 1000),
-                     iters=1000, noise_tolerance=10)
+                     iters=10000, noise_tolerance=10)
     norma = -a[0]/a[0][2]
 
     npt.assert_almost_equal(norma[[0, 1]], np.array([2, 5]), 1)
