@@ -17,8 +17,7 @@ def test_write_image(image_file):
     # make some random ints, don't exceed 16 bit limits
 
     image_file = os.path.join(image_file, 'test2', 'test_image.tiff')
-    rnd_img = np.random.randint(
-        low=0, high=100, size=(50, 50)).astype('uint16')
+    rnd_img = np.random.randint(low=0, high=100, size=(50, 50)).astype('uint16')
     write_image(image_file, rnd_img, scale=False)
 
     with tifffile.TiffFile(image_file) as tif:
@@ -31,8 +30,7 @@ def test_write_image(image_file):
 def test_read_image(image_file):
 
     image_file = os.path.join(image_file, 'test2', 'test_image.tiff')
-    rnd_img = np.random.randint(
-        low=0, high=100, size=(50, 50)).astype('uint16')
+    rnd_img = np.random.randint(low=0, high=100, size=(50, 50)).astype('uint16')
 
     write_image(image_file, rnd_img, scale=True)
     image = read_image(image_file, scale=True)

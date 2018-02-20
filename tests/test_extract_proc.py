@@ -9,7 +9,7 @@ from moseq2.extract.proc import get_roi
 
 # https://stackoverflow.com/questions/34504757/
 # get-pytest-to-look-within-the-base-directory-of-the-testing-script
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def script_loc(request):
     return request.fspath.join('..')
 
