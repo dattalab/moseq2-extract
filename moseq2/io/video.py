@@ -8,8 +8,7 @@ import datetime
 from copy import deepcopy
 
 
-def get_raw_info(filename, bytes_per_frame=int((424*512*16)/8),
-                 frame_dims=[424, 512]):
+def get_raw_info(filename, bytes_per_frame=int((424*512*16)/8), frame_dims=[424, 512]):
 
     file_info = {
         'bytes': os.stat(filename).st_size,
@@ -57,8 +56,7 @@ def get_video_info(filename):
                'default=noprint_wrappers=1:nokey=1',
                filename,
                '-sexagesimal']
-    ffmpeg = subprocess.Popen(
-        command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = ffmpeg.communicate()
     if(err):
         print(err)
@@ -158,14 +156,12 @@ def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
     if get_cmd:
         return command
 
-    pipe = subprocess.Popen(
-        command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
     if(err):
         print('error', err)
         return None
-    video = np.frombuffer(out, dtype='uint16').reshape(
-        (len(frames), frame_size[1], frame_size[0]))
+    video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
 # simple command to pipe frames to an ffv1 file
@@ -180,12 +176,10 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     """Writes out a false-colored mp4 video
     """
     if not np.mod(frames.shape[1], 2) == 0:
-        frames = np.pad(frames, ((0, 0), (0, 1), (0, 0)),
-                        'constant', constant_values=0)
+        frames = np.pad(frames, ((0, 0), (0, 1), (0, 0)), 'constant', constant_values=0)
 
     if not np.mod(frames.shape[2], 2) == 0:
-        frames = np.pad(frames, ((0, 0), (0, 0), (0, 1)),
-                        'constant', constant_values=0)
+        frames = np.pad(frames, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=0)
 
     if not frame_size and type(frames) is np.ndarray:
         frame_size = '{0:d}x{1:d}'.format(frames.shape[2], frames.shape[1])
@@ -255,20 +249,16 @@ def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
 
     for i in tqdm.tqdm(range(steps.shape[0]-1)):
         if i == 1:
-            chunk = read_frames_raw(src_filename,
-                                    np.arange(steps[i], steps[i+1]))
+            chunk = read_frames_raw(src_filename, np.arange(steps[i], steps[i+1]))
         else:
-            chunk = read_frames_raw(
-                src_filename,
-                np.arange(steps[i]-overlap, steps[i+1]))
+            chunk = read_frames_raw(src_filename, np.arange(steps[i]-overlap, steps[i+1]))
 
         chunk = (bground_im-chunk).astype('uint8')
         chunk[chunk < depth_min] = 0
         chunk[chunk > depth_max] = 0
         chunk = moseq2.extract.proc.apply_roi(chunk, roi, bbox)
 
-        dest_filename.append(os.path.join(
-            save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
+        dest_filename.append(os.path.join(save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
         write_frames(dest_filename[-1], chunk)
 
     return dest_filename

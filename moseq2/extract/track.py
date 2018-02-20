@@ -14,14 +14,12 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     pxtheta_raw = np.zeros((ndatapoints,), dtype='float64')
 
     for i in range(max_iter):
-        pxtheta_raw = scipy.stats.multivariate_normal.pdf(
-            x=data, mean=mean, cov=cov)
+        pxtheta_raw = scipy.stats.multivariate_normal.pdf(x=data, mean=mean, cov=cov)
         pxtheta_raw /= np.sum(pxtheta_raw)
 
         mean = np.sum(data.T*pxtheta_raw, axis=1)
         dx = (data-mean).T
-        cov = stats_tools.cov_nearest(
-            np.dot(dx * pxtheta_raw, dx.T) + lamd*np.eye(3))
+        cov = stats_tools.cov_nearest(np.dot(dx * pxtheta_raw, dx.T) + lamd*np.eye(3))
 
         ll = np.sum(np.log(pxtheta_raw+1e-300))
         delta_likelihood = (ll-prev_likelihood)
@@ -54,8 +52,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
 
     nframes, r, c = frames.shape
 
-    xx, yy = np.meshgrid(
-        np.arange(frames.shape[2]), np.arange(frames.shape[1]))
+    xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
     mean = np.mean(xyz[:, xyz[2, :] > depth_floor], axis=1)
@@ -70,23 +67,20 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
         model_parameters[k][:] = np.nan
 
     frames = frames.reshape(frames.shape[0], frames.shape[1]*frames.shape[2])
-    pbar = tqdm.tqdm(total=nframes, disable=not progress_bar,
-                     desc='Computing EM')
+    pbar = tqdm.tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
     i = 0
     repeat = False
 
     while i < nframes:
 
         xyz = np.vstack((coords, frames[i, ...]))
-        pxtheta_im = scipy.stats.multivariate_normal.logpdf(
-            xyz.T, mean, cov).reshape((r, c))
+        pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
         # segment to find pixels with likely mice, only use those for updating
 
         if segment and not repeat:
-            im2, cnts, hierarchy =\
-                cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-                                 cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            im2, cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+                                                    cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             tmp = np.array([cv2.contourArea(x) for x in cnts])
             if tmp.size == 0:
                 repeat = True
@@ -129,18 +123,15 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
 def em_get_ll(frames, mean, cov, progress_bar=True):
     """Get the likelihoods associated with model parameters
     """
-    xx, yy = np.meshgrid(np.arange(frames.shape[2]),
-                         np.arange(frames.shape[1]))
+    xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
 
     nframes, r, c = frames.shape
 
     ll = np.zeros(frames.shape, dtype='float64')
 
-    for i in tqdm.tqdm(range(nframes), disable=not progress_bar,
-                       desc='Computing EM likelihoods'):
+    for i in tqdm.tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
         xyz = np.vstack((coords, frames[i, ...].ravel()))
-        ll[i, ...] = scipy.stats.multivariate_normal.logpdf(
-            xyz.T, mean[i, ...], cov[i, ...]).reshape((r, c))
+        ll[i, ...] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i, ...], cov[i, ...]).reshape((r, c))
 
     return ll

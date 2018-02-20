@@ -39,8 +39,7 @@ def get_largest_cc(frames, progress_bar=False):
     """
     foreground_obj = np.zeros((frames.shape), 'bool')
 
-    for i in tqdm.tqdm(range(frames.shape[0]),
-                       disable=not progress_bar, desc='CC'):
+    for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
         nb_components, output, stats, centroids =\
             cv2.connectedComponentsWithStats(frames[i, ...], connectivity=4)
         szs = stats[:, -1]
@@ -63,8 +62,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
     finfo = moseq2.io.video.get_raw_info(frames_file)
 
     frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-    frame_store = np.zeros(
-        (len(frame_idx), finfo['dims'][0], finfo['dims'][1]))
+    frame_store = np.zeros((len(frame_idx), finfo['dims'][0], finfo['dims'][1]))
 
     for i, frame in enumerate(frame_idx):
         frame_store[i, ...] = cv2.medianBlur(moseq2.io.video.read_frames_raw(
@@ -144,8 +142,7 @@ def apply_roi(frames, roi):
     cropped_frames = frames*roi
     bbox = get_bbox(roi)
     # cropped_frames[:,roi==0]=0
-    cropped_frames = cropped_frames[:, bbox[0, 0]:bbox[1, 0],
-                                    bbox[0, 1]:bbox[1, 1]]
+    cropped_frames = cropped_frames[:, bbox[0, 0]:bbox[1, 0], bbox[0, 1]:bbox[1, 1]]
     return cropped_frames
 
 
@@ -176,10 +173,8 @@ def im_moment_features(IM):
         features = {
             'orientation': -.5*np.arctan2(num, den),
             'centroid': [tmp['m10']/tmp['m00'], tmp['m01']/tmp['m00']],
-            'axis_length': [2*np.sqrt(2)*np.sqrt(
-                (tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
-                2*np.sqrt(2)*np.sqrt(
-                (tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
+            'axis_length': [2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']+common)/tmp['m00']),
+                            2*np.sqrt(2)*np.sqrt((tmp['mu20']+tmp['mu02']-common)/tmp['m00'])]
         }
 
     return features
@@ -208,13 +203,11 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                        disable=not progress_bar, desc='Cleaning frames'):
 
         if iterations_min:
-            filtered_frames[i, ...] = cv2.erode(
-                filtered_frames[i, ...], strel_min, iterations_min)
+            filtered_frames[i, ...] = cv2.erode(filtered_frames[i, ...], strel_min, iterations_min)
 
         if prefilter_space:
             for j in range(len(prefilter_space)):
-                filtered_frames[i, ...] = cv2.medianBlur(
-                    filtered_frames[i, ...], prefilter_space[j])
+                filtered_frames[i, ...] = cv2.medianBlur(filtered_frames[i, ...], prefilter_space[j])
 
         if iterations:
             filtered_frames[i, ...] = cv2.morphologyEx(
@@ -259,19 +252,16 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     for k, v in features.items():
         features[k][:] = np.nan
 
-    for i in tqdm.tqdm(range(nframes), disable=not progress_bar,
-                       desc='Computing moments'):
+    for i in tqdm.tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
         frame_mask = frames[i, ...] > frame_threshold
 
         if use_cc:
-            cc_mask = get_largest_cc(
-                (frames[[i], ...] > mask_threshold).astype('uint8')).squeeze()
+            cc_mask = get_largest_cc((frames[[i], ...] > mask_threshold).astype('uint8')).squeeze()
             frame_mask = np.logical_and(cc_mask, frame_mask)
 
         if has_mask:
-            frame_mask = np.logical_and(
-                frame_mask, mask[i, ...] > mask_threshold)
+            frame_mask = np.logical_and(frame_mask, mask[i, ...] > mask_threshold)
         else:
             mask[i, ...] = frame_mask
 
@@ -297,20 +287,15 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     nframes = frames.shape[0]
     cropped_frames = np.zeros((nframes, 80, 80), frames.dtype)
 
-    for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar,
-                       desc='Rotating'):
+    for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
         if np.any(np.isnan(features['centroid'][i, :])):
             continue
 
-        use_frame = np.pad(frames[i, ...],
-                           (crop_size, crop_size),
-                           'constant', constant_values=0)
+        use_frame = np.pad(frames[i, ...], (crop_size, crop_size), 'constant', constant_values=0)
 
-        rr = np.arange(features['centroid'][i, 1]-40,
-                       features['centroid'][i, 1]+41).astype('int16')
-        cc = np.arange(features['centroid'][i, 0]-40,
-                       features['centroid'][i, 0]+41).astype('int16')
+        rr = np.arange(features['centroid'][i, 1]-40, features['centroid'][i, 1]+41).astype('int16')
+        cc = np.arange(features['centroid'][i, 0]-40, features['centroid'][i, 0]+41).astype('int16')
 
         rr = rr+crop_size[0]
         cc = cc+crop_size[1]
@@ -319,10 +304,8 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
                 or np.any(cc >= use_frame.shape[1]) or np.any(cc < 1)):
             continue
 
-        rot_mat = cv2.getRotationMatrix2D(
-            (40, 40), -np.rad2deg(features['orientation'][i]), 1)
-        cropped_frames[i, :, :] = cv2.warpAffine(
-            use_frame[rr[0]:rr[-1], cc[0]:cc[-1]], rot_mat, (80, 80))
+        rot_mat = cv2.getRotationMatrix2D((40, 40), -np.rad2deg(features['orientation'][i]), 1)
+        cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]], rot_mat, (80, 80))
 
     return cropped_frames
 
