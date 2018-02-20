@@ -35,7 +35,8 @@ def get_flips(frames, flip_file=None, smoothing=None):
 
 
 def get_largest_cc(frames, progress_bar=False):
-    """Returns the largest connected component in an image
+    """
+    Returns the largest connected component in an image
     """
     foreground_obj = np.zeros((frames.shape), 'bool')
 
@@ -49,14 +50,16 @@ def get_largest_cc(frames, progress_bar=False):
 
 
 def get_bground_im(frames):
-    """Get background from frames
+    """
+    Get background from frames
     """
     bground = np.median(frames, 0)
     return bground
 
 
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
-    """Get background from frames
+    """
+    Get background from frames
     """
 
     finfo = moseq2.io.video.get_raw_info(frames_file)
@@ -73,7 +76,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
 
 
 def get_bbox(roi):
-    """Given a binary mask, return an array with the x and y boundaries
+    """
+    Given a binary mask, return an array with the x and y boundaries
     """
     y, x = np.where(roi > 0)
     bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
@@ -83,7 +87,8 @@ def get_bbox(roi):
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
             noise_tolerance=30, **kwargs):
-    """Get an ROI using RANSAC plane fitting and simple blob features
+    """
+    Get an ROI using RANSAC plane fitting and simple blob features
     """
 
     roi_plane, dists = moseq2.extract.roi.plane_ransac(
@@ -136,7 +141,8 @@ def get_roi(depth_image,
 
 
 def apply_roi(frames, roi):
-    """Apply ROI to data, consider adding constraints (e.g. mod32==0)
+    """
+    Apply ROI to data, consider adding constraints (e.g. mod32==0)
     """
     # yeah so fancy indexing slows us down by 3-5x
     cropped_frames = frames*roi
@@ -147,7 +153,8 @@ def apply_roi(frames, roi):
 
 
 def im_moment_features(IM):
-    """Use the method of moments and centralized moments to get image properties
+    """
+    Use the method of moments and centralized moments to get image properties
 
     Args:
         IM (2d numpy array): depth image
@@ -185,7 +192,8 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  iterations=2,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                  iterations_min=None, progress_bar=True):
-    """Simple filtering, median filter and morphological opening
+    """
+    Simple filtering, median filter and morphological opening
 
     Args:
         frames (3d np array): frames x r x c
@@ -223,7 +231,8 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
 def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
                        mask_threshold=-30, use_cc=False, progress_bar=True):
-    """Use image moments to compute features of the largest object in the frame
+    """
+    Use image moments to compute features of the largest object in the frame
 
     Args:
         frames (3d np array)

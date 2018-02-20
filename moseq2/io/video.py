@@ -8,35 +8,55 @@ import datetime
 from copy import deepcopy
 
 
-def get_raw_info(filename, bytes_per_frame=int((424*512*16)/8), frame_dims=[424, 512]):
+def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
+    """
+    Gets info from a raw data file with specified frame dimensions and bit depth
+
+    Args:
+        filename (string): name of raw data file
+        bit_depth (int): bits per pixel (default: 16)
+        frame_dims (tuple): wxh or hxw of each frame
+    """
+
+    bytes_per_frame = (frame_dims[0]*frame_dims[1]*bit_depth)/8
 
     file_info = {
         'bytes': os.stat(filename).st_size,
         'nframes': int(os.stat(filename).st_size/bytes_per_frame),
-        'dims': frame_dims
+        'dims': frame_dims,
+        'bytes_per_frame': bytes_per_frame
     }
 
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(424, 512)):
-    """Read in binary data
+def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
+    """
+    Reads in data from raw binary file
+
+    Args:
+        filename (string): name of raw data files
+        frames (list or range): frames to extract
+        frame_dims (tuple): wxh of frames in pixels
+        bit_depth (int): bits per pixel (default: 16)
+
+    Returns:
+        frames (numpy ndarray): frames x h x w
     """
 
-    vid_info = get_raw_info(filename)
+    vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
 
     if type(frames) is int:
         frames = [frames]
     elif not frames or (type(frames) is range) and len(frames) == 0:
         frames = range(0, vid_info['nframes'])
 
-    bytes_per_frame = int((frame_dims[0]*frame_dims[1]*16)/8)
-    seek_point = np.maximum(0, frames[0]*bytes_per_frame)
+    seek_point = np.maximum(0, frames[0]*vid_info['bytes_per_frame'])
     read_points = len(frames)*frame_dims[0]*frame_dims[1]
-    dims = (len(frames), frame_dims[0], frame_dims[1])
+    dims = (len(frames), frame_dims[1], frame_dims[0])
 
     with open(filename, "rb") as f:
-        f.seek(seek_point)
+        f.seek(seek_point.astype('int'))
         chunk = np.fromfile(file=f,
                             dtype=np.dtype("<i2"),
                             count=read_points).reshape(dims)
@@ -46,7 +66,11 @@ def read_frames_raw(filename, frames=None, frame_dims=(424, 512)):
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
 def get_video_info(filename):
-    """Get dimensions of data compressed using ffv1, along with duration
+    """
+    Get dimensions of data compressed using ffv1, along with duration via ffmpeg
+
+    Args:
+        filename (string): name of file
     """
     command = ['ffprobe',
                '-v', 'fatal',
@@ -72,7 +96,8 @@ def get_video_info(filename):
 def write_frames(filename, frames, threads=6, camera_fs=30,
                  pixel_format='gray16le', codec='ffv1',
                  slices=24, slicecrc=1, frame_size=None, get_cmd=False):
-    """Write frames to avi file using the ffv1 lossless encoder
+    """
+    Write frames to avi file using the ffv1 lossless encoder
     """
 
     # we probably want to include a warning about multiples of 32 for videos
@@ -113,7 +138,9 @@ def write_frames(filename, frames, threads=6, camera_fs=30,
 def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
                 pixel_format='gray16le', frame_size=None,
                 slices=24, slicecrc=1, get_cmd=False):
-    """Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
+    """
+    Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
+
     Args:
         filename (str): filename to get frames from
         frames (list or 1d numpy array): list of frames to grab
@@ -173,7 +200,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
                          pipe=None, close_pipe=True):
-    """Writes out a false-colored mp4 video
+    """
+    Writes out a false-colored mp4 video
     """
     if not np.mod(frames.shape[1], 2) == 0:
         frames = np.pad(frames, ((0, 0), (0, 1), (0, 0)), 'constant', constant_values=0)
@@ -264,20 +292,25 @@ def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
     return dest_filename
 
 
-def load_movie_data(filename, frames):
-
+def load_movie_data(filename, frames, frame_dims=(512, 424), bit_depth=16):
+    """
+    Reads in frames
+    """
     if filename.lower().endswith('.dat'):
-        frame_data = read_frames_raw(filename, frames)
+        frame_data = read_frames_raw(filename, frames=frames,
+                                     frame_dims=frame_dims, bit_depth=bit_depth)
     elif filename.lower().endswith('.avi'):
         frame_data = read_frames(filename, frames)
 
     return frame_data
 
 
-def get_movie_info(filename):
-
+def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
+    """
+    Gets movie info
+    """
     if filename.lower().endswith('.dat'):
-        metadata = get_raw_info(filename)
+        metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
     elif filename.lower().endswith('.avi'):
         metadata = get_video_info(filename)
 
