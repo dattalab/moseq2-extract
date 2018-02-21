@@ -65,7 +65,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
     finfo = moseq2.io.video.get_raw_info(frames_file)
 
     frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-    frame_store = np.zeros((len(frame_idx), finfo['dims'][0], finfo['dims'][1]))
+    frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
 
     for i, frame in enumerate(frame_idx):
         frame_store[i, ...] = cv2.medianBlur(moseq2.io.video.read_frames_raw(
