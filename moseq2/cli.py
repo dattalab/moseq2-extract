@@ -55,7 +55,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_index,
         output_dir = os.path.join(os.path.dirname(input_file), 'proc')
 
     if not os.path.exists(output_dir):
-        os.path.makedirs(output_dir)
+        os.makedirs(output_dir)
 
     # prepare an hdf5 file for all the resulting output,
     # dump videos in a temp directory to be stitched later
