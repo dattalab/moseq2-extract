@@ -12,5 +12,5 @@ setup(
                       'numpy==1.13.1', 'joblib==0.11', 'opencv-python',
                       'click'],
     python_requires='>=3.4',
-    entry_points={'console_scripts': ['moseq2 = moseq2.cli:extract']}
+    entry_points={'console_scripts': ['moseq2 = moseq2.cli:cli']}
 )

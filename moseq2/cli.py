@@ -12,7 +12,54 @@ import cv2
 import numpy as np
 
 
-@click.command(name="extract")
+@click.group()
+def cli():
+    pass
+
+
+@cli.command(name="find-roi")
+@click.argument('input-file', type=click.Path(exists=True))
+@click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
+@click.option('--roi-dilate', default=10, type=int, help='Size of strel to dilate roi')
+@click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
+@click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--output-dir', default=None, help='Output directory')
+def find_roi(input_file, roi_dilate, roi_shape, roi_index, output_dir):
+
+    # set up the output directory
+
+    if not output_dir:
+        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
+        print('Loading background...')
+        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
+    else:
+        print('Getting background...')
+        bground_im = get_bground_im_file(input_file)
+        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+
+    first_frame = load_movie_data(input_file, 0)
+    write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
+                scale_factor=(650, 750))
+
+    print('Getting roi...')
+    if roi_shape[0].lower() == 'e':
+        strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
+    elif roi_shape[0].lower() == 'r':
+        strel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (roi_dilate, roi_dilate))
+    else:
+        strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
+
+    rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate)
+    write_image(os.path.join(output_dir, 'roi.tiff'),
+                rois[roi_index], scale=True, dtype='uint8')
+
+
+@cli.command(name="extract")
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
 @click.option('--roi-dilate', default=10, type=int, help='Size of strel to dilate roi')
@@ -155,4 +202,4 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_index,
 
 
 if __name__ == '__main__':
-    extract()
+    cli()
