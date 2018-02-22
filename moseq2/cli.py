@@ -49,7 +49,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
     print('Getting roi...')
     strel_dilate = select_strel(roi_shape, roi_dilate)
 
-    roi_filename = 'roi_{:03d}.tiff'.format(roi_index)
+    roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
     rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
     write_image(os.path.join(output_dir, roi_filename),
                 rois[roi_index], scale=True, dtype='uint8')
@@ -121,7 +121,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=(650, 750))
 
-    roi_filename = 'roi_{:03d}.tiff'.format(roi_index)
+    roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
 
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
