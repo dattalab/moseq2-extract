@@ -86,7 +86,9 @@ def get_bbox(roi):
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
-            noise_tolerance=30, **kwargs):
+            noise_tolerance=30,
+            weights=(1, .1, 1),
+            **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
     """
@@ -120,8 +122,8 @@ def get_roi(depth_image,
     ranks = np.vstack((scipy.stats.rankdata(-areas, method='max'),
                        scipy.stats.rankdata(-extents, method='max'),
                        scipy.stats.rankdata(dists, method='max')))
-    shape_index = np.mean(ranks.astype('float32') *
-                          np.array([[1], [.2], [1]]), 0).argsort()
+    weight_array = np.array(weights, 'float32')
+    shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:,np.newaxis]), 0).argsort()
 
     # expansion microscopy on the roi
 

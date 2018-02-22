@@ -3,12 +3,11 @@ from moseq2.io.video import get_movie_info,\
 from moseq2.io.image import write_image, read_image
 from moseq2.extract.extract import extract_chunk
 from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
-from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps
+from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps, select_strel
 import click
 import os
 import h5py
 import tqdm
-import cv2
 import numpy as np
 
 
@@ -19,12 +18,13 @@ def cli():
 
 @cli.command(name="find-roi")
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
-@click.option('--roi-dilate', default=10, type=int, help='Size of strel to dilate roi')
+@click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
+              help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
-def find_roi(input_file, roi_dilate, roi_shape, roi_index, output_dir):
+def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_dir):
 
     # set up the output directory
 
@@ -47,24 +47,22 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, output_dir):
                 scale_factor=(650, 750))
 
     print('Getting roi...')
-    if roi_shape[0].lower() == 'e':
-        strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
-    elif roi_shape[0].lower() == 'r':
-        strel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (roi_dilate, roi_dilate))
-    else:
-        strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
+    strel_dilate = select_strel(roi_shape, roi_dilate)
 
-    rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate)
-    write_image(os.path.join(output_dir, 'roi.tiff'),
+    roi_filename = 'roi_{:03d}.tiff'.format(roi_index)
+    rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
+    write_image(os.path.join(output_dir, roi_filename),
                 rois[roi_index], scale=True, dtype='uint8')
 
 
 @cli.command(name="extract")
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
-@click.option('--roi-dilate', default=10, type=int, help='Size of strel to dilate roi')
+@click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
+              help='ROI feature weighting (area, extent, dist)')
 @click.option('--min-height', default=10, type=int, help='Min height of mouse from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max height of mouse from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
@@ -76,7 +74,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, output_dir):
 @click.option('--chunk-overlap', default=60, type=int, help='Overlap in chunks')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
-def extract(input_file, crop_size, roi_dilate, roi_shape, roi_index,
+def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
             output_dir, write_movie):
@@ -123,21 +121,17 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_index,
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=(650, 750))
 
-    if os.path.exists(os.path.join(output_dir, 'roi.tiff')):
+    roi_filename = 'roi_{:03d}.tiff'.format(roi_index)
+
+    if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
-        roi = read_image(os.path.join(output_dir, 'roi.tiff'), scale=True) > 0
+        roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
     else:
         print('Getting roi...')
-        if roi_shape[0].lower() == 'e':
-            strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
-        elif roi_shape[0].lower() == 'r':
-            strel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (roi_dilate, roi_dilate))
-        else:
-            strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_dilate, roi_dilate))
-
-        rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate)
+        strel_dilate = select_strel(roi_shape, roi_dilate)
+        rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
         roi = rois[roi_index]
-        write_image(os.path.join(output_dir, 'roi.tiff'),
+        write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
     # farm out the batches and write to an hdf5 file

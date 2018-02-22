@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import json
+import cv2
 
 
 def gen_batch_sequence(nframes, chunk_size, overlap):
@@ -33,3 +34,14 @@ def load_metadata(metadata_file):
             metadata = json.load(f)
 
     return metadata
+
+
+def select_strel(string='e', size=(10, 10)):
+    if string[0].lower() == 'e':
+        strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
+    elif string[0].lower() == 'r':
+        strel = cv2.getStructuringElement(cv2.MORPH_RECT, size)
+    else:
+        strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
+
+    return strel
