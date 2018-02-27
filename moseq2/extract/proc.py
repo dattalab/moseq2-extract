@@ -12,9 +12,15 @@ from copy import deepcopy
 
 
 def get_flips(frames, flip_file=None, smoothing=None):
-    """
-    """
+    """Predict flips
+    Args:
+        frames (3d numpy array): frames x r x c, cropped mouse
+        flip_file (string): path to joblib dump of scipy random forest classifier
+        smoothing (int): kernel size for median filter smoothing of random forest probabilities
 
+    Returns:
+        flips (bool array):  true for flips
+    """
     try:
         clf = joblib.load(flip_file)
     except IOError:
@@ -35,8 +41,13 @@ def get_flips(frames, flip_file=None, smoothing=None):
 
 
 def get_largest_cc(frames, progress_bar=False):
-    """
-    Returns the largest connected component in an image
+    """Returns largest connected component blob in image
+    Args:
+        frame (3d numpy array): frames x r x c, uncropped mouse
+        progress_bar (bool): display progress bar
+
+    Returns:
+        flips (3d bool array):  frames x r x c, true where blob was found
     """
     foreground_obj = np.zeros((frames.shape), 'bool')
 
@@ -50,16 +61,25 @@ def get_largest_cc(frames, progress_bar=False):
 
 
 def get_bground_im(frames):
-    """
-    Get background from frames
+    """Returns background
+    Args:
+        frames (3d numpy array): frames x r x c, uncropped mouse
+
+    Returns:
+        bground (2d numpy array):  r x c, background image
     """
     bground = np.median(frames, 0)
     return bground
 
 
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
-    """
-    Get background from frames
+    """Returns background from file
+    Args:
+        frames_file (path): path to data with frames
+        frame_stride
+
+    Returns:
+        bground (2d numpy array):  r x c, background image
     """
 
     finfo = moseq2.io.video.get_raw_info(frames_file)

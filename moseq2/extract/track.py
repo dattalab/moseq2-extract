@@ -6,6 +6,19 @@ import tqdm
 
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
+    """Single iteration of EM tracker
+    Args:
+        data (3d numpy array): nx3, x, y, z coordinates to use
+        mean (1d numpy array): dx1, current mean estimate
+        cov (2d numpy array): dxd, current covariance estimate
+        lambd (float): constant to add to diagonal of covariance matrix
+        epsilon (float): tolerance on change in likelihood to terminate iteration
+        max_iter (int):
+
+    Returns:
+        mean (1d numpy array): updated mean
+        cov (2d numpy array): updated covariance
+    """
 
     prev_likelihood = 0
     ll = 0
@@ -121,8 +134,17 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
 
 
 def em_get_ll(frames, mean, cov, progress_bar=True):
-    """Get the likelihoods associated with model parameters
+    """Single iteration of EM tracker
+    Args:
+        frames (3d numpy array): depth frames
+        mean (2d numpy array): frames x d, mean estimates
+        cov (3d numpy array): frames x d x d, covariance estimates
+        progress_bar (bool): use a progress bar
+
+    Returns:
+        ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
     """
+
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
 
