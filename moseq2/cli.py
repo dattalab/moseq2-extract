@@ -168,7 +168,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
             # todo: cut out first part of overhang
 
-            if i > 1:
+            if i > 0:
                 offset = chunk_overlap
             else:
                 offset = 0
