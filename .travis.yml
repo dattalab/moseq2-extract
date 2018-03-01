@@ -9,8 +9,11 @@ install:
   - pip install .
 # install what we need for testing
 before_install:
-  - pip install pytest pytest-cov
+  - pip install pytest pytest-cov codecov
   - export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # script for tests... (eventually add coveralls)
-script: pytest
+script: 
+  - pytest --cov=./
+after_success:
+  - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0
