@@ -134,7 +134,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
 
 
 def em_get_ll(frames, mean, cov, progress_bar=True):
-    """Single iteration of EM tracker
+    """Returns likelihoods for each frame given tracker parameters
     Args:
         frames (3d numpy array): depth frames
         mean (2d numpy array): frames x d, mean estimates
