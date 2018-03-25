@@ -19,7 +19,7 @@ source activate moseq2
 git clone https://github.com/dattalab/moseq2.git
 cd moseq2/
 pip install -e .
-moseq2-model --help
+moseq2 --help
 ```
 
 If you get any errors with respect to LibSM, e.g. in CentOS in an HPC environment, you may need to run this command *before* installing via pip,
@@ -30,9 +30,7 @@ sudo yum install libSM
 
 ## Usage
 
-```python
-moseq2 --help
-```
+Under construction
 
 ## Support
 
