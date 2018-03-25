@@ -22,9 +22,17 @@ pip install -e .
 moseq2-model --help
 ```
 
+If you get any errors with respect to LibSM, e.g. in CentOS in an HPC environment, you may need to run this command *before* installing via pip,
+
+```sh
+sudo yum install libSM
+```
+
 ## Usage
 
-Under construction
+```python
+moseq2 --help
+```
 
 ## Support
 
