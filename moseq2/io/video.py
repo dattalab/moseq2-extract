@@ -30,7 +30,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
+def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2"):
     """
     Reads in data from raw binary file
 
@@ -58,7 +58,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
     with open(filename, "rb") as f:
         f.seek(seek_point.astype('int'))
         chunk = np.fromfile(file=f,
-                            dtype=np.dtype("<i2"),
+                            dtype=np.dtype(dtype),
                             count=read_points).reshape(dims)
 
     return chunk
