@@ -100,12 +100,17 @@ def get_bbox(roi):
     Given a binary mask, return an array with the x and y boundaries
     """
     y, x = np.where(roi > 0)
-    bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
-    return bbox
+    
+    if len(y) == 0 or len(x) == 0:
+        return None
+    else:
+        bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
+        return bbox
 
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
+            strel_erode=None,
             noise_tolerance=30,
             weights=(1, .1, 1),
             **kwargs):
@@ -154,12 +159,15 @@ def get_roi(depth_image,
         roi = np.zeros_like(depth_image)
         roi[region_properties[shape].coords[:, 0],
             region_properties[shape].coords[:, 1]] = 1
-        roi = cv2.dilate(roi, strel_dilate, iterations=1)
+        if strel_dilate is not None:
+            roi = cv2.dilate(roi, strel_dilate, iterations=1)
+        if strel_erode is not None:
+            roi = cv2.erode(roi, strel_erode, iterations=1)
         # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
 
-    return rois, bboxes, label_im, ranks, shape_index
+    return rois, roi_plane, bboxes, label_im, ranks, shape_index
 
 
 def apply_roi(frames, roi):

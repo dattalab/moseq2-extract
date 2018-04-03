@@ -24,7 +24,8 @@ def cli():
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
-def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_dir):
+@click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
+def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_dir, use_plane_bground):
 
     # set up the output directory
 
@@ -74,10 +75,11 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
 @click.option('--chunk-overlap', default=60, type=int, help='Overlap in chunks')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
+@click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
-            output_dir, write_movie):
+            output_dir, write_movie, use_plane_bground):
 
     # get the basic metadata
 
@@ -115,7 +117,8 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     else:
         print('Getting background...')
         bground_im = get_bground_im_file(input_file)
-        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+        if not use_plane_bground:
+            write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -129,7 +132,17 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     else:
         print('Getting roi...')
         strel_dilate = select_strel(roi_shape, roi_dilate)
-        rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
+        rois, plane, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
+
+        if use_plane_bground:
+            print('Using plane fit for background...')
+            xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
+            coords = np.vstack((xx.ravel(), yy.ravel()))
+            plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
+            plane_im = plane_im.reshape(bground_im.shape)
+            write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+            bground_im = plane_im
+
         roi = rois[roi_index]
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
