@@ -51,7 +51,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
     strel_dilate = select_strel(roi_shape, roi_dilate)
 
     roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
-    rois, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
+    rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
     write_image(os.path.join(output_dir, roi_filename),
                 rois[roi_index], scale=True, dtype='uint8')
 
