@@ -9,6 +9,9 @@ Any cli-based flags will override parameters defined in a config file
 import yaml
 from typing import Dict
 
+class InvalidConfiguration(Exception):
+    pass
+
 def create_config() -> Dict:
     '''Generate a new configuration file with all parameters set at their
     default values.
@@ -41,9 +44,38 @@ def create_config() -> Dict:
     return {'background': background, 'extract': extract, 'cables': cables}
 
 
-def load_config():
-    pass
+def load_config(fpath: str) -> Dict:
+    '''Loads a configuration file from `fpath` and tests to make sure
+    all top level keys are present'''
+    with open(fpath, 'r') as f:
+        config = yaml.load(f)
+    keys = list(config.keys())
+
+    # test to make sure all param types are present
+    test_keys = list(create_config().keys())
+    for k in test_keys:
+        if k not in keys:
+            raise InvalidConfiguration('Configuration file does not contain necessary keys: {}'
+                                       .format(', '.join(test_keys)))
+
+    return config
 
 
-def save_config():
-    pass
+def find_config(fpath:str=None) -> str:
+    '''Hierarchically search for a config file in 4 places:
+        1. The current directory
+        2. The parent directory
+        3. The home directory
+        4. The location where Moseq2 is installed
+    Returns:
+        the file path where the most important config file is found
+    '''
+    return
+
+
+def save_config(fpath: str):
+    '''Saves a new configuration file to the path specified'''
+    with open(fpath, 'w') as f:
+        config = create_config()
+        yaml.dump(config, f)
+    return
