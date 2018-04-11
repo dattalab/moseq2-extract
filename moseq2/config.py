@@ -62,6 +62,7 @@ def load_config(fpath: str) -> Dict:
     return config
 
 
+# NOTE: probably not going to implement this function
 def find_config(fpath: str=None) -> str:
     '''Hierarchically search for a config file in 4 places:
         1. The current directory

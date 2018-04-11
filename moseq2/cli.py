@@ -77,12 +77,15 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
-@click.option('--config', default=None, type=click.Path(exists-True, resolve_path=True),
+@click.option('--config', default=None, type=click.Path(exists=True, resolve_path=True),
               help='Path to a moseq config file describing the parameters used for extraction')
-def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
-            min_height, max_height, fps, flip_file, em_tracking,
-            prefilter_space, prefilter_time, chunk_size, chunk_overlap,
-            output_dir, write_movie, use_plane_bground):
+def extract(**cliargs):
+# def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
+#             min_height, max_height, fps, flip_file, em_tracking,
+#             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
+#             output_dir, write_movie, use_plane_bground, config):
+    # first deal with config file here
+    print(cliargs)
 
     # get the basic metadata
 
