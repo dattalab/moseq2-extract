@@ -207,6 +207,11 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     print('\n')
 
+@cli.command(name='gen-config')
+@click.argument('fpath', type=click.Path(resolve_path=True))
+def gen_config(fpath):
+    pass
+
 
 if __name__ == '__main__':
     cli()
