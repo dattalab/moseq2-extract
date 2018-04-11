@@ -85,13 +85,19 @@ def extract(**cliargs):
 #             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
 #             output_dir, write_movie, use_plane_bground, config):
     # first deal with config file here
-    print(cliargs)
+    if cliargs['config'] is not None:
+        conf = config.load_config(cliargs['config'])
+    else:
+        # get default params
+        conf = config.create_config()
+    # merge defaults and config choices
+    args = config.merge_cli_config(cliargs, conf)
 
     # get the basic metadata
 
     np.seterr(invalid='raise')
 
-    video_metadata = get_movie_info(input_file)
+    video_metadata = get_movie_info(args['input_file'])
     nframes = video_metadata['nframes']
     extraction_metadata = load_metadata(os.path.join(os.path.dirname(input_file), 'metadata.json'))
     timestamps = load_timestamps(os.path.join(os.path.dirname(input_file), 'depth_ts.txt'), col=0)

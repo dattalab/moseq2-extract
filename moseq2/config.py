@@ -10,6 +10,7 @@ from os.path import join
 from typing import Dict
 import yaml
 
+# an exception class for describing incorrectly formatting config files
 class InvalidConfiguration(Exception):
     pass
 
@@ -50,15 +51,14 @@ def load_config(fpath: str) -> Dict:
     all top level keys are present'''
     with open(fpath, 'r') as f:
         config = yaml.load(f)
-    keys = list(config.keys())
+    keys = set(flatten_config(config).keys())
 
     # test to make sure all param types are present
-    test_keys = list(create_config().keys())
-    for k in test_keys:
-        if k not in keys:
-            raise InvalidConfiguration('Configuration file does not contain necessary keys: {}'
-                                       .format(', '.join(test_keys)))
-
+    test_keys = set(flatten_config(create_config()).keys())
+    diffs = test_keys.difference(keys)
+    if len(diffs) > 0:
+        raise InvalidConfiguration('Configuration file does not contain necessary keys:\n{}'
+                                   .format('\n    '.join(list(diffs))))
     return config
 
 
@@ -85,3 +85,24 @@ def save_config(fpath: str):
         config = create_config()
         yaml.dump(config, f)
     return output
+
+
+def flatten_config(config: Dict) -> Dict:
+    return {**config['extract'], **config['cables'], **config['background']}
+
+def merge_cli_config(config_cli, config_file) -> Dict:
+    '''Merge the keys and values from both the config file and cli options.
+    This function will prefer config options, overwriting config file options.
+    Returns:
+        a dict with merged parameters from the config file and cli
+    '''
+    merged = {}
+    # makes it easy for comparison
+    config_file = flatten_config(config_file)
+    # go through all keys found in both
+    for k in set(list(config_file.keys())+list(config_cli.keys())):
+        if config_cli[k] is not None:
+            merged[k] = config_cli[k]
+        else:
+            merged[k] = config_file[k]
+    return merged
