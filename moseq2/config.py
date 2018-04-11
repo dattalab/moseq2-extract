@@ -21,23 +21,25 @@ def create_config() -> Dict:
         A dict with default configuration values
     '''
     background = {
-        'dilate': (10, 10), # how much to dilate the environment (env) floor to include walls
-        'shape': 'ellipse', # shape of the floor dilation (rect for square envs and ellipse for circle envs)
-        'index': 0, # if there are multiple envs in one recording, select which roi to use here
-        'feature-weights': (1, .1, 1), # (area, extent, distance) Which features matter most for background selection
-        'use-plane': False # if the mouse does not move a lot, use a plane instead of the background ROI
+        'roi_dilate': (10, 10), # how much to dilate the environment (env) floor to include walls
+        'roi_shape': 'ellipse', # shape of the floor dilation (rect for square envs and ellipse for circle envs)
+        'roi_index': 0, # if there are multiple envs in one recording, select which roi to use here
+        'roi_weights': (1, .1, 1), # (area, extent, distance) Which features matter most for background selection
+        'use_plane_bground': False # if the mouse does not move a lot, use a plane instead of the background ROI
     }
     extract = {
-        'min-height': 10, # minimum height of mouse from floor (mm)
-        'max-height': 100,
+        'crop_size': (80, 80),
+        'min_height': 10, # minimum height of mouse from floor (mm)
+        'max_height': 100,
         'fps': 30,
-        'flip-classifier': None, # filepath for the flip classifier
-        'chunk-size': 1000, # 1000 frames per chunk to be processed
-        'chunk-overlap': 60, # 60 frames of overlap per chunk
-        'cable-extraction': False, # extract data with a cable in it (i.e. use em tracking)
-        'write-movie-output': True, # write movie of the extracted mouse results into an mp4
-        'prefilter-time': tuple(), # a kernel to filter the mouse temporally
-        'prefilter-space': (3, ) # a kernel to filter the mouse spatially
+        'flip_file': None, # filepath for the flip classifier
+        'chunk_size': 1000, # 1000 frames per chunk to be processed
+        'chunk_overlap': 60, # 60 frames of overlap per chunk
+        'em_tracking': False, # extract data with a cable in it (i.e. use em tracking)
+        'write_movie': True, # write movie of the extracted mouse results into an mp4
+        'prefilter_time': tuple(), # a kernel to filter the mouse temporally
+        'prefilter_space': (3, ), # a kernel to filter the mouse spatially
+        'output_dir': 'proc' # relative path from the extract file for saving the data
     }
     cables = {
         # in future we will add params for cable extractions
@@ -55,9 +57,9 @@ def load_config(fpath: str) -> Dict:
 
     # test to make sure all param types are present
     test_keys = set(flatten_config(create_config()).keys())
-    diffs = test_keys.difference(keys)
+    diffs = test_keys - keys
     if len(diffs) > 0:
-        raise InvalidConfiguration('Configuration file does not contain necessary keys:\n{}'
+        raise InvalidConfiguration('Configuration file does not contain necessary keys:\n    {}'
                                    .format('\n    '.join(list(diffs))))
     return config
 
@@ -88,6 +90,8 @@ def save_config(fpath: str):
 
 
 def flatten_config(config: Dict) -> Dict:
+    '''Takes each sub-dictionary from the config file and makes it into one dict
+    '''
     return {**config['extract'], **config['cables'], **config['background']}
 
 def merge_cli_config(config_cli, config_file) -> Dict:
@@ -101,8 +105,9 @@ def merge_cli_config(config_cli, config_file) -> Dict:
     config_file = flatten_config(config_file)
     # go through all keys found in both
     for k in set(list(config_file.keys())+list(config_cli.keys())):
-        if config_cli[k] is not None:
-            merged[k] = config_cli[k]
-        else:
+        cli_val = config_cli.get(k, None)
+        if cli_val is None or not cli_val:
             merged[k] = config_file[k]
+        else:
+            merged[k] = config_cli[k]
     return merged
