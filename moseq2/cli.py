@@ -1,14 +1,15 @@
+import os
+import h5py
+import click
+import tqdm
+import numpy as np
+import moseq2.config as config
 from moseq2.io.video import get_movie_info,\
     load_movie_data, write_frames_preview
 from moseq2.io.image import write_image, read_image
 from moseq2.extract.extract import extract_chunk
 from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps, select_strel
-import click
-import os
-import h5py
-import tqdm
-import numpy as np
 
 
 @click.group()
@@ -76,6 +77,8 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
+@click.option('--config', default=None, type=click.Path(exists-True, resolve_path=True),
+              help='Path to a moseq config file describing the parameters used for extraction')
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
@@ -210,7 +213,9 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 @cli.command(name='gen-config')
 @click.argument('fpath', type=click.Path(resolve_path=True))
 def gen_config(fpath):
-    pass
+    print('Saving default configuration file')
+    output = config.save_config(fpath)
+    print('Complete: saved to:\n    {}'.format(output))
 
 
 if __name__ == '__main__':

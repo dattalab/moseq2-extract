@@ -6,8 +6,9 @@ There are two ways to define moseq parameters:
     - using a configuration file
 Any cli-based flags will override parameters defined in a config file
 '''
-import yaml
+from os.path import join
 from typing import Dict
+import yaml
 
 class InvalidConfiguration(Exception):
     pass
@@ -61,12 +62,15 @@ def load_config(fpath: str) -> Dict:
     return config
 
 
-def find_config(fpath:str=None) -> str:
+def find_config(fpath: str=None) -> str:
     '''Hierarchically search for a config file in 4 places:
         1. The current directory
         2. The parent directory
         3. The home directory
         4. The location where Moseq2 is installed
+    Params:
+        fpath
+    The config file name has to have 'moseq' and 'yaml' in the name.
     Returns:
         the file path where the most important config file is found
     '''
@@ -75,7 +79,8 @@ def find_config(fpath:str=None) -> str:
 
 def save_config(fpath: str):
     '''Saves a new configuration file to the path specified'''
-    with open(fpath, 'w') as f:
+    output = join(fpath, 'moseq-default-config.yaml')
+    with open(output, 'w') as f:
         config = create_config()
         yaml.dump(config, f)
-    return
+    return output
