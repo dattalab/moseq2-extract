@@ -172,7 +172,7 @@ def get_roi(depth_image,
         overlaps = np.zeros_like(areas)
 
         for i in range(len(rois)):
-            overlaps[i] = np.logical_and(overlap_roi, rois[i])
+            overlaps[i] = np.sum(np.logical_and(overlap_roi, rois[i]))
 
         del_roi = np.argmax(overlaps)
         del rois[del_roi]
