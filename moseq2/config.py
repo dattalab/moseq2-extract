@@ -8,7 +8,7 @@ Any cli-based flags will override parameters defined in a config file
 '''
 from os.path import join
 from typing import Dict
-import yaml
+import ruamel.yaml as yaml
 
 # an exception class for describing incorrectly formatting config files
 class InvalidConfiguration(Exception):

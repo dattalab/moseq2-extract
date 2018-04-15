@@ -1,8 +1,10 @@
 import os
+import uuid
 import h5py
 import click
 import tqdm
 import numpy as np
+import ruamel.yaml as yaml
 import moseq2.config as config
 from moseq2.io.video import get_movie_info,\
     load_movie_data, write_frames_preview
@@ -19,14 +21,15 @@ def cli():
 
 @cli.command(name="find-roi")
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
+@click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
-def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_dir, use_plane_bground):
+def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
+             output_dir, use_plane_bground):
 
     # set up the output directory
 
@@ -51,10 +54,12 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
     print('Getting roi...')
     strel_dilate = select_strel(roi_shape, roi_dilate)
 
-    roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
-    rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate, weights=roi_weights)
-    write_image(os.path.join(output_dir, roi_filename),
-                rois[roi_index], scale=True, dtype='uint8')
+    rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
+                                  weights=roi_weights)
+    for idx in roi_index:
+        roi_filename = 'roi_{:02d}.tiff'.format(idx)
+        write_image(os.path.join(output_dir, roi_filename),
+                    rois[idx], scale=True, dtype='uint8')
 
 
 @cli.command(name="extract")
@@ -81,6 +86,13 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights, output_d
               help='Path to a moseq config file describing the parameters used for extraction')
 def extract(**cliargs):
 
+    status_dict = {
+        'parameters': locals(),
+        'complete': False,
+        'skip': False,
+        'uuid': str(uuid.uuid4())
+    }
+
     np.seterr(invalid='raise')
 
     # first deal with config file here
@@ -105,8 +117,8 @@ def extract(**cliargs):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # prepare an hdf5 file for all the resulting output,
-    # dump videos in a temp directory to be stitched later
+    output_filename = 'results_{:02d}'.format(args['roi_index'])
+    status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     # get the background and roi, which will be used across all batches
 
@@ -151,8 +163,7 @@ def extract(**cliargs):
                'length', 'height_ave', 'velocity_mag',
                'velocity_theta', 'area', 'velocity_mag_3d']
 
-    # farm out the batches and write to an hdf5 file
-    with h5py.File(os.path.join(output_dir, 'results.h5'), 'w') as f:
+    with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
         for i in range(len(scalars)):
             f.create_dataset('scalars/{}'.format(scalars[i]), (nframes,), 'float32', compression='gzip')
 
@@ -196,12 +207,17 @@ def extract(**cliargs):
             output_movie[:, args['crop_size'][0]:, args['crop_size'][1]:] = raw_frames[offset:, ...]
 
             video_pipe = write_frames_preview(
-                os.path.join(output_dir, 'results.mp4'), output_movie,
+                os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
                 pipe=video_pipe, close_pipe=False)
 
         if video_pipe:
             video_pipe.stdin.close()
             video_pipe.wait()
+
+    status_dict['complete'] = True
+
+    with open(status_filename, 'w') as f:
+        yaml.dump(status_dict, f)
 
     print('\n')
 

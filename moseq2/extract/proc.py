@@ -100,7 +100,7 @@ def get_bbox(roi):
     Given a binary mask, return an array with the x and y boundaries
     """
     y, x = np.where(roi > 0)
-    
+
     if len(y) == 0 or len(x) == 0:
         return None
     else:
@@ -113,6 +113,7 @@ def get_roi(depth_image,
             strel_erode=None,
             noise_tolerance=30,
             weights=(1, .1, 1),
+            overlap_roi=None,
             **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -148,7 +149,7 @@ def get_roi(depth_image,
                        scipy.stats.rankdata(-extents, method='max'),
                        scipy.stats.rankdata(dists, method='max')))
     weight_array = np.array(weights, 'float32')
-    shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:,np.newaxis]), 0).argsort()
+    shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:, np.newaxis]), 0).argsort()
 
     # expansion microscopy on the roi
 
@@ -166,6 +167,16 @@ def get_roi(depth_image,
         # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
+
+    if overlap_roi is not None:
+        overlaps = np.zeros_like(areas)
+
+        for i in range(len(rois)):
+            overlaps[i] = np.sum(np.logical_and(overlap_roi, rois[i]))
+
+        del_roi = np.argmax(overlaps)
+        del rois[del_roi]
+        del bboxes[del_roi]
 
     return rois, roi_plane, bboxes, label_im, ranks, shape_index
 
