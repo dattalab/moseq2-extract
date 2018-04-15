@@ -22,12 +22,11 @@ def cli():
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--roi-index', default=0, nargs=-1, type=int, help='Index of roi to use')
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
-@click.option('--overlap-roi', default=None, help="Filename of ROI to exclude")
 def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
              output_dir, use_plane_bground, overlap_roi):
 
@@ -47,15 +46,6 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
         bground_im = get_bground_im_file(input_file)
         write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
-    roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
-
-    if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
-        print('Loading overlap ROI...')
-        overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
-        roi_index -= 1
-    else:
-        overlap_roi = None
-
     first_frame = load_movie_data(input_file, 0)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=(650, 750))
@@ -64,9 +54,11 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
     strel_dilate = select_strel(roi_shape, roi_dilate)
 
     rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                  weights=roi_weights, overlap_roi=overlap_roi)
-    write_image(os.path.join(output_dir, roi_filename),
-                rois[roi_index], scale=True, dtype='uint8')
+                                  weights=roi_weights)
+    for idx in roi_index:
+        roi_filename = 'roi_{:02d}.tiff'.format(idx)
+        write_image(os.path.join(output_dir, roi_filename),
+                    rois[idx], scale=True, dtype='uint8')
 
 
 @cli.command(name="extract")
