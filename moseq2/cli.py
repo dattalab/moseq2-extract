@@ -81,7 +81,6 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
-@click.option('--overlap-roi', default=None, help="Filename of ROI to exclude")
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
@@ -140,13 +139,6 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
 
-    if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
-        print('Loading overlap ROI...')
-        overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
-        roi_index -= 1
-    else:
-        overlap_roi = None
-
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
         roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
@@ -154,7 +146,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
         print('Getting roi...')
         strel_dilate = select_strel(roi_shape, roi_dilate)
         rois, plane, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                          weights=roi_weights, overlap_roi=overlap_roi)
+                                          weights=roi_weights)
 
         if use_plane_bground:
             print('Using plane fit for background...')
