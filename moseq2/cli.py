@@ -111,8 +111,9 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
         os.makedirs(output_dir)
 
     output_filename = 'results_{:02d}'.format(roi_index)
+    status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
-    with open('{}.yaml'.format(output_filename), 'w') as f:
+    with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f)
 
     # get the background and roi, which will be used across all batches
@@ -213,7 +214,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     status_dict['complete'] = True
 
-    with open('{}.yaml'.format(output_filename), 'w') as f:
+    with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f)
 
     print('\n')
