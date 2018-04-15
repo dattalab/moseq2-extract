@@ -27,7 +27,7 @@ def cli():
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
-@click.option('--overlap-roi', type=str, default=None, help="Filename of ROI to exclude")
+@click.option('--overlap-roi', default=None, help="Filename of ROI to exclude")
 def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
              output_dir, use_plane_bground, overlap_roi):
 
@@ -87,7 +87,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
-@click.option('--overlap-roi', type=str, default=None, help="Filename of ROI to exclude")
+@click.option('--overlap-roi', default=None, help="Filename of ROI to exclude")
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
