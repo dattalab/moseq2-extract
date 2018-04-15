@@ -22,7 +22,7 @@ def cli():
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, nargs=-1, type=int, help='Index of roi to use')
+@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
