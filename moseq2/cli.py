@@ -9,7 +9,7 @@ import os
 import h5py
 import tqdm
 import numpy as np
-
+import ruamel.yaml as yaml
 
 @click.group()
 def cli():
@@ -83,6 +83,12 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     # get the basic metadata
 
+    status_dict = {
+        'parameters': locals(),
+        'complete': False,
+        'skip': False,
+    }
+
     np.seterr(invalid='raise')
 
     video_metadata = get_movie_info(input_file)
@@ -105,6 +111,9 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
         os.makedirs(output_dir)
 
     output_filename = 'results_{:02d}'.format(roi_index)
+
+    with open('{}.yaml'.format(output_filename), 'w') as f:
+        yaml.dump(status_dict, f)
 
     # get the background and roi, which will be used across all batches
 
@@ -201,6 +210,11 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
         if video_pipe:
             video_pipe.stdin.close()
             video_pipe.wait()
+
+    status_dict['complete'] = True
+
+    with open('{}.yaml'.format(output_filename), 'w') as f:
+        yaml.dump(status_dict, f)
 
     print('\n')
 
