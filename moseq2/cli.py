@@ -47,7 +47,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
         bground_im = get_bground_im_file(input_file)
         write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
-    if os.path.exists(os.path.join(output_dir, overlap_roi)):
+    if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
         print('Loading overlap ROI...')
         overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
     else:
@@ -146,7 +146,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
 
-    if os.path.exists(os.path.join(output_dir, overlap_roi)):
+    if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
         print('Loading overlap ROI...')
         overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
     else:
