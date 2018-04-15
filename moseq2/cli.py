@@ -50,6 +50,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
     if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
         print('Loading overlap ROI...')
         overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
+        roi_index -= 1
     else:
         overlap_roi = None
 
@@ -149,6 +150,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     if overlap_roi is not None and os.path.exists(os.path.join(output_dir, overlap_roi)):
         print('Loading overlap ROI...')
         overlap_roi = read_image(os.path.join(output_dir, overlap_roi), scale=True) > 0
+        roi_index -= 1
     else:
         overlap_roi = None
 

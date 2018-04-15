@@ -169,7 +169,7 @@ def get_roi(depth_image,
         bboxes.append(get_bbox(roi))
 
     if overlap_roi is not None:
-        overlaps = np.zeros_likes(areas)
+        overlaps = np.zeros_like(areas)
 
         for i in range(len(rois)):
             overlaps[i] = np.logical_and(overlap_roi, rois[i])
