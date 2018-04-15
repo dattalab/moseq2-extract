@@ -216,6 +216,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 
     command = ['ffmpeg',
                '-y',
+               '-loglevel', 'fatal',
                '-threads', str(threads),
                '-framerate', str(camera_fs),
                '-f', 'rawvideo',
