@@ -28,7 +28,7 @@ def cli():
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
-             output_dir, use_plane_bground, overlap_roi):
+             output_dir, use_plane_bground):
 
     # set up the output directory
 
@@ -84,7 +84,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
-            output_dir, write_movie, use_plane_bground, overlap_roi):
+            output_dir, write_movie, use_plane_bground):
 
     # get the basic metadata
 
