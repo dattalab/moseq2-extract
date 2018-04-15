@@ -18,7 +18,7 @@ def cli():
 
 @cli.command(name="find-roi")
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
+@click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--roi-index', default=0, type=int, help='Index of roi to use')
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
@@ -102,10 +102,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # prepare an hdf5 file for all the resulting output,
-    # dump videos in a temp directory to be stitched later
-
-    # results_file = os.path.join(output_dir, 'results.h5')
+    output_filename = 'results_{:02d}'.format(roi_index)
 
     # get the background and roi, which will be used across all batches
 
@@ -136,7 +133,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     # farm out the batches and write to an hdf5 file
 
-    with h5py.File(os.path.join(output_dir, 'results.h5'), 'w') as f:
+    with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
         for i in range(len(scalars)):
             f.create_dataset('scalars/{}'.format(scalars[i]), (nframes,), 'float32', compression='gzip')
 
@@ -185,7 +182,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
             output_movie[:, crop_size[0]:, crop_size[1]:] = raw_frames[offset:, ...]
 
             video_pipe = write_frames_preview(
-                os.path.join(output_dir, 'results.mp4'), output_movie,
+                os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
                 pipe=video_pipe, close_pipe=False)
 
         if video_pipe:
