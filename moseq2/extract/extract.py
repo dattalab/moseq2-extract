@@ -35,9 +35,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     filtered_frames = clean_frames(chunk,
                                    prefilter_space=prefilter_space,
                                    prefilter_time=prefilter_time,
-                                   iterations=iters_tail,
-                                   strel=strel_tail,
-                                   iterations_min=iters_min,
+                                   iters_tail=iters_tail,
+                                   strel_tail=strel_tail,
+                                   iters_min=iters_min,
                                    strel_min=strel_min,
                                    progress_bar=progress_bar)
 
