@@ -8,7 +8,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap):
     """Generate a sequence with overlap
     """
     seq = range(nframes)
-    for i in range(0, len(seq)-overlap, chunk_size-overlap):
+    for i in range(0, nframes-overlap, chunk_size-overlap):
         yield seq[i:i+chunk_size]
 
 
