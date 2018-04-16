@@ -335,7 +335,8 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
                            progress_bar=True):
 
     nframes = frames.shape[0]
-    cropped_frames = np.zeros((nframes, 80, 80), frames.dtype)
+    cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
+    win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
 
     for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
@@ -344,8 +345,10 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
 
         use_frame = np.pad(frames[i, ...], (crop_size, crop_size), 'constant', constant_values=0)
 
-        rr = np.arange(features['centroid'][i, 1]-40, features['centroid'][i, 1]+41).astype('int16')
-        cc = np.arange(features['centroid'][i, 0]-40, features['centroid'][i, 0]+41).astype('int16')
+        rr = np.arange(features['centroid'][i, 1]-win[0],
+                       features['centroid'][i, 1]+win[1]).astype('int16')
+        cc = np.arange(features['centroid'][i, 0]-win[0],
+                       features['centroid'][i, 0]+win[1]).astype('int16')
 
         rr = rr+crop_size[0]
         cc = cc+crop_size[1]
@@ -354,8 +357,10 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
                 or np.any(cc >= use_frame.shape[1]) or np.any(cc < 1)):
             continue
 
-        rot_mat = cv2.getRotationMatrix2D((40, 40), -np.rad2deg(features['orientation'][i]), 1)
-        cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]], rot_mat, (80, 80))
+        rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
+                                          -np.rad2deg(features['orientation'][i]), 1)
+        cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
+                                                 rot_mat, (crop_size[0], crop_size[1]))
 
     return cropped_frames
 

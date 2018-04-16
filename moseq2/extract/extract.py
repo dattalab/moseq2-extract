@@ -70,10 +70,11 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
 
     # print('Cropping frames...')
     cropped_frames = crop_and_rotate_frames(
-        chunk, features, progress_bar=progress_bar)
+        chunk, features, crop_size=crop_size, progress_bar=progress_bar)
     cropped_filtered_frames = crop_and_rotate_frames(
-        filtered_frames, features, progress_bar=progress_bar)
-    mask = crop_and_rotate_frames(mask, features, progress_bar=progress_bar)
+        filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar)
+    mask = crop_and_rotate_frames(
+        mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
     if flip_classifier:
         # print('Fixing flips...')

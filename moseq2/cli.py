@@ -25,7 +25,7 @@ def CommandWithConfigFile(config_file_param_name):
                 with open(config_file) as f:
                     config_data = yaml.load(f, yaml.Loader)
                     for param, value in ctx.params.items():
-                        if value is None and param in config_data:
+                        if param in config_data:
                             ctx.params[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
@@ -83,7 +83,8 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 
 @cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse')
+@click.option('--crop-size', '-c', default=(80, 80), type=(int, int),
+              help='Width and height of cropped mouse')
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--roi-index', default=0, type=int, help='Index of roi to use')
