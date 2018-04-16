@@ -3,7 +3,9 @@ from moseq2.io.video import get_movie_info,\
 from moseq2.io.image import write_image, read_image
 from moseq2.extract.extract import extract_chunk
 from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
-from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps, select_strel
+from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps,\
+    select_strel, build_path, h5_to_dict, recursive_find_h5s, camel_to_snake
+from copy import deepcopy
 import click
 import os
 import h5py
@@ -139,8 +141,10 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     # set up the output directory
 
-    if not output_dir:
+    if output_dir is None:
         output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+    else:
+        output_dir = os.path.join(os.path.dirname(input_file), output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -262,11 +266,35 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     print('\n')
 
+
 # recurse through directories, find h5 files with completed extractions, make a manifest
 # and copy the contents to a new directory
+@cli.command(name="aggregate-results")
+@click.option('--dir', '-d', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--format', '-f', type=str, default='${start_time}_${session_name}_${subject_name}',
+              help="Mapping from metadata to new file")
+@click.option('--output-dir', '-o', type=click.Path(),
+              default=os.path.join(os.getcwd(), 'aggregate_results/'),
+              help="Where to store results")
+def aggregate_results(input_dir, format, output_dir):
 
+    h5s, dicts, yamls = recursive_find_h5s(input_dir)
+    to_load = [(tmp, file) for tmp, file in zip(dicts, h5s) if tmp['complete'] and not tmp['skip']]
 
+    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
+    # then stage the copy
 
+    for i, tup in enumerate(to_load):
+        with h5py.File(tup[1], 'r') as f:
+            tmp = h5_to_dict(f, '/metadata/extraction')
+            tmp2 = deepcopy(tmp)
+            for key, val in tmp.items():
+                tmp2[camel_to_snake(key)] = tmp2.pop(key)
+            to_load[i][0]['extraction_metadata'] = tmp2
+
+    for tup in to_load:
+        copy_path = build_path(to_load[i][0]['extract_metadata'], format)
+        print('{} to {}'.format(tup[i][1], copy_path))
 
 
 if __name__ == '__main__':
