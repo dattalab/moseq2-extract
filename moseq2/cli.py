@@ -152,6 +152,9 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     output_filename = 'results_{:02d}'.format(roi_index)
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
+    if os.path.exists(status_filename):
+        raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f)
 
@@ -292,10 +295,13 @@ def aggregate_results(input_dir, format, output_dir):
                 tmp2[camel_to_snake(key)] = tmp2.pop(key)
             to_load[i][0]['extraction_metadata'] = tmp2
 
+    manifest = {}
+
     for tup in to_load:
         copy_path = build_path(tup[0]['extraction_metadata'], format)
-        print('{} to {}'.format(tup[1], os.path.join(output_dir, copy_path)))
+        manifest[tup[1]] = copy_path
 
+    print(manifest)
 
 if __name__ == '__main__':
     cli()
