@@ -229,17 +229,17 @@ def im_moment_features(IM):
 
 
 def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
-                 strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
-                 iterations=2,
+                 strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
+                 iters_tail=2,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-                 iterations_min=None, progress_bar=True):
+                 iters_min=None, progress_bar=True):
     """
     Simple filtering, median filter and morphological opening
 
     Args:
         frames (3d np array): frames x r x c
         strel (opencv structuring element): strel for morph opening
-        iterations (int): number of iterations to run opening
+        iters_tail (int): number of iterations to run opening
 
     Returns:
         filtered_frames (3d np array): frame x r x c
@@ -251,16 +251,16 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     for i in tqdm.tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):
 
-        if iterations_min:
-            filtered_frames[i, ...] = cv2.erode(filtered_frames[i, ...], strel_min, iterations_min)
+        if iters_min is not None and iters_min > 0:
+            filtered_frames[i, ...] = cv2.erode(filtered_frames[i, ...], strel_min, iters_min)
 
         if prefilter_space:
             for j in range(len(prefilter_space)):
                 filtered_frames[i, ...] = cv2.medianBlur(filtered_frames[i, ...], prefilter_space[j])
 
-        if iterations:
+        if iters_tail is not None and iters_tail > 0:
             filtered_frames[i, ...] = cv2.morphologyEx(
-                filtered_frames[i, ...], cv2.MORPH_OPEN, strel, iterations)
+                filtered_frames[i, ...], cv2.MORPH_OPEN, strel_tail, iters_tail)
 
     if prefilter_time:
         for j in range(len(prefilter_time)):

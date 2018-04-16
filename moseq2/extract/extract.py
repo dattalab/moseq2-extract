@@ -11,8 +11,8 @@ import numpy as np
 
 def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   prefilter_time=None,
-                  strel_iters=1, min_iters=0,
-                  strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
+                  iters_tail=1, iters_min=0,
+                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                   min_height=10, max_height=100,
                   mask_threshold=-20, use_cc=False,
@@ -35,9 +35,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     filtered_frames = clean_frames(chunk,
                                    prefilter_space=prefilter_space,
                                    prefilter_time=prefilter_time,
-                                   iterations=strel_iters,
-                                   strel=strel,
-                                   iterations_min=min_iters,
+                                   iterations=iters_tail,
+                                   strel=strel_tail,
+                                   iterations_min=iters_min,
                                    strel_min=strel_min,
                                    progress_bar=progress_bar)
 

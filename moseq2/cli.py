@@ -95,6 +95,12 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-file', default=None, help='Location of flip classifier (.pkl)')
 @click.option('--em-tracking', is_flag=True, help='Use em tracker')
+@click.option('--minfilter-iters', default=0, type=int, help="Number of minimum filter iterations")
+@click.option('--minfilter-shape', default='rectangle', type=str, help="Minimum filter shape")
+@click.option('--minfilter-size', default=(5, 5), type=(int, int), help="Minimum filter size")
+@click.option('--tailfilter-iters', default=1, type=int, help="Number of tail filter iterations")
+@click.option('--tailfilter-size', default=(9, 9), type=(int, int), help='Tail filter size')
+@click.option('--tailfilter-shape', default='ellipse', type=str, help='Tail filter shape')
 @click.option('--prefilter-space', default=(3,), type=tuple, help='Space prefilter kernel')
 @click.option('--prefilter-time', default=(), type=tuple, help='Time prefilter kernel')
 @click.option('--chunk-size', default=1000, type=int, help='Chunk size for processing')
@@ -104,8 +110,9 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
-            min_height, max_height, fps, flip_file, em_tracking,
-            prefilter_space, prefilter_time, chunk_size, chunk_overlap,
+            min_height, max_height, fps, flip_file, em_tracking, minfilter_iters,
+            minfilter_shape, minfilter_size, tailfilter_iters, tailfilter_size,
+            tailfilter_shape, prefilter_space, prefilter_time, chunk_size, chunk_overlap,
             output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
@@ -161,12 +168,15 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
 
+    strel_dilate = select_strel(roi_shape, roi_dilate)
+    strel_tail = select_strel(tailfilter_shape, tailfilter_size)
+    strel_min = select_strel(minfilter_shape, minfilter_size)
+
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
         roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
     else:
         print('Getting roi...')
-        strel_dilate = select_strel(roi_shape, roi_dilate)
         rois, plane, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
                                           weights=roi_weights)
 
@@ -206,6 +216,10 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
             results = extract_chunk(raw_frames,
                                     use_em_tracker=em_tracking,
+                                    strel_tail=strel_tail,
+                                    strel_min=strel_min,
+                                    iters_tail=tailfilter_iters,
+                                    iters_min=minfilter_iters,
                                     prefilter_space=prefilter_space,
                                     prefilter_time=prefilter_time,
                                     min_height=min_height,
