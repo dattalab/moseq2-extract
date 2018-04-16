@@ -226,6 +226,10 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
     print('\n')
 
+# recurse through directories, find h5 files with completed extractions, make a manifest
+# and copy the contents to a new directory
+
+
 
 if __name__ == '__main__':
     cli()
