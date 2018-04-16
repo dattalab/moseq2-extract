@@ -13,6 +13,26 @@ import ruamel.yaml as yaml
 import uuid
 
 
+# from https://stackoverflow.com/questions/46358797/
+# python-click-supply-arguments-and-options-from-a-configuration-file
+def CommandWithConfigFile(config_file_param_name):
+
+    class CustomCommandClass(click.Command):
+
+        def invoke(self, ctx):
+            config_file = ctx.params[config_file_param_name]
+            if config_file is not None:
+                with open(config_file) as f:
+                    config_data = yaml.load(f, yaml.Loader)
+                    for param, value in ctx.params.items():
+                        if value is None and param in config_data:
+                            ctx.params[param] = config_data[param]
+
+            return super(CustomCommandClass, self).invoke(ctx)
+
+    return CustomCommandClass
+
+
 @click.group()
 def cli():
     pass
@@ -61,7 +81,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
                     rois[idx], scale=True, dtype='uint8')
 
 
-@cli.command(name="extract")
+@cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
 @click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
@@ -81,10 +101,11 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
+@click.option("--config_file", type=click.Path())
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
-            output_dir, write_movie, use_plane_bground):
+            output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
 
@@ -228,6 +249,8 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 
 # recurse through directories, find h5 files with completed extractions, make a manifest
 # and copy the contents to a new directory
+
+
 
 
 
