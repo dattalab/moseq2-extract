@@ -59,7 +59,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     dicts = []
     h5s = []
     yamls = []
-    for root, dirs, files in os.walk(dir):
+    for root, dirs, files in os.walk(root_dir):
         for file in files:
             yaml_file = yaml_string.format(os.path.splitext(file)[0])
             if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):

@@ -270,7 +270,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
 # recurse through directories, find h5 files with completed extractions, make a manifest
 # and copy the contents to a new directory
 @cli.command(name="aggregate-results")
-@click.option('--dir', '-d', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--format', '-f', type=str, default='${start_time}_${session_name}_${subject_name}',
               help="Mapping from metadata to new file")
 @click.option('--output-dir', '-o', type=click.Path(),
@@ -293,8 +293,8 @@ def aggregate_results(input_dir, format, output_dir):
             to_load[i][0]['extraction_metadata'] = tmp2
 
     for tup in to_load:
-        copy_path = build_path(to_load[i][0]['extract_metadata'], format)
-        print('{} to {}'.format(tup[i][1], copy_path))
+        copy_path = build_path(tup[0]['extraction_metadata'], format)
+        print('{} to {}'.format(tup[1], os.path.join(output_dir, copy_path)))
 
 
 if __name__ == '__main__':
