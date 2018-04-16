@@ -4,7 +4,8 @@ from moseq2.io.image import write_image, read_image
 from moseq2.extract.extract import extract_chunk
 from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps,\
-    select_strel, build_path, h5_to_dict, recursive_find_h5s, camel_to_snake
+    select_strel, build_path, h5_to_dict, recursive_find_h5s, camel_to_snake,\
+    recursive_find_unextracted_dirs
 from copy import deepcopy
 import click
 import os
@@ -13,6 +14,9 @@ import tqdm
 import numpy as np
 import ruamel.yaml as yaml
 import uuid
+import pathlib
+import datetime
+import re
 
 
 # from https://stackoverflow.com/questions/46358797/
@@ -302,6 +306,57 @@ def aggregate_results(input_dir, format, output_dir):
         manifest[tup[1]] = copy_path
 
     print(manifest)
+
+
+@cli.command(name="extract-batch")
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--config-file', '-c', type=click.Path(), help="Path to configuration file")
+@click.option('--cluster-type', type=click.Choice(['slurm']), default='slurm', help='Cluster type')
+@click.option('--temp-storage', type=click.Path(),
+              default=os.path.join(pathlib.home(), 'moseq2'), help="Temp storage")
+@click.option('--ncpus', type=int, default=1, help="Number of CPUs")
+@click.option('--mem', type=int, default=5000, help="RAM in MB")
+@click.option('--wall-time', type=str, default='3:00:00', help="Wall time")
+@click.option('--partition', type=str, default='short', help="Partition name")
+@click.option('--prefix', type=str, default='source activate moseq2', help="Command to run before extract")
+@click.option('--nrois', type=int, default=1, help="Number of ROIs to extract")
+def extract_batch(input_dir, config_file, cluster_type, temp_storage,
+                  ncpus, mem, wall_time, partition, prefix):
+    # find directories with .dat files that either have incomplete or no extractions
+
+    to_extract = recursive_find_unextracted_dirs(input_dir)
+    objs = extract.params
+    params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+    param_names = list(params.keys())
+
+    if not os.path.exists(config_file):
+        raise IOError('Config file {} does not exist'.format(config_file))
+    else:
+        with open(config_file, 'r') as f:
+            config = yaml.load(config_file, Loader=yaml.Loader)
+            for k, v in config.items():
+                if k in param_names:
+                    params[k] = v
+
+    if not os.path.exists(temp_storage):
+        os.path.makedirs(temp_storage)
+
+    suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
+
+    with open(os.path.join(temp_storage, 'job_config{}.yaml'.format(suffix)), 'w') as f:
+        yaml.dump(params, f)
+
+    if cluster_type == 'slurm':
+        base_command = 'sbatch -n={:d} --mem={:d}M --partition={} -t={} --wrap "'\
+            .format(ncpus, mem, partition, wall_time)
+        if prefix is not None:
+            base_command += '{}; '.format(prefix)
+
+    else:
+        raise NotImplementedError('Other cluster types not supported')
+
+
+
 
 if __name__ == '__main__':
     cli()

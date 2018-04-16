@@ -51,6 +51,22 @@ def select_strel(string='e', size=(10, 10)):
     return strel
 
 
+def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
+                               ext='.dat',
+                               yaml_path='/proc/results.yaml',
+                               metadata_path='metadata.json'):
+    """Recursively find unextracted directories
+    """
+    dirs = []
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            status_file = os.path.join(root, yaml_path)
+            metadata_file = os.path.join(root, metadata_path)
+            if file.endswith(ext) and not os.path.exists(status_file) and os.path.exists(metadata_file):
+                dirs.append(root)
+    return dirs
+
+
 def recursive_find_h5s(root_dir=os.getcwd(),
                        ext='.h5',
                        yaml_string='{}.yaml'):
