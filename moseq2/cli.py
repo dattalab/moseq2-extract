@@ -83,8 +83,8 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 
 @cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--crop-size', '-c', default=(80, 80), type=tuple, help='Width and height of cropped mouse')
-@click.option('--roi-dilate', default=(10, 10), type=tuple, help='Size of strel to dilate roi')
+@click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse')
+@click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--roi-index', default=0, type=int, help='Index of roi to use')
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
@@ -101,7 +101,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--write-movie', default=True, type=bool, help='Write results movie')
 @click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
-@click.option("--config_file", type=click.Path())
+@click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
             min_height, max_height, fps, flip_file, em_tracking,
             prefilter_space, prefilter_time, chunk_size, chunk_overlap,
