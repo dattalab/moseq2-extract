@@ -313,7 +313,7 @@ def aggregate_results(input_dir, format, output_dir):
 @click.option('--config-file', '-c', type=click.Path(), help="Path to configuration file")
 @click.option('--cluster-type', type=click.Choice(['slurm']), default='slurm', help='Cluster type')
 @click.option('--temp-storage', type=click.Path(),
-              default=os.path.join(pathlib.home(), 'moseq2'), help="Temp storage")
+              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
 @click.option('--ncpus', type=int, default=1, help="Number of CPUs")
 @click.option('--mem', type=int, default=5000, help="RAM in MB")
 @click.option('--wall-time', type=str, default='3:00:00', help="Wall time")
