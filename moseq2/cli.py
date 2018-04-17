@@ -323,7 +323,7 @@ def aggregate_results(input_dir, format, output_dir):
 @click.option('--cluster-type', type=click.Choice(['slurm']), default='slurm', help='Cluster type')
 @click.option('--temp-storage', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-@click.option('--ncpus', type=int, default=1, help="Number of CPUs")
+@click.option('--ncpus', type=int, default=4, help="Number of CPUs")
 @click.option('--mem', type=int, default=5000, help="RAM in MB")
 @click.option('--wall-time', type=str, default='3:00:00', help="Wall time")
 @click.option('--partition', type=str, default='short', help="Partition name")
@@ -357,7 +357,7 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
 
     if cluster_type == 'slurm':
 
-        base_command = 'sbatch -n={:d} --mem={:d}M --partition={} -t={} --wrap "'\
+        base_command = 'sbatch -n {:d} --mem={:d}M -p {} -t {} --wrap "'\
             .format(ncpus, mem, partition, wall_time)
         if prefix is not None:
             base_command += '{}; '.format(prefix)
