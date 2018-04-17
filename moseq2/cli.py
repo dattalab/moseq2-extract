@@ -30,7 +30,7 @@ def CommandWithConfigFile(config_file_param_name):
                 with open(config_file) as f:
                     config_data = yaml.load(f, yaml.Loader)
                     for param, value in ctx.params.items():
-                        if param in config_data:
+                        if values is None and param in config_data:
                             ctx.params[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
