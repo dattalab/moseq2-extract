@@ -58,7 +58,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 
     # set up the output directory
 
-    if roi_index is type int:
+    if type(roi_index) is int:
         roi_index = [roi_index]
 
     if not output_dir:
