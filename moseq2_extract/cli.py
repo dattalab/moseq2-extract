@@ -1,9 +1,9 @@
-from moseq2.io.video import get_movie_info,\
+from moseq2_extract.io.video import get_movie_info,\
     load_movie_data, write_frames_preview
-from moseq2.io.image import write_image, read_image
-from moseq2.extract.extract import extract_chunk
-from moseq2.extract.proc import apply_roi, get_roi, get_bground_im_file
-from moseq2.util import load_metadata, gen_batch_sequence, load_timestamps,\
+from moseq2_extract.io.image import write_image, read_image
+from moseq2_extract.extract.extract import extract_chunk
+from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
+from moseq2_extract.util import load_metadata, gen_batch_sequence, load_timestamps,\
     select_strel, build_path, h5_to_dict, recursive_find_h5s, camel_to_snake,\
     recursive_find_unextracted_dirs
 from copy import deepcopy
@@ -18,6 +18,7 @@ import pathlib
 import datetime
 import sys
 import urllib.request
+
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file

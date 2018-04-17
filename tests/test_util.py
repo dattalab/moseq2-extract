@@ -3,7 +3,7 @@ import os
 import numpy as np
 import numpy.testing as npt
 import json
-from moseq2.util import gen_batch_sequence, load_metadata, load_timestamps
+from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps
 
 
 @pytest.fixture(scope='function')

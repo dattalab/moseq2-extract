@@ -1,6 +1,6 @@
 import numpy.testing as npt
 import numpy as np
-from moseq2.extract.roi import plane_fit3, plane_ransac
+from moseq2_extract.extract.roi import plane_fit3, plane_ransac
 
 
 def test_plane_fit3():

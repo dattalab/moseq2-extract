@@ -3,8 +3,8 @@ import os
 import glob
 import re
 import pytest
-from moseq2.io.image import read_image
-from moseq2.extract.proc import get_roi
+from moseq2_extract.io.image import read_image
+from moseq2_extract.extract.proc import get_roi
 
 
 # https://stackoverflow.com/questions/34504757/

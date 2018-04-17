@@ -1,5 +1,5 @@
-import moseq2.io.video
-import moseq2.extract.roi
+import moseq2_extract.io.video
+import moseq2_extract.extract.roi
 import numpy as np
 import skimage.measure
 import skimage.morphology
@@ -82,13 +82,13 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
         bground (2d numpy array):  r x c, background image
     """
 
-    finfo = moseq2.io.video.get_raw_info(frames_file)
+    finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
     frame_idx = np.arange(0, finfo['nframes'], frame_stride)
     frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
 
     for i, frame in enumerate(frame_idx):
-        frame_store[i, ...] = cv2.medianBlur(moseq2.io.video.read_frames_raw(
+        frame_store[i, ...] = cv2.medianBlur(moseq2_extract.io.video.read_frames_raw(
             frames_file, int(frame)).squeeze(), med_scale)
 
     bground = np.median(frame_store, 0)
@@ -119,7 +119,7 @@ def get_roi(depth_image,
     Get an ROI using RANSAC plane fitting and simple blob features
     """
 
-    roi_plane, dists = moseq2.extract.roi.plane_ransac(
+    roi_plane, dists = moseq2_extract.extract.roi.plane_ransac(
         depth_image, noise_tolerance=noise_tolerance, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
     bin_im = dist_ims < noise_tolerance

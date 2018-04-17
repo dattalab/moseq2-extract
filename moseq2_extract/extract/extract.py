@@ -1,7 +1,7 @@
-from moseq2.extract.proc import crop_and_rotate_frames,\
+from moseq2_extract.extract.proc import crop_and_rotate_frames,\
     clean_frames, apply_roi, get_frame_features,\
     get_flips, compute_scalars
-from moseq2.extract.track import em_tracking, em_get_ll
+from moseq2_extract.extract.track import em_tracking, em_get_ll
 import cv2
 import os
 import numpy as np

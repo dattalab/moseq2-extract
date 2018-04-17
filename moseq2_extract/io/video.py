@@ -1,4 +1,4 @@
-import moseq2.extract.proc
+import moseq2_extract.extract.proc
 import numpy as np
 import tqdm
 import subprocess
@@ -285,7 +285,7 @@ def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
         chunk = (bground_im-chunk).astype('uint8')
         chunk[chunk < depth_min] = 0
         chunk[chunk > depth_max] = 0
-        chunk = moseq2.extract.proc.apply_roi(chunk, roi, bbox)
+        chunk = moseq2_extract.extract.proc.apply_roi(chunk, roi, bbox)
 
         dest_filename.append(os.path.join(save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
         write_frames(dest_filename[-1], chunk)

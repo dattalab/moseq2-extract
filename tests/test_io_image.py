@@ -2,7 +2,7 @@ import numpy.testing as npt
 import numpy as np
 import pytest
 import os
-from moseq2.io.image import write_image, read_image
+from moseq2_extract.io.image import write_image, read_image
 from skimage.external import tifffile
 
 
