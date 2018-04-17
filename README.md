@@ -66,29 +66,9 @@ moseq2 extract ~/my_awesome_data/depth.data
 
 This automatically select an ROI and extract data to the `proc` folder where `depth.dat` is located.
 
-### Extracting data (batch, slurm)
+### Extracting data (batch)
 
-On a cluster with the slurm scheduler, you can batch extract using the `moseq2 extract-batch` command. If you do not pass any parameters, all defaults will be used.  It is recommended that you at least include the path to a flip classifier (see below for details on downloading a pre-trained classifier or training your own).
-
-First, make a default configuration file,
-
-```sh
-moseq2 make-default-config > batch_configuration.yaml
-```  
-
-Edit the `flip_file` field to point to the path to your flip classifier.  If you don't have one,
-
-```sh
-moseq2 download-flip-file
-```
-
-Then select the flip classifier you want to download, which will then be downloaded to ~/moseq2/ by default (you can change this with the parameter `--store-dir`).  **Be sure to add the path to the `flip_file` field in `batch_configuration.yaml` before proceeding.**  Then, to create the slurm commands to send to the scheduler and then send them,
-
-```sh
-moseq2 extract-batch --config-file batch_configuration.yaml > slurm_batch.sh
-chmod a+x slurm_batch.sh
-./slurm_batch.sh
-```
+For batch extractions, see [moseq2-batch](https://github.com/dattalab/moseq2-batch). 
 
 ### Flip classification
 
