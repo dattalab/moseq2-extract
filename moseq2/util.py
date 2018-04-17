@@ -63,7 +63,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
             status_file = os.path.join(root, yaml_path)
             metadata_file = os.path.join(root, metadata_path)
             if file.endswith(ext) and not os.path.exists(status_file) and os.path.exists(metadata_file):
-                proc_dirs.append(root)
+                proc_dirs.append(os.path.join(root, file))
     return proc_dirs
 
 
