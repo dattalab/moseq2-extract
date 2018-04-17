@@ -57,14 +57,14 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                metadata_path='metadata.json'):
     """Recursively find unextracted directories
     """
-    dirs = []
+    proc_dirs = []
     for root, dirs, files in os.walk(root_dir):
         for file in files:
             status_file = os.path.join(root, yaml_path)
             metadata_file = os.path.join(root, metadata_path)
             if file.endswith(ext) and not os.path.exists(status_file) and os.path.exists(metadata_file):
-                dirs.append(root)
-    return dirs
+                proc_dirs.append(root)
+    return proc_dirs
 
 
 def recursive_find_h5s(root_dir=os.getcwd(),
