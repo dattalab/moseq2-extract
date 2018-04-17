@@ -356,7 +356,7 @@ def download_flip_file(output_dir):
 def make_sample_config():
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    yaml.dump(params, sys.stdout)
+    yaml.dump(params, sys.stdout, Dumper=yaml.RoundTripDumper)
 
 
 @cli.command(name="extract-batch")
