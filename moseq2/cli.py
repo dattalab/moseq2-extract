@@ -16,6 +16,7 @@ import ruamel.yaml as yaml
 import uuid
 import pathlib
 import datetime
+import sys
 
 
 # from https://stackoverflow.com/questions/46358797/
@@ -315,6 +316,13 @@ def aggregate_results(input_dir, format, output_dir):
         manifest[tup[1]] = copy_path
 
     print(manifest)
+
+
+@cli.command(name="make-default-config")
+def make_sample_config():
+    objs = extract.params
+    params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+    yaml.dump(params, sys.stdout)
 
 
 @cli.command(name="extract-batch")
