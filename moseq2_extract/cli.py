@@ -44,21 +44,21 @@ def cli():
 
 @cli.command(name="find-roi", cls=CommandWithConfigFile('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
-@click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
-@click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
-@click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
+@click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
+@click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
+@click.option('--bg-roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
+@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
-def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
+def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
 
-    if type(roi_index) is int:
-        roi_index = [roi_index]
+    if type(bg_roi_index) is int:
+        bg_roi_index = [bg_roi_index]
 
     if not output_dir:
         output_dir = os.path.join(os.path.dirname(input_file), 'proc')
@@ -79,56 +79,55 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
                 scale_factor=(650, 750))
 
     print('Getting roi...')
-    strel_dilate = select_strel(roi_shape, roi_dilate)
+    strel_dilate = select_strel(bg_roi_shape, bg_roi_dilate)
 
     rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                  weights=roi_weights)
-    for idx in roi_index:
+                                  weights=bg_roi_weights)
+    for idx in bg_roi_index:
         roi_filename = 'roi_{:02d}.tiff'.format(idx)
         write_image(os.path.join(output_dir, roi_filename),
                     rois[idx], scale=True, dtype='uint8')
 
 
 @cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
-@click.argument('input-file', type=click.Path(exists=True))
-@click.option('--crop-size', '-c', default=(80, 80), type=(int, int),
-              help='Width and height of cropped mouse')
-@click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
-@click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
-@click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
-              help='ROI feature weighting (area, extent, dist)')
-@click.option('--min-height', default=10, type=int, help='Min height of mouse from floor (mm)')
-@click.option('--max-height', default=100, type=int, help='Max height of mouse from floor (mm)')
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=True), help='depth.dat file location for extraction')
+@click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
+@click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of the mask dilation (to include environment walls)')
+@click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use for the mask dilation (ellipse or rect)')
+@click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use', multiple=True)
+@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
+              help='Feature weighting (area, extent, dist) of the background mask')
+@click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
+@click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
-@click.option('--flip-file', default=None, help='Location of flip classifier (.pkl)')
-@click.option('--em-tracking', is_flag=True, help='Use em tracker')
-@click.option('--minfilter-iters', default=0, type=int, help="Number of minimum filter iterations")
-@click.option('--minfilter-shape', default='rectangle', type=str, help="Minimum filter shape")
-@click.option('--minfilter-size', default=(5, 5), type=(int, int), help="Minimum filter size")
-@click.option('--tailfilter-iters', default=1, type=int, help="Number of tail filter iterations")
-@click.option('--tailfilter-size', default=(9, 9), type=(int, int), help='Tail filter size')
-@click.option('--tailfilter-shape', default='ellipse', type=str, help='Tail filter shape')
-@click.option('--prefilter-space', default=(3,), type=tuple, help='Space prefilter kernel')
-@click.option('--prefilter-time', default=(), type=tuple, help='Time prefilter kernel')
-@click.option('--chunk-size', default=1000, type=int, help='Chunk size for processing')
-@click.option('--chunk-overlap', default=60, type=int, help='Overlap in chunks')
-@click.option('--output-dir', default=None, help='Output directory')
-@click.option('--write-movie', default=True, type=bool, help='Write results movie')
-@click.option('--use-plane-bground', is_flag=True, help='Use plane fit for background')
+@click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
+@click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
+@click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
+@click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
+@click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
+@click.option('--tail-filter-iters', default=1, type=int, help="Number of tail filter iterations")
+@click.option('--tail-filter-size', default=(9, 9), type=(int, int), help='Tail filter size')
+@click.option('--tail-filter-shape', default='ellipse', type=str, help='Tail filter shape')
+@click.option('--spatial-filter-size', default=(3,), type=tuple, help='Space prefilter kernel for a median filter')
+@click.option('--temporal-filter-size', default=(), type=tuple, help='Time prefilter kernel')
+@click.option('--chunk-size', default=1000, type=int, help='Number of frames for each processing iteration')
+@click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')
+@click.option('--output-dir', default=None, help='Output directory to save the results h5 file')
+@click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')
+@click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
 @click.option("--config-file", type=click.Path())
-def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index,
-            min_height, max_height, fps, flip_file, em_tracking, minfilter_iters,
-            minfilter_shape, minfilter_size, tailfilter_iters, tailfilter_size,
-            tailfilter_shape, prefilter_space, prefilter_time, chunk_size, chunk_overlap,
+def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
+            min_height, max_height, fps, flip_classifier, use_tracking_model, cable_filter_iters,
+            cable_filter_shape, cable_filter_size, tail_filter_iters, tail_filter_size,
+            tail_filter_shape, prefilter_space, prefilter_time, chunk_size, chunk_overlap,
             output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
 
     # if we pass in multiple roi indices, recurse and process each roi
-    # if len(roi_index) > 1:
-    #     for roi in roi_index:
-    #         extract(roi_index=roi, **locals())
+    # if len(bg_roi_index) > 1:
+    #     for roi in bg_roi_index:
+    #         extract(bg_roi_index=roi, **locals())
     #     return None
 
     status_dict = {
@@ -161,7 +160,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    output_filename = 'results_{:02d}'.format(roi_index)
+    output_filename = 'results_{:02d}'.format(bg_roi_index)
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if os.path.exists(status_filename):
@@ -185,11 +184,11 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=(650, 750))
 
-    roi_filename = 'roi_{:02d}.tiff'.format(roi_index)
+    roi_filename = 'roi_{:02d}.tiff'.format(bg_roi_index)
 
-    strel_dilate = select_strel(roi_shape, roi_dilate)
-    strel_tail = select_strel(tailfilter_shape, tailfilter_size)
-    strel_min = select_strel(minfilter_shape, minfilter_size)
+    strel_dilate = select_strel(bg_roi_shape, bg_roi_dilate)
+    strel_tail = select_strel(tail_filter_shape, tail_filter_size)
+    strel_min = select_strel(cable_filter_shape, cable_filter_size)
 
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
@@ -197,7 +196,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     else:
         print('Getting roi...')
         rois, plane, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                          weights=roi_weights)
+                                          weights=bg_roi_weights)
 
         if use_plane_bground:
             print('Using plane fit for background...')
@@ -208,7 +207,7 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
             write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
             bground_im = plane_im
 
-        roi = rois[roi_index]
+        roi = rois[bg_roi_index]
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
@@ -234,16 +233,16 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
             raw_frames = apply_roi(raw_frames, roi)
 
             results = extract_chunk(raw_frames,
-                                    use_em_tracker=em_tracking,
+                                    use_em_tracker=use_tracking_model,
                                     strel_tail=strel_tail,
                                     strel_min=strel_min,
-                                    iters_tail=tailfilter_iters,
-                                    iters_min=minfilter_iters,
+                                    iters_tail=tail_filter_iters,
+                                    iters_min=cable_filter_iters,
                                     prefilter_space=prefilter_space,
                                     prefilter_time=prefilter_time,
                                     min_height=min_height,
                                     max_height=max_height,
-                                    flip_classifier=flip_file,
+                                    flip_classifier=flip_classifier,
                                     crop_size=crop_size)
 
             # if desired, write out a movie
