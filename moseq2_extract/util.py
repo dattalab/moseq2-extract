@@ -45,19 +45,3 @@ def select_strel(string='e', size=(10, 10)):
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
 
     return strel
-
-
-def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
-                               ext='.dat',
-                               yaml_path='/proc/results.yaml',
-                               metadata_path='metadata.json'):
-    """Recursively find unextracted directories
-    """
-    proc_dirs = []
-    for root, dirs, files in os.walk(root_dir):
-        for file in files:
-            status_file = os.path.join(root, yaml_path)
-            metadata_file = os.path.join(root, metadata_path)
-            if file.endswith(ext) and not os.path.exists(status_file) and os.path.exists(metadata_file):
-                proc_dirs.append(os.path.join(root, file))
-    return proc_dirs
