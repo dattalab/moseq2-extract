@@ -16,7 +16,6 @@ import ruamel.yaml as yaml
 import uuid
 import pathlib
 import datetime
-import re
 
 
 # from https://stackoverflow.com/questions/46358797/
@@ -44,7 +43,7 @@ def cli():
     pass
 
 
-@cli.command(name="find-roi")
+@cli.command(name="find-roi", cls=CommandWithConfigFile('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
@@ -53,8 +52,9 @@ def cli():
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
+@click.option("--config-file", type=click.Path())
 def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
-             output_dir, use_plane_bground):
+             output_dir, use_plane_bground, config_file):
 
     # set up the output directory
 
@@ -354,9 +354,13 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
         if prefix is not None:
             base_command += '{}; '.format(prefix)
 
-        base_command += '--config-file {}'.format(config_store)
-
         for ext in to_extract:
+
+            if nrois > 1:
+                for roi in range(nrois):
+                    base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
+
+            base_command += 'moseq2 extract --config-file {}'.format(config_store)
             issue_command = '{} {}"'.format(base_command, ext)
             print(issue_command)
 
