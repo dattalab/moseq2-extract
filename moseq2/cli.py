@@ -333,7 +333,7 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
         raise IOError('Config file {} does not exist'.format(config_file))
     elif config_file is not None:
         with open(config_file, 'r') as f:
-            config = yaml.load(config_file, Loader=yaml.Loader)
+            config = yaml.load(f, Loader=yaml.Loader)
             for k, v in config.items():
                 if k in param_names:
                     params[k] = v
