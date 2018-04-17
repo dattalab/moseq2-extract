@@ -339,7 +339,7 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
                     params[k] = v
 
     if not os.path.exists(temp_storage):
-        os.path.makedirs(temp_storage)
+        os.makedirs(temp_storage)
 
     suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
 
