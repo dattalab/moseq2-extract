@@ -58,6 +58,9 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
 
     # set up the output directory
 
+    if roi_index is type int:
+        roi_index = [roi_index]
+
     if not output_dir:
         output_dir = os.path.join(os.path.dirname(input_file), 'proc')
 
