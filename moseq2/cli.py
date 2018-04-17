@@ -329,9 +329,9 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
     param_names = list(params.keys())
 
-    if not os.path.exists(config_file):
+    if config_file is not None and not os.path.exists(config_file):
         raise IOError('Config file {} does not exist'.format(config_file))
-    else:
+    elif config_file is not None:
         with open(config_file, 'r') as f:
             config = yaml.load(config_file, Loader=yaml.Loader)
             for k, v in config.items():
@@ -343,19 +343,25 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
 
     suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
 
-    with open(os.path.join(temp_storage, 'job_config{}.yaml'.format(suffix)), 'w') as f:
+    config_store = os.path.join(temp_storage, 'job_config{}.yaml'.format(suffix))
+    with open(config_store, 'w') as f:
         yaml.dump(params, f)
 
     if cluster_type == 'slurm':
+
         base_command = 'sbatch -n={:d} --mem={:d}M --partition={} -t={} --wrap "'\
             .format(ncpus, mem, partition, wall_time)
         if prefix is not None:
             base_command += '{}; '.format(prefix)
 
+        base_command += '--config-file {}'.format(config_store)
+
+        for ext in to_extract:
+            issue_command = '{} {}"'.format(base_command, ext)
+            print(issue_command)
+
     else:
         raise NotImplementedError('Other cluster types not supported')
-
-
 
 
 if __name__ == '__main__':
