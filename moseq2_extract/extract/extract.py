@@ -79,8 +79,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     if flip_classifier:
         # print('Fixing flips...')
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
-        cropped_frames[flips, ...] = np.flip(
-            cropped_frames[flips, ...], axis=2)
+        cropped_frames[flips, ...] = np.flip(cropped_frames[flips, ...], axis=2)
+        cropped_filtered_frames[flips, ...] = np.flip(cropped_filtered_frames[flips, ...], axis=2)
         mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
 
     scalars = compute_scalars(cropped_filtered_frames,
