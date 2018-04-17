@@ -4,9 +4,7 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import load_metadata, gen_batch_sequence, load_timestamps,\
-    select_strel, build_path, h5_to_dict, recursive_find_h5s, camel_to_snake,\
-    recursive_find_unextracted_dirs
-from copy import deepcopy
+    select_strel
 import click
 import os
 import h5py
@@ -15,7 +13,6 @@ import numpy as np
 import ruamel.yaml as yaml
 import uuid
 import pathlib
-import datetime
 import sys
 import urllib.request
 
@@ -30,7 +27,7 @@ def CommandWithConfigFile(config_file_param_name):
             config_file = ctx.params[config_file_param_name]
             if config_file is not None:
                 with open(config_file) as f:
-                    config_data = yaml.load(f, yaml.Loader)
+                    config_data = yaml.load(f, yaml.RoundTripLoader)
                     for param, value in ctx.params.items():
                         if param in config_data:
                             ctx.params[param] = config_data[param]
@@ -285,40 +282,6 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
     print('\n')
 
 
-# recurse through directories, find h5 files with completed extractions, make a manifest
-# and copy the contents to a new directory
-@cli.command(name="aggregate-results")
-@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
-@click.option('--format', '-f', type=str, default='${start_time}_${session_name}_${subject_name}',
-              help="Mapping from metadata to new file")
-@click.option('--output-dir', '-o', type=click.Path(),
-              default=os.path.join(os.getcwd(), 'aggregate_results/'),
-              help="Where to store results")
-def aggregate_results(input_dir, format, output_dir):
-
-    h5s, dicts, yamls = recursive_find_h5s(input_dir)
-    to_load = [(tmp, file) for tmp, file in zip(dicts, h5s) if tmp['complete'] and not tmp['skip']]
-
-    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
-    # then stage the copy
-
-    for i, tup in enumerate(to_load):
-        with h5py.File(tup[1], 'r') as f:
-            tmp = h5_to_dict(f, '/metadata/extraction')
-            tmp2 = deepcopy(tmp)
-            for key, val in tmp.items():
-                tmp2[camel_to_snake(key)] = tmp2.pop(key)
-            to_load[i][0]['extraction_metadata'] = tmp2
-
-    manifest = {}
-
-    for tup in to_load:
-        copy_path = build_path(tup[0]['extraction_metadata'], format)
-        manifest[tup[1]] = copy_path
-
-    print(manifest)
-
-
 @cli.command(name="download-flip-file")
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
@@ -353,80 +316,10 @@ def download_flip_file(output_dir):
 
 
 @cli.command(name="make-default-config")
-def make_sample_config():
+def make_default_config():
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    yaml.dump(params, sys.stdout)
-
-
-@cli.command(name="extract-batch")
-@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
-@click.option('--config-file', '-c', type=click.Path(), help="Path to configuration file")
-@click.option('--cluster-type', type=click.Choice(['slurm']), default='slurm', help='Cluster type')
-@click.option('--temp-storage', type=click.Path(),
-              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-@click.option('--ncpus', type=int, default=4, help="Number of CPUs")
-@click.option('--mem', type=int, default=5000, help="RAM in MB")
-@click.option('--wall-time', type=str, default='3:00:00', help="Wall time")
-@click.option('--partition', type=str, default='short', help="Partition name")
-@click.option('--prefix', type=str, default='source activate moseq2', help="Command to run before extract")
-def extract_batch(input_dir, config_file, cluster_type, temp_storage,
-                  ncpus, mem, wall_time, partition, prefix):
-    # find directories with .dat files that either have incomplete or no extractions
-
-    to_extract = recursive_find_unextracted_dirs(input_dir)
-    objs = extract.params
-    params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    param_names = list(params.keys())
-
-    if config_file is not None and not os.path.exists(config_file):
-        raise IOError('Config file {} does not exist'.format(config_file))
-    elif config_file is not None:
-        with open(config_file, 'r') as f:
-            config = yaml.load(f, Loader=yaml.Loader)
-            for k, v in config.items():
-                if k in param_names:
-                    params[k] = v
-
-    if type(params['roi_index']) is int:
-        params['roi_index'] = [params['roi_index']]
-
-    if not os.path.exists(temp_storage):
-        os.makedirs(temp_storage)
-
-    suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
-
-    config_store = os.path.join(temp_storage, 'job_config{}.yaml'.format(suffix))
-    with open(config_store, 'w') as f:
-        yaml.dump(params, f)
-
-    if cluster_type == 'slurm':
-
-        for ext in to_extract:
-
-            base_command = 'sbatch -n {:d} --mem={:d}M -p {} -t {} --wrap "'\
-                .format(ncpus, mem, partition, wall_time)
-            if prefix is not None:
-                base_command += '{}; '.format(prefix)
-
-            if len(params['roi_index']) > 1:
-                base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
-
-            for roi in params['roi_index']:
-                roi_config = deepcopy(params)
-                roi_config['roi_index'] = roi
-                roi_config_store = os.path.join(temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi))
-                with open(roi_config_store, 'w') as f:
-                    yaml.dump(roi_config, f)
-
-                base_command += 'moseq2 extract --config-file {} --roi-index {:d} {}; '\
-                    .format(roi_config_store, roi, ext)
-
-            base_command += '"'
-            print(base_command)
-
-    else:
-        raise NotImplementedError('Other cluster types not supported')
+    yaml.dump(params, sys.stdout, Dumper=yaml.RoundTripDumper)
 
 
 if __name__ == '__main__':
