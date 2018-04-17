@@ -31,7 +31,7 @@ def CommandWithConfigFile(config_file_param_name):
                     config_data = yaml.load(f, yaml.Loader)
                     for param, value in ctx.params.items():
                         if param in config_data:
-                            ctx[param] = config_data[param]
+                            ctx.params[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
 
@@ -322,9 +322,8 @@ def aggregate_results(input_dir, format, output_dir):
 @click.option('--wall-time', type=str, default='3:00:00', help="Wall time")
 @click.option('--partition', type=str, default='short', help="Partition name")
 @click.option('--prefix', type=str, default='source activate moseq2', help="Command to run before extract")
-@click.option('--nrois', type=int, default=1, help="Number of ROIs to extract")
 def extract_batch(input_dir, config_file, cluster_type, temp_storage,
-                  ncpus, mem, wall_time, partition, prefix, nrois):
+                  ncpus, mem, wall_time, partition, prefix):
     # find directories with .dat files that either have incomplete or no extractions
 
     to_extract = recursive_find_unextracted_dirs(input_dir)
@@ -359,15 +358,12 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
 
         for ext in to_extract:
 
-            if nrois > 1:
-
+            if len(config['roi_index']) > 1:
                 base_command += 'moseq2 find-roi --config-file {} {} '.format(config_store, ext)
-                for roi in range(nrois):
-                    base_command += '--roi-index {:d} '.format(roi)
 
-                base_command += '; '
+            for roi in config['roi_index']:
+                base_command += 'moseq2 extract --config-file {} --roi-index {:d}; '.format(config_store, roi)
 
-            base_command += 'moseq2 extract --config-file {}'.format(config_store)
             issue_command = '{} {}"'.format(base_command, ext)
             print(issue_command)
 
