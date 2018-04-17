@@ -30,7 +30,12 @@ def CommandWithConfigFile(config_file_param_name):
                     config_data = yaml.load(f, yaml.RoundTripLoader)
                     for param, value in ctx.params.items():
                         if param in config_data:
-                            ctx.params[param] = config_data[param]
+                            if type(value) is tuple and type(config_data[param]) is int:
+                                ctx.params[param] = tuple([config_data[param]])
+                            elif type(value) is tuple:
+                                ctx.params[param] = tuple(config_data[param])
+                            else:
+                                ctx.params[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
 
@@ -95,7 +100,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
               help='Width and height of cropped mouse')
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
+@click.option('--roi-index', default=0, type=int, help='Index of roi to use')
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--min-height', default=10, type=int, help='Min height of mouse from floor (mm)')
