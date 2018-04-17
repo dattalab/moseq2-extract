@@ -387,6 +387,9 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
                 if k in param_names:
                     params[k] = v
 
+    if type(params['roi_index']) is int:
+        params['roi_index'] = [params['roi_index']]
+
     if not os.path.exists(temp_storage):
         os.makedirs(temp_storage)
 
@@ -405,10 +408,10 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
             if prefix is not None:
                 base_command += '{}; '.format(prefix)
 
-            if len(config['roi_index']) > 1:
+            if len(params['roi_index']) > 1:
                 base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
 
-            for roi in config['roi_index']:
+            for roi in params['roi_index']:
                 roi_config = deepcopy(params)
                 roi_config['roi_index'] = roi
                 roi_config_store = os.path.join(temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi))
