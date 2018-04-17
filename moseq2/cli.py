@@ -321,7 +321,7 @@ def aggregate_results(input_dir, format, output_dir):
 @click.option('--prefix', type=str, default='source activate moseq2', help="Command to run before extract")
 @click.option('--nrois', type=int, default=1, help="Number of ROIs to extract")
 def extract_batch(input_dir, config_file, cluster_type, temp_storage,
-                  ncpus, mem, wall_time, partition, prefix):
+                  ncpus, mem, wall_time, partition, prefix, nrois):
     # find directories with .dat files that either have incomplete or no extractions
 
     to_extract = recursive_find_unextracted_dirs(input_dir)
