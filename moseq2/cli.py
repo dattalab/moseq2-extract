@@ -96,7 +96,7 @@ def find_roi(input_file, roi_dilate, roi_shape, roi_index, roi_weights,
               help='Width and height of cropped mouse')
 @click.option('--roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--roi-index', default=0, type=int, help='Index of roi to use')
+@click.option('--roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
 @click.option('--roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='ROI feature weighting (area, extent, dist)')
 @click.option('--min-height', default=10, type=int, help='Min height of mouse from floor (mm)')
@@ -125,6 +125,12 @@ def extract(input_file, crop_size, roi_dilate, roi_shape, roi_weights, roi_index
             output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
+
+    # if we pass in multiple roi indices, recurse and process each roi
+    # if len(roi_index) > 1:
+    #     for roi in roi_index:
+    #         extract(roi_index=roi, **locals())
+    #     return None
 
     status_dict = {
         'parameters': locals(),
@@ -359,10 +365,17 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
         for ext in to_extract:
 
             if len(config['roi_index']) > 1:
-                base_command += 'moseq2 find-roi --config-file {} {} '.format(config_store, ext)
+                base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
 
             for roi in config['roi_index']:
-                base_command += 'moseq2 extract --config-file {} --roi-index {:d}; '.format(config_store, roi)
+                roi_config = deepcopy(params)
+                roi_config['roi_index'] = roi
+                roi_config_store = os.path.join(temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi))
+                with open(roi_config_store, 'w') as f:
+                    yaml.dump(roi_config, f)
+
+                base_command += 'moseq2 extract --config-file {} --roi-index {:d}; '\
+                    .format(roi_config_store, roi)
 
             issue_command = '{} {}"'.format(base_command, ext)
             print(issue_command)
