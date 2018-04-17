@@ -357,12 +357,12 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
 
     if cluster_type == 'slurm':
 
-        base_command = 'sbatch -n {:d} --mem={:d}M -p {} -t {} --wrap "'\
-            .format(ncpus, mem, partition, wall_time)
-        if prefix is not None:
-            base_command += '{}; '.format(prefix)
-
         for ext in to_extract:
+
+            base_command = 'sbatch -n {:d} --mem={:d}M -p {} -t {} --wrap "'\
+                .format(ncpus, mem, partition, wall_time)
+            if prefix is not None:
+                base_command += '{}; '.format(prefix)
 
             if len(config['roi_index']) > 1:
                 base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
