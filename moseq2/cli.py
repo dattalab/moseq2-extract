@@ -360,8 +360,12 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
         for ext in to_extract:
 
             if nrois > 1:
+
+                base_command += 'moseq2 find-roi --config-file {} {} '.format(config_store, ext)
                 for roi in range(nrois):
-                    base_command += 'moseq2 find-roi --config-file {} {}; '.format(config_store, ext)
+                    base_command += '--roi-index {:d} '.format(roi)
+
+                base_command += '; '
 
             base_command += 'moseq2 extract --config-file {}'.format(config_store)
             issue_command = '{} {}"'.format(base_command, ext)
