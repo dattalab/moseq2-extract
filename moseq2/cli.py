@@ -374,7 +374,7 @@ def extract_batch(input_dir, config_file, cluster_type, temp_storage,
                 with open(roi_config_store, 'w') as f:
                     yaml.dump(roi_config, f)
 
-                base_command += 'moseq2 extract --config-file {} --roi-index {:d} {}; '\
+                base_command += 'moseq2 extract --config-file {} --roi-index {:d} {}; "'\
                     .format(roi_config_store, roi, ext)
 
             print(base_command)
