@@ -29,12 +29,9 @@ def CommandWithConfigFile(config_file_param_name):
             if config_file is not None:
                 with open(config_file) as f:
                     config_data = yaml.load(f, yaml.Loader)
-                    default_map = {}
                     for param, value in ctx.params.items():
-                        if value is None and param in config_data:
-                            default_map[param] = config_data[param]
-
-                self.default_map = default_map
+                        if param in config_data:
+                            ctx[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
 
