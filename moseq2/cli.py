@@ -17,7 +17,7 @@ import uuid
 import pathlib
 import datetime
 import sys
-
+import urllib.request
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -316,6 +316,39 @@ def aggregate_results(input_dir, format, output_dir):
         manifest[tup[1]] = copy_path
 
     print(manifest)
+
+
+@cli.command(name="download-flip-file")
+@click.option('--output-dir', type=click.Path(),
+              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
+def download_flip_file(output_dir):
+
+    # TODO: more flip files!!!!
+    flip_files = {
+        'large mice with fibers':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl"
+    }
+
+    key_list = list(flip_files.keys())
+    for idx, (k, v) in enumerate(flip_files.items()):
+        print('[{}] {} ---> {}'.format(idx, k, v))
+
+    selection = None
+
+    while selection is None:
+        selection = click.prompt('Enter a selection', type=int)
+        if selection > len(flip_files.keys()):
+            selection = None
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    selection = flip_files[key_list[selection]]
+
+    output_filename = os.path.join(output_dir, os.path.basename(selection))
+    urllib.request.urlretrieve(selection, output_filename)
+    print('Successfully downloaded flip file to {}'.format(output_filename))
+    print('Be sure to supply this as your flip-file during extraction')
 
 
 @cli.command(name="make-default-config")

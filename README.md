@@ -14,12 +14,26 @@ Welcome to moseq2, the latest version of a software package for mouse tracking i
 Moseq has been tested with Python 3.4 and later.  All requirements can be installed using pip, though it's recommended you create a new conda environment to ensure the dependencies do not conflict with any software you may have currently installed.
 
 ```sh
-conda create -n moseq2 python=3.6
+# get the latest miniconda for linux, make executable, put in path
+curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o "$HOME/miniconda3_latest.sh"
+# make it executable
+chmod +x $HOME/miniconda3_latest.sh
+# install miniconda with no user intervention, then append to PATH
+$HOME/miniconda3_latest.sh -b -p $HOME/miniconda3
+cat >> ~/.bashrc << END
+# add for miniconda install
+PATH=\$HOME/miniconda3/bin:\$PATH
+END
+
+# make sure we have the conda command available
+source $HOME/.bashrc
+conda create -n "moseq2" python=3.6 -y
 source activate moseq2
-git clone https://github.com/dattalab/moseq2.git
-cd moseq2/
-pip install -e .
-moseq2 --help
+
+# now install our python code
+mkdir $HOME/python_repos
+git clone https://github.com/dattalab/moseq2.git $HOME/python_repos/moseq2
+pip install -e $HOME/python_repos/moseq2
 ```
 
 If you get any errors with respect to LibSM, e.g. in CentOS in an HPC environment, you may need to run this command *before* installing via pip,
@@ -30,8 +44,58 @@ sudo yum install libSM
 
 ## Usage
 
+Most usage patterns are available via passing `--help` on the command line.  To see the available command,
+
+```sh
+moseq2 --help
+```
+
+Then to see the options available for each command, e.g.,
+
+```sh
+moseq2 extract --help
+```
+
+### Extracting data (interactive)
+
+To extract data, simply point `moseq2 extract` to any `depth.dat` file,
+
+```sh
+moseq2 extract ~/my_awesome_data/depth.data
+```
+
+This automatically select an ROI and extract data to the `proc` folder where `depth.dat` is located.
+
+### Extracting data (batch, slurm)
+
+On a cluster with the slurm scheduler, you can batch extract using the `moseq2 extract-batch` command. If you do not pass any parameters, all defaults will be used.  It is recommended that you at least include the path to a flip classifier (see below for details on downloading a pre-trained classifier or training your own).
+
+First, make a default configuration file,
+
+```sh
+moseq2 make-default-config > batch_configuration.yaml
+```  
+
+Edit the `flip_file` field to point to the path to your flip classifier.  If you don't have one,
+
+```sh
+moseq2 download-flip-file
+```
+
+Then select the flip classifier you want to download, which will then be downloaded to ~/moseq2/ by default (you can change this with the parameter `--store-dir`).  **Be sure to add the path to the `flip_file` field in `batch_configuration.yaml` before proceeding.**  Then, to create the slurm commands to send to the scheduler and then send them,
+
+```sh
+moseq2 extract-batch --config-file batch_configuration.yaml > slurm_batch.sh
+chmod a+x slurm_batch.sh
+./slurm_batch.sh
+```
+
+### Flip classification
+
 Under construction
 
 ## Support
 
 ## Contributing
+
+If you would like to contribute, fork the repository and issue a pull request.  
