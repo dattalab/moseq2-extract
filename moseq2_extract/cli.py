@@ -30,7 +30,12 @@ def CommandWithConfigFile(config_file_param_name):
                     config_data = yaml.load(f, yaml.RoundTripLoader)
                     for param, value in ctx.params.items():
                         if param in config_data:
-                            ctx.params[param] = config_data[param]
+                            if type(value) is tuple and type(config_data[param]) is int:
+                                ctx.params[param] = tuple([config_data[param]])
+                            elif type(value) is tuple:
+                                ctx.params[param] = tuple(config_data[param])
+                            else:
+                                ctx.params[param] = config_data[param]
 
             return super(CustomCommandClass, self).invoke(ctx)
 
@@ -94,7 +99,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of the mask dilation (to include environment walls)')
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use for the mask dilation (ellipse or rect)')
-@click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use', multiple=True)
+@click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use')
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
               help='Feature weighting (area, extent, dist) of the background mask')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
