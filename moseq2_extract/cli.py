@@ -322,6 +322,8 @@ def download_flip_file(output_dir):
 def generate_config(out_path):
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
     with open(os.path.join(out_path, 'moseq-default-config.yaml'), 'w') as conf:
         yaml.dump(params, conf, Dumper=yaml.RoundTripDumper)
 
