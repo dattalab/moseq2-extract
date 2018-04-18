@@ -317,11 +317,13 @@ def download_flip_file(output_dir):
     print('Be sure to supply this as your flip-file during extraction')
 
 
-@cli.command(name="make-default-config")
-def make_default_config():
+@cli.command(name="generate-config")
+@click.argument('out-path', type=click.Path(resolve_path=True))
+def generate_config(out_path):
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    yaml.dump(params, sys.stdout, Dumper=yaml.RoundTripDumper)
+    with open(os.path.join(out_path, 'moseq-default-config.yaml'), 'w') as conf:
+        yaml.dump(params, conf, Dumper=yaml.RoundTripDumper)
 
 
 if __name__ == '__main__':
