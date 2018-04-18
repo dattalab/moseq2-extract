@@ -52,8 +52,7 @@ def cli():
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--bg-roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
-@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
-              help='ROI feature weighting (area, extent, dist)')
+@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
@@ -95,13 +94,12 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 
 
 @cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True), help='depth.dat file location for extraction')
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of the mask dilation (to include environment walls)')
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use for the mask dilation (ellipse or rect)')
 @click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use')
-@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
-              help='Feature weighting (area, extent, dist) of the background mask')
+@click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='Feature weighting (area, extent, dist) of the background mask')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
