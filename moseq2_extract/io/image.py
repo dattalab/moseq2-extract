@@ -34,7 +34,8 @@ def write_image(filename, image, scale=True,
     if directory and not os.path.exists(directory):
         os.makedirs(directory)
 
-    tifffile.imsave(filename, image, compress=compress, metadata=metadata)
+    with open(filename, 'wb') as f:
+        tifffile.imsave(f, image, compress=compress, metadata=metadata)
 
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
