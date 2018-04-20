@@ -13,7 +13,7 @@ before_install:
   - export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # script for tests... (eventually add coveralls)
-script: 
-  - pytest --cov=./moseq2
+script:
+  - pytest --cov=./moseq2_extract
 after_success:
   - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0

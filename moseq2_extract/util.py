@@ -2,6 +2,41 @@ import numpy as np
 import os
 import json
 import cv2
+import click
+import ruamel.yaml as yaml
+
+
+# from https://stackoverflow.com/questions/46358797/
+# python-click-supply-arguments-and-options-from-a-configuration-file
+def command_with_config(config_file_param_name):
+
+    class custom_command_class(click.Command):
+
+        def invoke(self, ctx):
+            config_file = ctx.params[config_file_param_name]
+            param_defaults = {}
+            for param in self.params:
+                if type(param) is click.core.Option:
+                    param_defaults[param.human_readable_name] = param.default
+
+            if config_file is not None:
+                with open(config_file) as f:
+                    config_data = yaml.load(f, yaml.RoundTripLoader)
+                    for param, value in ctx.params.items():
+                        if param in config_data:
+                            if type(value) is tuple and type(config_data[param]) is int:
+                                ctx.params[param] = tuple([config_data[param]])
+                            elif type(value) is tuple:
+                                ctx.params[param] = tuple(config_data[param])
+                            else:
+                                ctx.params[param] = config_data[param]
+
+                            if param_defaults[param] != value:
+                                ctx.params[param] = value
+
+            return super(custom_command_class, self).invoke(ctx)
+
+    return custom_command_class
 
 
 def gen_batch_sequence(nframes, chunk_size, overlap):
