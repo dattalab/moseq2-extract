@@ -4,7 +4,7 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import load_metadata, gen_batch_sequence, load_timestamps,\
-    select_strel
+    select_strel, command_with_config
 import click
 import os
 import h5py
@@ -13,33 +13,7 @@ import numpy as np
 import ruamel.yaml as yaml
 import uuid
 import pathlib
-import sys
 import urllib.request
-
-
-# from https://stackoverflow.com/questions/46358797/
-# python-click-supply-arguments-and-options-from-a-configuration-file
-def CommandWithConfigFile(config_file_param_name):
-
-    class CustomCommandClass(click.Command):
-
-        def invoke(self, ctx):
-            config_file = ctx.params[config_file_param_name]
-            if config_file is not None:
-                with open(config_file) as f:
-                    config_data = yaml.load(f, yaml.RoundTripLoader)
-                    for param, value in ctx.params.items():
-                        if param in config_data:
-                            if type(value) is tuple and type(config_data[param]) is int:
-                                ctx.params[param] = tuple([config_data[param]])
-                            elif type(value) is tuple:
-                                ctx.params[param] = tuple(config_data[param])
-                            else:
-                                ctx.params[param] = config_data[param]
-
-            return super(CustomCommandClass, self).invoke(ctx)
-
-    return CustomCommandClass
 
 
 @click.group()
@@ -47,7 +21,7 @@ def cli():
     pass
 
 
-@cli.command(name="find-roi", cls=CommandWithConfigFile('config_file'))
+@cli.command(name="find-roi", cls=command_with_config('config_file'))
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
@@ -93,7 +67,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                     rois[idx], scale=True, dtype='uint8')
 
 
-@cli.command(name="extract", cls=CommandWithConfigFile('config_file'))
+@cli.command(name="extract", cls=command_with_config('config_file'))
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of the mask dilation (to include environment walls)')
@@ -111,8 +85,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tail-filter-iters', default=1, type=int, help="Number of tail filter iterations")
 @click.option('--tail-filter-size', default=(9, 9), type=(int, int), help='Tail filter size')
 @click.option('--tail-filter-shape', default='ellipse', type=str, help='Tail filter shape')
-@click.option('--spatial-filter-size', default=(3,), type=tuple, help='Space prefilter kernel for a median filter')
-@click.option('--temporal-filter-size', default=(), type=tuple, help='Time prefilter kernel')
+@click.option('--spatial-filter-size', '-s', default=3, type=int, help='Space prefilter kernel (median filter)', multiple=True)
+@click.option('--temporal-filter-size', '-t', default=0, type=int, help='Time prefilter kernel (median filter)', multiple=True)
 @click.option('--chunk-size', default=1000, type=int, help='Number of frames for each processing iteration')
 @click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')
 @click.option('--output-dir', default=None, help='Output directory to save the results h5 file')
@@ -122,7 +96,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
             min_height, max_height, fps, flip_classifier, use_tracking_model, cable_filter_iters,
             cable_filter_shape, cable_filter_size, tail_filter_iters, tail_filter_size,
-            tail_filter_shape, prefilter_space, prefilter_time, chunk_size, chunk_overlap,
+            tail_filter_shape, spatial_filter_size, temporal_filter_size, chunk_size, chunk_overlap,
             output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
@@ -170,7 +144,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f)
+        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
 
     # get the background and roi, which will be used across all batches
 
@@ -241,8 +215,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     strel_min=strel_min,
                                     iters_tail=tail_filter_iters,
                                     iters_min=cable_filter_iters,
-                                    prefilter_space=prefilter_space,
-                                    prefilter_time=prefilter_time,
+                                    prefilter_space=spatial_filter_size,
+                                    prefilter_time=temporal_filter_size,
                                     min_height=min_height,
                                     max_height=max_height,
                                     flip_classifier=flip_classifier,
@@ -279,7 +253,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f)
+        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
 
     print('\n')
 
@@ -318,14 +292,13 @@ def download_flip_file(output_dir):
 
 
 @cli.command(name="generate-config")
-@click.argument('out-path', type=click.Path(resolve_path=True))
-def generate_config(out_path):
+@click.option('--output-file','-o', type=click.Path(), default='config.yaml')
+def generate_config(output_file):
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-    with open(os.path.join(out_path, 'moseq-default-config.yaml'), 'w') as conf:
-        yaml.dump(params, conf, Dumper=yaml.RoundTripDumper)
+
+    with open(output_file, 'w') as f:
+        yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
 
 if __name__ == '__main__':

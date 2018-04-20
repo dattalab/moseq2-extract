@@ -254,7 +254,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
         if iters_min is not None and iters_min > 0:
             filtered_frames[i, ...] = cv2.erode(filtered_frames[i, ...], strel_min, iters_min)
 
-        if prefilter_space:
+        if prefilter_space is not None and np.all(np.array(prefilter_space) > 0):
             for j in range(len(prefilter_space)):
                 filtered_frames[i, ...] = cv2.medianBlur(filtered_frames[i, ...], prefilter_space[j])
 
@@ -262,7 +262,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
             filtered_frames[i, ...] = cv2.morphologyEx(
                 filtered_frames[i, ...], cv2.MORPH_OPEN, strel_tail, iters_tail)
 
-    if prefilter_time:
+    if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
         for j in range(len(prefilter_time)):
             filtered_frames = scipy.signal.medfilt(
                 filtered_frames, [prefilter_time[j], 1, 1])
