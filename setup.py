@@ -11,6 +11,6 @@ setup(
                       'tqdm', 'statsmodels==0.8.0',
                       'numpy==1.13.1', 'joblib==0.11', 'opencv-python',
                       'click', 'ruamel.yaml'],
-    python_requires='3.6',
+    python_requires='==3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )
