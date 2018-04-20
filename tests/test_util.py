@@ -3,7 +3,10 @@ import os
 import numpy as np
 import numpy.testing as npt
 import json
-from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps
+import cv2
+import click
+from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
+    select_strel, command_with_config
 
 
 @pytest.fixture(scope='function')
@@ -50,3 +53,15 @@ def test_load_metadata(temp_dir):
     loaded_dict = load_metadata(json_file)
 
     assert(loaded_dict == tmp_dict)
+
+
+def test_select_strel():
+
+    strel = select_strel('ellipse', size=(9, 9))
+    npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+
+    strel = select_strel('rectangle', size=(9, 9))
+    npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9)))
+
+    strel = select_strel('sdfdfsf', size=(9, 9))
+    npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))

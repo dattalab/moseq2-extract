@@ -1,4 +1,4 @@
-import moseq2_extract.extract.proc
+# import moseq2_extract.extract.proc
 import numpy as np
 import tqdm
 import subprocess
@@ -79,20 +79,22 @@ def get_video_info(filename):
                'default=noprint_wrappers=1:nokey=1',
                filename,
                '-sexagesimal']
+
     ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = ffmpeg.communicate()
+
     if(err):
         print(err)
     out = out.decode().split('\n')
+
     return {'file': filename,
-            'width': int(out[0]),
-            'height': int(out[1]),
+            'dims': (int(out[0]), int(out[1])),
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'duration': int(out[3])}
+            'nframes': int(out[3])}
 
 
 # simple command to pipe frames to an ffv1 file
-def write_frames(filename, frames, threads=6, camera_fs=30,
+def write_frames(filename, frames, threads=6, fps=30,
                  pixel_format='gray16le', codec='ffv1',
                  slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     """
@@ -110,7 +112,8 @@ def write_frames(filename, frames, threads=6, camera_fs=30,
     command = ['ffmpeg',
                '-y',
                '-threads', str(threads),
-               '-framerate', str(camera_fs),
+               '-loglevel', 'fatal',
+               '-framerate', str(fps),
                '-f', 'rawvideo',
                '-s', frame_size,
                '-pix_fmt', pixel_format,
@@ -119,7 +122,7 @@ def write_frames(filename, frames, threads=6, camera_fs=30,
                '-vcodec', codec,
                '-slices', str(slices),
                '-slicecrc', str(slicecrc),
-               '-r', str(camera_fs),
+               '-r', str(fps),
                filename]
 
     if get_cmd:
@@ -127,14 +130,14 @@ def write_frames(filename, frames, threads=6, camera_fs=30,
 
     pipe = subprocess.Popen(
         command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-    for i in range(frames.shape[0]):
+    for i in tqdm.tqdm(range(frames.shape[0])):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 
     pipe.stdin.close()
     pipe.wait()
 
 
-def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
+def read_frames(filename, frames=range(0,), threads=6, fps=30,
                 pixel_format='gray16le', frame_size=None,
                 slices=24, slicecrc=1, get_cmd=False):
     """
@@ -144,7 +147,7 @@ def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
         filename (str): filename to get frames from
         frames (list or 1d numpy array): list of frames to grab
         threads (int): number of threads to use for decode
-        camera_fs (int): frame rate of camera in Hz
+        fps (int): frame rate of camera in Hz
         pixel_format (str): ffmpeg pixel format of data
         frame_size (str): wxh frame size in pixels
         slices (int): number of slices to use for decode
@@ -156,18 +159,18 @@ def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
 
     finfo = get_video_info(filename)
 
-    if len(frames) == 0 or not frames:
+    if frames is None or len(frames) == 0:
         finfo = get_video_info(filename)
-        frames = np.arange(finfo['duration']).astype('int16')
+        frames = np.arange(finfo['nframes']).astype('int16')
 
     if not frame_size:
-        frame_size = (finfo['width'], finfo['height'])
+        frame_size = finfo['dims']
 
     command = [
         'ffmpeg',
         '-loglevel', 'fatal',
         '-i', filename,
-        '-ss', str(datetime.timedelta(seconds=frames[0]/camera_fs)),
+        '-ss', str(datetime.timedelta(seconds=frames[0]/fps)),
         '-vframes', str(len(frames)),
         '-f', 'image2pipe',
         '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
@@ -194,7 +197,7 @@ def read_frames(filename, frames=range(0,), threads=6, camera_fs=30,
 
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
-                         camera_fs=30, pixel_format='rgb24',
+                         fps=30, pixel_format='rgb24',
                          codec='h264', slices=24, slicecrc=1,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
@@ -217,7 +220,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                '-y',
                '-loglevel', 'fatal',
                '-threads', str(threads),
-               '-framerate', str(camera_fs),
+               '-framerate', str(fps),
                '-f', 'rawvideo',
                '-s', frame_size,
                '-pix_fmt', pixel_format,
@@ -226,7 +229,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                '-vcodec', codec,
                '-slices', str(slices),
                '-slicecrc', str(slicecrc),
-               '-r', str(camera_fs),
+               '-r', str(fps),
                '-pix_fmt', 'yuv420p',
                filename]
 
@@ -256,43 +259,43 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         return pipe
 
 
-def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
-                            chunk_size=1000, overlap=0, depth_min=5,
-                            depth_max=100,
-                            bytes_per_frame=int((424*512*16)/8)):
+# def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
+#                             chunk_size=1000, overlap=0, depth_min=5,
+#                             depth_max=100,
+#                             bytes_per_frame=int((424*512*16)/8)):
+#
+#     save_dir = os.path.join(os.path.dirname(src_filename), '_chunks')
+#
+#     if not os.path.exists(save_dir):
+#         os.makedirs(save_dir)
+#
+#     base_filename = os.path.splitext(os.path.basename(src_filename))[0]
+#
+#     file_bytes = os.stat(src_filename).st_size
+#     file_nframes = int(file_bytes/bytes_per_frame)
+#     steps = np.append(np.arange(0, file_nframes, chunk_size), file_nframes)
+#
+#     # need to write out a manifest so we know the location of every frame
+#     dest_filename = []
+#
+#     for i in tqdm.tqdm(range(steps.shape[0]-1)):
+#         if i == 1:
+#             chunk = read_frames_raw(src_filename, np.arange(steps[i], steps[i+1]))
+#         else:
+#             chunk = read_frames_raw(src_filename, np.arange(steps[i]-overlap, steps[i+1]))
+#
+#         chunk = (bground_im-chunk).astype('uint8')
+#         chunk[chunk < depth_min] = 0
+#         chunk[chunk > depth_max] = 0
+#         chunk = moseq2_extract.extract.proc.apply_roi(chunk, roi, bbox)
+#
+#         dest_filename.append(os.path.join(save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
+#         write_frames(dest_filename[-1], chunk)
+#
+#     return dest_filename
 
-    save_dir = os.path.join(os.path.dirname(src_filename), '_chunks')
 
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    base_filename = os.path.splitext(os.path.basename(src_filename))[0]
-
-    file_bytes = os.stat(src_filename).st_size
-    file_nframes = int(file_bytes/bytes_per_frame)
-    steps = np.append(np.arange(0, file_nframes, chunk_size), file_nframes)
-
-    # need to write out a manifest so we know the location of every frame
-    dest_filename = []
-
-    for i in tqdm.tqdm(range(steps.shape[0]-1)):
-        if i == 1:
-            chunk = read_frames_raw(src_filename, np.arange(steps[i], steps[i+1]))
-        else:
-            chunk = read_frames_raw(src_filename, np.arange(steps[i]-overlap, steps[i+1]))
-
-        chunk = (bground_im-chunk).astype('uint8')
-        chunk[chunk < depth_min] = 0
-        chunk[chunk > depth_max] = 0
-        chunk = moseq2_extract.extract.proc.apply_roi(chunk, roi, bbox)
-
-        dest_filename.append(os.path.join(save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
-        write_frames(dest_filename[-1], chunk)
-
-    return dest_filename
-
-
-def load_movie_data(filename, frames, frame_dims=(512, 424), bit_depth=16):
+def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
     """
     Reads in frames
     """

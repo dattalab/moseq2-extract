@@ -85,8 +85,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tail-filter-iters', default=1, type=int, help="Number of tail filter iterations")
 @click.option('--tail-filter-size', default=(9, 9), type=(int, int), help='Tail filter size')
 @click.option('--tail-filter-shape', default='ellipse', type=str, help='Tail filter shape')
-@click.option('--spatial-filter-size', '-s', default=3, type=int, help='Space prefilter kernel (median filter)', multiple=True)
-@click.option('--temporal-filter-size', '-t', default=0, type=int, help='Time prefilter kernel (median filter)', multiple=True)
+@click.option('--spatial-filter-size', '-s', default=[3], type=int, help='Space prefilter kernel (median filter)', multiple=True)
+@click.option('--temporal-filter-size', '-t', default=[0], type=int, help='Time prefilter kernel (median filter)', multiple=True)
 @click.option('--chunk-size', default=1000, type=int, help='Number of frames for each processing iteration')
 @click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')
 @click.option('--output-dir', default=None, help='Output directory to save the results h5 file')
@@ -118,8 +118,19 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
-    extraction_metadata = load_metadata(os.path.join(os.path.dirname(input_file), 'metadata.json'))
-    timestamps = load_timestamps(os.path.join(os.path.dirname(input_file), 'depth_ts.txt'), col=0)
+
+    metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
+    timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
+
+    if os.path.exists(metadata_path):
+        extraction_metadata = load_metadata(metadata_path)
+    else:
+        extraction_metadata = {}
+
+    if os.path.exists(timestamp_path):
+        timestamps = load_timestamps(timestamp_path, col=0)
+    else:
+        timestamps = None
 
     scalars = ['centroid_x', 'centroid_y', 'angle', 'width',
                'length', 'height_ave', 'velocity_mag',
@@ -194,7 +205,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         for i in range(len(scalars)):
             f.create_dataset('scalars/{}'.format(scalars[i]), (nframes,), 'float32', compression='gzip')
 
-        f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
+        if timestamps is not None:
+            f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
         f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), 'i1', compression='gzip')
 
         for key, value in extraction_metadata.items():
@@ -244,7 +256,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False)
+                pipe=video_pipe, close_pipe=False, fps=fps)
 
         if video_pipe:
             video_pipe.stdin.close()
@@ -292,7 +304,7 @@ def download_flip_file(output_dir):
 
 
 @cli.command(name="generate-config")
-@click.option('--output-file','-o', type=click.Path(), default='config.yaml')
+@click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
 def generate_config(output_file):
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
