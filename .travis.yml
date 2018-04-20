@@ -1,4 +1,4 @@
-# specs for travis ci
+#specs for travis ci
 language: python
 python:
   - "3.6"
@@ -9,7 +9,7 @@ install:
 before_install:
   - pip install pytest pytest-cov codecov
   - export PYTHONPATH=$PYTHONPATH:$(pwd)
-
+  - sudo apt-get install -y ffmpeg
 # script for tests... (eventually add coveralls)
 script:
   - pytest --cov=./moseq2_extract
