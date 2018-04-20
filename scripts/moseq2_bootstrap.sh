@@ -14,6 +14,9 @@ source $HOME/.bashrc
 conda create -n "moseq2" python=3.6 -y
 source activate moseq2
 
+# make sure we have ffmpeg
+conda install -c conda-forge ffmpeg
+
 # now install our python code
 mkdir $HOME/python_repos
 git clone https://github.com/dattalab/moseq2.git $HOME/python_repos/moseq2
