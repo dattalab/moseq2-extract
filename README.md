@@ -11,7 +11,7 @@ Welcome to moseq2, the latest version of a software package for mouse tracking i
 
 ## Installation
 
-Moseq has been tested with Python 3.4 and later.  All requirements can be installed using pip, though it's recommended you create a new conda environment to ensure the dependencies do not conflict with any software you may have currently installed.
+Moseq has been tested with Python 3.6.  All requirements can be installed using pip, though it's recommended you create a new conda environment to ensure the dependencies do not conflict with any software you may have currently installed.
 
 ```sh
 # get the latest miniconda for linux, make executable, put in path
