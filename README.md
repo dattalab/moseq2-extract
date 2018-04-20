@@ -1,4 +1,4 @@
-# MoSeq2 [![Build Status](https://travis-ci.com/dattalab/moseq2.svg?token=gvoikVySDHEmvHT7Dbed&branch=master)](https://travis-ci.com/dattalab/moseq2) [![codecov](https://codecov.io/gh/dattalab/moseq2/branch/master/graph/badge.svg?token=ICPjpMMwYZ)](https://codecov.io/gh/dattalab/moseq2)
+# MoSeq2 [![Build Status](https://travis-ci.com/dattalab/moseq2-extract.svg?token=gvoikVySDHEmvHT7Dbed&branch=master)](https://travis-ci.com/dattalab/moseq2) [![codecov](https://codecov.io/gh/dattalab/moseq2/branch/master/graph/badge.svg?token=ICPjpMMwYZ)](https://codecov.io/gh/dattalab/moseq2)
 
 Welcome to moseq2, the latest version of a software package for mouse tracking in depth videos first developed by Alex Wiltschko in the Datta Lab at Harvard Medical School.
 
@@ -68,7 +68,7 @@ This automatically select an ROI and extract data to the `proc` folder where `de
 
 ### Extracting data (batch)
 
-For batch extractions, see [moseq2-batch](https://github.com/dattalab/moseq2-batch). 
+For batch extractions, see [moseq2-batch](https://github.com/dattalab/moseq2-batch).
 
 ### Flip classification
 
