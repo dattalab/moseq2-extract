@@ -83,6 +83,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         cropped_filtered_frames[flips, ...] = np.flip(cropped_filtered_frames[flips, ...], axis=2)
         mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
 
+    # todo: put in an option to compute scalars on raw or filtered
+
     scalars = compute_scalars(cropped_filtered_frames,
                               features, min_height, max_height)
 
