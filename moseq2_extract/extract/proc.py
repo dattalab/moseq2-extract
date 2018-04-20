@@ -8,7 +8,6 @@ import scipy.signal
 import cv2
 import tqdm
 import joblib
-from copy import deepcopy
 
 
 def get_flips(frames, flip_file=None, smoothing=None):
@@ -246,7 +245,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
     """
     # seeing enormous speed gains w/ opencv
-    filtered_frames = deepcopy(frames).astype('uint8')
+    filtered_frames = frames.copy().astype('uint8')
 
     for i in tqdm.tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):

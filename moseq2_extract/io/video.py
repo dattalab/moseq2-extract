@@ -5,7 +5,6 @@ import subprocess
 import matplotlib.pyplot as plt
 import os
 import datetime
-from copy import deepcopy
 
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
@@ -243,7 +242,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     use_cmap = plt.get_cmap(cmap)
 
     for i in tqdm.tqdm(range(frames.shape[0]), desc="Writing frames"):
-        disp_img = deepcopy(frames[i, ...].astype('float32'))
+        disp_img = frames[i, ...].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img < 0] = 0
         disp_img[disp_img > 1] = 1
