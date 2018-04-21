@@ -48,13 +48,13 @@ sudo yum install libSM
 Most usage patterns are available via passing `--help` on the command line.  To see the available command,
 
 ```sh
-moseq2 --help
+moseq2-extract --help
 ```
 
 Then to see the options available for each command, e.g.,
 
 ```sh
-moseq2 extract --help
+moseq2-extract extract --help
 ```
 
 ### Extracting data (interactive)
@@ -62,7 +62,7 @@ moseq2 extract --help
 To extract data, simply point `moseq2 extract` to any `depth.dat` file,
 
 ```sh
-moseq2 extract ~/my_awesome_data/depth.data
+moseq2-extract extract ~/my_awesome_data/depth.data
 ```
 
 This automatically select an ROI and extract data to the `proc` folder where `depth.dat` is located.
