@@ -76,12 +76,21 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     mask = crop_and_rotate_frames(
         mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
+    if use_em_tracker:
+        cropped_ll = crop_and_rotate_frames(
+                ll, features, crop_size=crop_size, progress_bar=progress_bar)
+    else:
+        cropped_ll = None
+
     if flip_classifier:
         # print('Fixing flips...')
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
         cropped_frames[flips, ...] = np.flip(cropped_frames[flips, ...], axis=2)
         cropped_filtered_frames[flips, ...] = np.flip(cropped_filtered_frames[flips, ...], axis=2)
         mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
+
+        if use_em_tracker:
+            cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
 
     # todo: put in an option to compute scalars on raw or filtered
 
@@ -91,6 +100,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     results = {
         'depth_frames': cropped_frames,
         'mask_frames': mask,
+        'll_frames': cropped_ll,
         'scalars': scalars
     }
 
