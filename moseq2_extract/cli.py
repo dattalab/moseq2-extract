@@ -14,6 +14,7 @@ import ruamel.yaml as yaml
 import uuid
 import pathlib
 import urllib.request
+from copy import deepcopy
 
 
 @click.group()
@@ -108,7 +109,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     #     return None
 
     status_dict = {
-        'parameters': locals(),
+        'parameters': deepcopy(locals()),
         'complete': False,
         'skip': False,
         'uuid': str(uuid.uuid4())
