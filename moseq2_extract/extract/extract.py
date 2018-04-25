@@ -88,9 +88,12 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         cropped_frames[flips, ...] = np.flip(cropped_frames[flips, ...], axis=2)
         cropped_filtered_frames[flips, ...] = np.flip(cropped_filtered_frames[flips, ...], axis=2)
         mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
+        features['orientation'][flips] += features['orientation'][flips] + np.pi
 
         if use_em_tracker:
             cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
+    else:
+        flips = None
 
     # todo: put in an option to compute scalars on raw or filtered
 
@@ -101,7 +104,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         'depth_frames': cropped_frames,
         'mask_frames': mask,
         'll_frames': cropped_ll,
-        'scalars': scalars
+        'scalars': scalars,
+        'flips': flips
     }
 
     return results
