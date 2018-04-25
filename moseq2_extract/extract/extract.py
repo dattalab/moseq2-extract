@@ -62,6 +62,10 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                         use_cc=use_cc,
                                         progress_bar=progress_bar)
 
+    incl = ~np.isnan(features['orientation'])
+    features['orientation'][incl] = np.unwrap(
+        features['orientation'][incl]*2)/2
+
     # crop and rotate the frames
 
     # print('Cropping frames...')
@@ -90,10 +94,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
     else:
         flips = None
-
-    incl = ~np.isnan(features['orientation'])
-    features['orientation'][incl] = np.unwrap(
-        features['orientation'][incl]*2)/2
 
     # todo: put in an option to compute scalars on raw or filtered
 
