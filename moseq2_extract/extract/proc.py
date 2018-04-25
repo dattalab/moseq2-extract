@@ -342,7 +342,8 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
         if np.any(np.isnan(features['centroid'][i, :])):
             continue
 
-        use_frame = np.pad(frames[i, ...], (crop_size, crop_size), 'constant', constant_values=0)
+        # use_frame = np.pad(frames[i, ...], (crop_size, crop_size), 'constant', constant_values=0)
+        use_frame = cv2.copyMakeBorder(frames[i, ...], *border, cv2.BORDER_CONSTANT, 0)
 
         rr = np.arange(features['centroid'][i, 1]-win[0],
                        features['centroid'][i, 1]+win[1]).astype('int16')
@@ -396,9 +397,9 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100):
             features['height_ave'][i] = np.mean(
                 frames[i, masked_frames[i, ...]])
 
-    vel_x = np.diff(np.pad(features['centroid_x'], (1, 0), 'edge'))
-    vel_y = np.diff(np.pad(features['centroid_y'], (1, 0), 'edge'))
-    vel_z = np.diff(np.pad(features['height_ave'], (1, 0), 'edge'))
+    vel_x = np.diff(np.concatenate((features['centroid_x'][:1], features['centroid_x'])))
+    vel_y = np.diff(np.concatenate((features['centroid_y'][:1], features['centroid_y'])))
+    vel_z = np.diff(np.concatenate((features['height_ave'][:1], features['height_ave'])))
 
     features['velocity_mag'] = np.hypot(vel_x, vel_y)
     features['velocity_mag_3d'] = np.sqrt(
