@@ -13,28 +13,33 @@ def command_with_config(config_file_param_name):
     class custom_command_class(click.Command):
 
         def invoke(self, ctx):
+            # grab the config file
             config_file = ctx.params[config_file_param_name]
-            param_defaults = {}
-            for param in self.params:
-                if type(param) is click.core.Option:
-                    param_defaults[param.human_readable_name] = param.default
+            param_defaults = {p.human_readable_name: p.default for p in self.params
+                              if isinstance(p, click.core.Option)}
+            param_defaults = {k: tuple(v) if type(v) is list else v for k, v in param_defaults.items()}
+            param_cli = {k: tuple(v) if type(v) is list else v for k, v in ctx.params.items()}
 
             if config_file is not None:
                 with open(config_file) as f:
-                    config_data = yaml.load(f, yaml.RoundTripLoader)
-                    for param, value in ctx.params.items():
-                        if param in config_data:
-                            if type(value) is tuple and type(config_data[param]) is int:
-                                ctx.params[param] = tuple([config_data[param]])
-                            elif type(value) is tuple:
-                                ctx.params[param] = tuple(config_data[param])
-                            else:
-                                ctx.params[param] = config_data[param]
+                    config_data = dict(yaml.load(f, yaml.RoundTripLoader))
+                config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
+                               for k, v in config_data.items()}
 
-                            if param_defaults[param] != value:
-                                ctx.params[param] = value
+                # find differences btw config and param defaults
+                diffs = set(param_defaults.items()) ^ set(param_cli.items())
 
-            return super(custom_command_class, self).invoke(ctx)
+                # combine defaults w/ config data
+                combined = {**param_defaults, **config_data}
+
+                # update cli params that are non-default
+                keys = [d[0] for d in diffs]
+                for k in set(keys):
+                    combined[k] = ctx.params[k]
+
+                ctx.params = combined
+
+            return super().invoke(ctx)
 
     return custom_command_class
 
