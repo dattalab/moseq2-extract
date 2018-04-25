@@ -336,6 +336,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     nframes = frames.shape[0]
     cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
     win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
+    border = (crop_size[1], crop_size[1], crop_size[0], crop_size[0])
 
     for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
