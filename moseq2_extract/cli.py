@@ -79,6 +79,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
+@click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
@@ -95,7 +96,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
-            min_height, max_height, fps, flip_classifier, use_tracking_model, cable_filter_iters,
+            min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
+            use_tracking_model, cable_filter_iters,
             cable_filter_shape, cable_filter_size, tail_filter_iters, tail_filter_size,
             tail_filter_shape, spatial_filter_size, temporal_filter_size, chunk_size, chunk_overlap,
             output_dir, write_movie, use_plane_bground, config_file):
@@ -241,6 +243,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     min_height=min_height,
                                     max_height=max_height,
                                     flip_classifier=flip_classifier,
+                                    flip_smoothing=flip_classifier_smoothing,
                                     crop_size=crop_size)
 
             # if desired, write out a movie
