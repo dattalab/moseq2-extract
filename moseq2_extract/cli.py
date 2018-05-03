@@ -243,7 +243,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     min_height=min_height,
                                     max_height=max_height,
                                     flip_classifier=flip_classifier,
-                                    flip_classifier_smoothing=flip_classifier_smoothing,
+                                    flip_smoothing=flip_classifier_smoothing,
                                     crop_size=crop_size)
 
             # if desired, write out a movie
