@@ -18,6 +18,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   mask_threshold=-20, use_cc=False,
                   bground=None, roi=None,
                   rho_mean=0, rho_cov=0,
+                  tracking_ll_threshold=-100,
                   flip_classifier=None, flip_smoothing=51,
                   save_path=os.path.join(os.getcwd(), 'proc'),
                   progress_bar=True, crop_size=(80, 80)):
@@ -50,7 +51,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         # print('Computing EM parameters...')
         parameters = em_tracking(
             filtered_frames, rho_mean=rho_mean,
-            rho_cov=rho_cov, progress_bar=progress_bar)
+            rho_cov=rho_cov, progress_bar=progress_bar,
+            ll_threshold=tracking_ll_threshold)
         ll = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
 
     # now get the centroid and orientation of the mouse
