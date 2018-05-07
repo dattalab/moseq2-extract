@@ -2,6 +2,7 @@ from moseq2_extract.extract.proc import crop_and_rotate_frames,\
     clean_frames, apply_roi, get_frame_features,\
     get_flips, compute_scalars
 from moseq2_extract.extract.track import em_tracking, em_get_ll
+from copy import deepcopy
 import cv2
 import os
 import numpy as np
@@ -56,7 +57,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,
             init_strel=tracking_init_strel)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
-        ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
+        # ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
     else:
         ll = None
         parameters = None
@@ -74,9 +75,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     features['orientation'][incl] = np.unwrap(
         features['orientation'][incl]*2)/2
 
-    if use_em_tracker:
-        mask = ll_raw
-
     # crop and rotate the frames
 
     # print('Cropping frames...')
@@ -84,8 +82,15 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         chunk, features, crop_size=crop_size, progress_bar=progress_bar)
     cropped_filtered_frames = crop_and_rotate_frames(
         filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar)
-    mask = crop_and_rotate_frames(
-        mask, features, crop_size=crop_size, progress_bar=progress_bar)
+
+    if use_em_tracker:
+        use_parameters = deepcopy(parameters)
+        use_parameters['mean'][:, 0] = crop_size[1] // 2
+        use_parameters['mean'][:, 1] = crop_size[0] // 2
+        mask = em_get_ll(cropped_frames, progress_bar=progress_bar, **use_parameters)
+    else:
+        mask = crop_and_rotate_frames(
+            mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
     #
     # if use_em_tracker:
