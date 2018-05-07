@@ -86,9 +86,6 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
 
     include_pixels = mouse_mask.ravel()
 
-    if np.sum(include_pixels) < 2:
-        include_pixels = np.ones(xyz[2, :].shape, dtype='bool')
-
     try:
         mean = np.mean(xyz[:, include_pixels], axis=1)
     except FloatingPointError:
