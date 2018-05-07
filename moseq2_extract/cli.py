@@ -235,6 +235,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f.create_dataset('metadata/extraction/{}'.format(key), data=value)
 
         video_pipe = None
+        tracking_init_mean = None
+        tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
             raw_frames = load_movie_data(input_file, frame_range)
@@ -260,16 +262,20 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     crop_size=crop_size,
                                     mask_threshold=tracking_model_mask_threshold,
                                     tracking_ll_threshold=tracking_model_ll_threshold,
-                                    tracking_segment=tracking_model_segment)
+                                    tracking_segment=tracking_model_segment,
+                                    tracking_init_mean=tracking_init_mean,
+                                    tracking_init_cov=tracking_init_cov)
 
             # if desired, write out a movie
-
-            # todo: cut out first part of overhang
 
             if i > 0:
                 offset = chunk_overlap
             else:
                 offset = 0
+
+            if use_tracking_model:
+                tracking_init_mean = results['parameters']['mean'][-(offset+1)]
+                tracking_init_cov = results['parameters']['cov'][-(offset+1)]
 
             frame_range = frame_range[offset:]
 

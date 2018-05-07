@@ -48,7 +48,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
 
 
 def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
-                depth_floor=5, depth_ceiling=100, progress_bar=True):
+                depth_floor=5, depth_ceiling=100, progress_bar=True, init_mean=None, init_cov=None):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
     Args:
@@ -60,7 +60,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
         depth_floor (float): height in mm for separating mouse from floor
 
     Returns:
-        model_paramters (dict): mean and covariance estimates for each frame
+        model_parameters (dict): mean and covariance estimates for each frame
     """
     # initialize the mean and covariance
 
@@ -70,31 +70,37 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
 
-    mouse_mask = np.zeros((r, c), dtype='uint8')
-    include_pixels = np.logical_and(xyz[2, :] > depth_floor, xyz[2, :] < depth_ceiling)
-    include_pixels = include_pixels.reshape(r, c).astype('uint8')
+    if init_mean is None or init_cov is None:
+        mouse_mask = np.zeros((r, c), dtype='uint8')
+        include_pixels = np.logical_and(xyz[2, :] > depth_floor, xyz[2, :] < depth_ceiling)
+        include_pixels = include_pixels.reshape(r, c).astype('uint8')
 
-    strel = select_strel('ellipse', (10, 10))
-    include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 2)
+        strel = select_strel('ellipse', (9, 9))
+        include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 1)
 
-    im2, cnts, hierarchy = cv2.findContours(include_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    tmp = np.array([cv2.contourArea(x) for x in cnts])
-    use_cnt = tmp.argmax()
+        im2, cnts, hierarchy = cv2.findContours(include_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        tmp = np.array([cv2.contourArea(x) for x in cnts])
+        use_cnt = tmp.argmax()
 
-    cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
-    mouse_mask = mouse_mask > 0
+        cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
+        mouse_mask = mouse_mask > 0
 
-    include_pixels = mouse_mask.ravel()
+        include_pixels = mouse_mask.ravel()
 
-    try:
-        mean = np.mean(xyz[:, include_pixels], axis=1)
-    except FloatingPointError:
-        mean = np.array([0, 0, 0])
+        if init_mean is None:
+            try:
+                mean = np.mean(xyz[:, include_pixels], axis=1)
+            except FloatingPointError:
+                mean = np.array([0, 0, 0])
 
-    try:
-        cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
-    except FloatingPointError:
-        cov = np.eye(3)
+        if init_cov is None:
+            try:
+                cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
+            except FloatingPointError:
+                cov = np.eye(3)
+    else:
+        mean = init_mean
+        cov = init_cov
 
     model_parameters = {
         'mean': np.empty((nframes, 3), 'float64'),
