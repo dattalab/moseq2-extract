@@ -114,9 +114,13 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
         tmp = mask.ravel() > 0
         tmp[xyz[2, :] <= depth_floor] = 0
 
-        mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
-                                          mean=mean, cov=cov,
-                                          epsilon=.25, max_iter=15, lamd=30)
+        try:
+            mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
+                                              mean=mean, cov=cov,
+                                              epsilon=.25, max_iter=15, lamd=30)
+        except:
+            mean_update = mean
+            cov_update = cov
 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
