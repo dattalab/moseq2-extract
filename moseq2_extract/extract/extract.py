@@ -53,7 +53,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             filtered_frames, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_segment)
-        ll = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
+        ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
 
     # now get the centroid and orientation of the mouse
 
