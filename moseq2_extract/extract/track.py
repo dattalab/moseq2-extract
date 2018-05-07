@@ -74,8 +74,15 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     if np.sum(include_pixels) < 2:
         include_pixels = np.ones(xyz[2, :].shape, dtype='bool')
 
-    mean = np.mean(xyz[:, include_pixels], axis=1)
-    cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
+    try:
+        mean = np.mean(xyz[:, include_pixels], axis=1)
+    except FloatingPointError:
+        mean = np.array([0, 0, 0])
+
+    try:
+        cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
+    except FloatingPointError:
+        cov = np.eye(3)
 
     model_parameters = {
         'mean': np.empty((nframes, 3), 'float64'),
@@ -118,7 +125,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
                                               mean=mean, cov=cov,
                                               epsilon=.25, max_iter=15, lamd=30)
-        except:
+        except FloatingPointError:
             mean_update = mean
             cov_update = cov
 
