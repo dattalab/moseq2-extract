@@ -223,9 +223,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         if flip_classifier is not None:
             f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
 
-        if use_tracking_model:
-            f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
-                             'float32', compression='gzip')
+        # if use_tracking_model:
+        #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
+        #                      'float32', compression='gzip')
 
         for key, value in extraction_metadata.items():
 
