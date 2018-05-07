@@ -108,7 +108,8 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             mask = np.zeros_like(pxtheta_im)
             cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
-            mask = np.ones(pxtheta_im.shape, dtype='bool')
+            # mask = np.ones(pxtheta_im.shape, dtype='bool')
+            mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
         tmp[xyz[2, :] <= depth_floor] = 0

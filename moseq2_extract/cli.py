@@ -83,6 +83,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
 @click.option('--tracking-model-ll-threshold', default=-100, type=float, help="Threshold on log-likelihood for pixels to use for update during tracking")
 @click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
+@click.option('--tracking-model-segment', defauft=True, type=bool, help="Segment likelihood mask from tracking model")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -99,10 +100,10 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
-            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold, cable_filter_iters,
-            cable_filter_shape, cable_filter_size, tail_filter_iters, tail_filter_size,
-            tail_filter_shape, spatial_filter_size, temporal_filter_size, chunk_size, chunk_overlap,
-            output_dir, write_movie, use_plane_bground, config_file):
+            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
+            tracking_model_segment, cable_filter_iters, cable_filter_shape, cable_filter_size,
+            tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
+            temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
 
@@ -256,7 +257,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     flip_smoothing=flip_classifier_smoothing,
                                     crop_size=crop_size,
                                     mask_threshold=tracking_model_mask_threshold,
-                                    tracking_ll_threshold=tracking_model_ll_threshold)
+                                    tracking_ll_threshold=tracking_model_ll_threshold,
+                                    tracking_segment=tracking_model_segment)
 
             # if desired, write out a movie
 
