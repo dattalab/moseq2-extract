@@ -47,7 +47,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
 
 
 def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
-                depth_floor=10, progress_bar=True):
+                depth_floor=5, progress_bar=True):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
     Args:
@@ -68,6 +68,12 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
+
+    include_pixels = xyz[2, :] > depth_floor
+
+    if np.sum(include_pixels) < 2:
+        include_pixels = np.ones(xyz[2, :].shape, dtype='bool')
+
     mean = np.mean(xyz[:, xyz[2, :] > depth_floor], axis=1)
     cov = stats_tools.cov_nearest(np.cov(xyz[:, xyz[2, :] > depth_floor]))
 
