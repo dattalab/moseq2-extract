@@ -229,7 +229,7 @@ def im_moment_features(IM):
 
 def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
-                 iters_tail=2,
+                 iters_tail=None,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                  iters_min=None, progress_bar=True):
     """
@@ -315,7 +315,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
             mask[i, ...] = frame_mask
 
         im2, cnts, hierarchy = cv2.findContours(
-            (frame_mask).astype('uint8'),
+            frame_mask.astype('uint8'),
             cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
 

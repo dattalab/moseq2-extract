@@ -81,6 +81,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
+@click.option('--tracking-model-ll-threshold', default=-100, type=float, help="Threshold on log-likelihood for pixels to use for update during tracking")
+@click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
+@click.option('--tracking-model-segment', default=True, type=bool, help="Segment likelihood mask from tracking model")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -97,10 +100,10 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
-            use_tracking_model, cable_filter_iters,
-            cable_filter_shape, cable_filter_size, tail_filter_iters, tail_filter_size,
-            tail_filter_shape, spatial_filter_size, temporal_filter_size, chunk_size, chunk_overlap,
-            output_dir, write_movie, use_plane_bground, config_file):
+            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
+            tracking_model_segment, cable_filter_iters, cable_filter_shape, cable_filter_size,
+            tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
+            temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground, config_file):
 
     # get the basic metadata
 
@@ -220,9 +223,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         if flip_classifier is not None:
             f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
 
-        if use_tracking_model:
-            f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
-                             'float32', compression='gzip')
+        # if use_tracking_model:
+        #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
+        #                      'float32', compression='gzip')
 
         for key, value in extraction_metadata.items():
 
@@ -232,11 +235,15 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f.create_dataset('metadata/extraction/{}'.format(key), data=value)
 
         video_pipe = None
+        tracking_init_mean = None
+        tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
             raw_frames = load_movie_data(input_file, frame_range)
             raw_frames = bground_im-raw_frames
-            raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
+            # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
+            raw_frames[raw_frames < min_height] = 0
+            raw_frames[raw_frames > max_height] = max_height
             raw_frames = raw_frames.astype('uint8')
             raw_frames = apply_roi(raw_frames, roi)
 
@@ -252,16 +259,23 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     max_height=max_height,
                                     flip_classifier=flip_classifier,
                                     flip_smoothing=flip_classifier_smoothing,
-                                    crop_size=crop_size)
+                                    crop_size=crop_size,
+                                    mask_threshold=tracking_model_mask_threshold,
+                                    tracking_ll_threshold=tracking_model_ll_threshold,
+                                    tracking_segment=tracking_model_segment,
+                                    tracking_init_mean=tracking_init_mean,
+                                    tracking_init_cov=tracking_init_cov)
 
             # if desired, write out a movie
-
-            # todo: cut out first part of overhang
 
             if i > 0:
                 offset = chunk_overlap
             else:
                 offset = 0
+
+            if use_tracking_model:
+                tracking_init_mean = results['parameters']['mean'][-(offset+1)]
+                tracking_init_cov = results['parameters']['cov'][-(offset+1)]
 
             frame_range = frame_range[offset:]
 

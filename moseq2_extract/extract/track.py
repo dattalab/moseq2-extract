@@ -1,3 +1,4 @@
+from moseq2_extract.util import select_strel
 import numpy as np
 import scipy.stats
 import statsmodels.stats.correlation_tools as stats_tools
@@ -46,8 +47,27 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     return mean, cov
 
 
+def em_init(depth_frame, depth_floor, depth_ceiling,
+            init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
+
+    mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
+    mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
+
+    im2, cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    tmp = np.array([cv2.contourArea(x) for x in cnts])
+    use_cnt = tmp.argmax()
+
+    mouse_mask = np.zeros_like(mask)
+    cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
+    mouse_mask = mouse_mask > 0
+
+    return mouse_mask
+
+
 def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
-                depth_floor=10, progress_bar=True):
+                depth_floor=5, depth_ceiling=100, progress_bar=True,
+                init_mean=None, init_cov=None,
+                init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
     Args:
@@ -59,7 +79,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
         depth_floor (float): height in mm for separating mouse from floor
 
     Returns:
-        model_paramters (dict): mean and covariance estimates for each frame
+        model_parameters (dict): mean and covariance estimates for each frame
     """
     # initialize the mean and covariance
 
@@ -68,8 +88,27 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
-    mean = np.mean(xyz[:, xyz[2, :] > depth_floor], axis=1)
-    cov = stats_tools.cov_nearest(np.cov(xyz[:, xyz[2, :] > depth_floor]))
+
+    if init_mean is None or init_cov is None:
+
+        mouse_mask = em_init(frames[0, ...], depth_floor=depth_floor, depth_ceiling=depth_ceiling,
+                             init_strel=init_strel)
+        include_pixels = mouse_mask.ravel()
+
+        if init_mean is None:
+            try:
+                mean = np.mean(xyz[:, include_pixels], axis=1)
+            except FloatingPointError:
+                mean = np.array([0, 0, 0])
+
+        if init_cov is None:
+            try:
+                cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
+            except FloatingPointError:
+                cov = np.eye(3)
+    else:
+        mean = init_mean
+        cov = init_cov
 
     model_parameters = {
         'mean': np.empty((nframes, 3), 'float64'),
@@ -102,14 +141,19 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             mask = np.zeros_like(pxtheta_im)
             cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
-            mask = np.ones(pxtheta_im.shape, dtype='bool')
+            # mask = np.ones(pxtheta_im.shape, dtype='bool')
+            mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
-        tmp[xyz[2, :] <= depth_floor] = 0
+        tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
 
-        mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
-                                          mean=mean, cov=cov,
-                                          epsilon=.25, max_iter=15, lamd=30)
+        try:
+            mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
+                                              mean=mean, cov=cov,
+                                              epsilon=.25, max_iter=15, lamd=30)
+        except FloatingPointError:
+            mean_update = mean
+            cov_update = cov
 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
