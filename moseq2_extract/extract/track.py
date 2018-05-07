@@ -47,8 +47,27 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     return mean, cov
 
 
+def em_init(depth_frame, depth_floor, depth_ceiling,
+            init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
+
+    mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
+    mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
+
+    im2, cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    tmp = np.array([cv2.contourArea(x) for x in cnts])
+    use_cnt = tmp.argmax()
+
+    mouse_mask = np.zeros_like(mask)
+    cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
+    mouse_mask = mouse_mask > 0
+
+    return mouse_mask
+
+
 def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
-                depth_floor=5, depth_ceiling=100, progress_bar=True, init_mean=None, init_cov=None):
+                depth_floor=5, depth_ceiling=100, progress_bar=True,
+                init_mean=None, init_cov=None,
+                init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
     Args:
@@ -71,20 +90,9 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     xyz = np.vstack((coords, frames[0, ...].ravel()))
 
     if init_mean is None or init_cov is None:
-        mouse_mask = np.zeros((r, c), dtype='uint8')
-        include_pixels = np.logical_and(xyz[2, :] > depth_floor, xyz[2, :] < depth_ceiling)
-        include_pixels = include_pixels.reshape(r, c).astype('uint8')
 
-        strel = select_strel('ellipse', (9, 9))
-        include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 1)
-
-        im2, cnts, hierarchy = cv2.findContours(include_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        tmp = np.array([cv2.contourArea(x) for x in cnts])
-        use_cnt = tmp.argmax()
-
-        cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
-        mouse_mask = mouse_mask > 0
-
+        mouse_mask = em_init(frames[0, ...], depth_floor=depth_floor, depth_ceiling=depth_ceiling,
+                             init_strel=init_strel)
         include_pixels = mouse_mask.ravel()
 
         if init_mean is None:
@@ -137,7 +145,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
-        tmp[xyz[2, :] <= depth_floor] = 0
+        tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
 
         try:
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,

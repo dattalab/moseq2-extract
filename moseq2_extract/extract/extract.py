@@ -20,6 +20,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   rho_mean=0, rho_cov=0,
                   tracking_ll_threshold=-100, tracking_segment=True,
                   tracking_init_mean=None, tracking_init_cov=None,
+                  tracking_init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   flip_classifier=None, flip_smoothing=51,
                   save_path=os.path.join(os.getcwd(), 'proc'),
                   progress_bar=True, crop_size=(80, 80)):
@@ -52,8 +53,10 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             filtered_frames, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_segment,
-            init_mean=tracking_init_mean, init_cov=tracking_init_cov)
+            init_mean=tracking_init_mean, init_cov=tracking_init_cov,
+            init_strel=tracking_init_strel)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
+        ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
     else:
         ll = None
         parameters = None
@@ -71,6 +74,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     features['orientation'][incl] = np.unwrap(
         features['orientation'][incl]*2)/2
 
+    if use_em_tracker:
+        mask = ll_raw
+
     # crop and rotate the frames
 
     # print('Cropping frames...')
@@ -81,11 +87,12 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     mask = crop_and_rotate_frames(
         mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
-    if use_em_tracker:
-        cropped_ll = crop_and_rotate_frames(
-                ll, features, crop_size=crop_size, progress_bar=progress_bar)
-    else:
-        cropped_ll = None
+    #
+    # if use_em_tracker:
+    #     cropped_ll = crop_and_rotate_frames(
+    #             ll, features, crop_size=crop_size, progress_bar=progress_bar)
+    # else:
+    #     cropped_ll = None
 
     if flip_classifier:
         # print('Fixing flips...')
@@ -95,8 +102,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
         features['orientation'][flips] += np.pi
 
-        if use_em_tracker:
-            cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
+        # if use_em_tracker:
+        #     cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
     else:
         flips = None
 
@@ -108,9 +115,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     results = {
         'depth_frames': cropped_frames,
         'mask_frames': mask,
-        'll_frames': cropped_ll,
         'scalars': scalars,
         'flips': flips,
+        # 'cropped_ll': cropped_ll
         'parameters': parameters
     }
 
