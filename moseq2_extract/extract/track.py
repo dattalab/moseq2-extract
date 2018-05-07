@@ -1,3 +1,4 @@
+from moseq2_extract.util import select_strel
 import numpy as np
 import scipy.stats
 import statsmodels.stats.correlation_tools as stats_tools
@@ -69,7 +70,23 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
 
+    mouse_mask = np.zeros((r, c), dtype='uint8')
     include_pixels = np.logical_and(xyz[2, :] > depth_floor, xyz[2, :] < depth_ceiling)
+    include_pixels = include_pixels.reshape(r, c).astype('uint8')
+
+    strel = select_strel('ellipse', (10, 10))
+    include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 1)
+
+    im2, cnts, hierarchy =\
+        cv2.findContours(include_pixels.reshape(r, c).astype('uint8'),
+                         cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    tmp = np.array([cv2.contourArea(x) for x in cnts])
+    use_cnt = tmp.argmax()
+    cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
+    mouse_mask = mouse_mask > 0
+
+    include_pixels = mouse_mask.ravel()
 
     if np.sum(include_pixels) < 2:
         include_pixels = np.ones(xyz[2, :].shape, dtype='bool')

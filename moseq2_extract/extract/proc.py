@@ -229,7 +229,7 @@ def im_moment_features(IM):
 
 def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
-                 iters_tail=2,
+                 iters_tail=None,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                  iters_min=None, progress_bar=True):
     """
