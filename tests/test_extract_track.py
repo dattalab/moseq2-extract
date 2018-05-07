@@ -80,4 +80,4 @@ def test_em_tracking():
     parameters = em_tracking(frames=fake_movie)
 
     for mu in parameters['mean']:
-        npt.assert_almost_equal(mu[:2], center[::-1], 1)
+        npt.assert_almost_equal(mu[:2], center[::-1], .01)
