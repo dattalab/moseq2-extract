@@ -74,8 +74,8 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     if np.sum(include_pixels) < 2:
         include_pixels = np.ones(xyz[2, :].shape, dtype='bool')
 
-    mean = np.mean(xyz[:, xyz[2, :] > depth_floor], axis=1)
-    cov = stats_tools.cov_nearest(np.cov(xyz[:, xyz[2, :] > depth_floor]))
+    mean = np.mean(xyz[:, include_pixels], axis=1)
+    cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
 
     model_parameters = {
         'mean': np.empty((nframes, 3), 'float64'),
