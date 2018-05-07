@@ -75,14 +75,12 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     include_pixels = include_pixels.reshape(r, c).astype('uint8')
 
     strel = select_strel('ellipse', (10, 10))
-    include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 1)
+    include_pixels = cv2.morphologyEx(include_pixels, cv2.MORPH_OPEN, strel, 2)
 
-    im2, cnts, hierarchy =\
-        cv2.findContours(include_pixels.reshape(r, c).astype('uint8'),
-                         cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+    im2, cnts, hierarchy = cv2.findContours(include_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     tmp = np.array([cv2.contourArea(x) for x in cnts])
     use_cnt = tmp.argmax()
+
     cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
     mouse_mask = mouse_mask > 0
 
