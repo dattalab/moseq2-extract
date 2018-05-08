@@ -213,7 +213,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         if timestamps is not None:
             f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
-        f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), 'i1', compression='gzip')
+        f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), 'u1', compression='gzip')
 
         if use_tracking_model:
             f.create_dataset('frames_mask', (nframes, crop_size[0], crop_size[1]), 'float32', compression='gzip')
