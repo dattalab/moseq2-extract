@@ -17,6 +17,17 @@ import urllib.request
 from copy import deepcopy
 
 
+orig_init = click.core.Option.__init__
+
+
+def new_init(self, *args, **kwargs):
+    orig_init(self, *args, **kwargs)
+    self.show_default = True
+
+
+click.core.Option.__init__ = new_init
+
+
 @click.group()
 def cli():
     pass
