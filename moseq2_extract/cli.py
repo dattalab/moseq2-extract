@@ -332,7 +332,11 @@ def download_flip_file(output_dir):
     # TODO: more flip files!!!!
     flip_files = {
         'large mice with fibers':
-            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl"
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl",
+        'adult male c57s':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl",
+        'mice with Inscopix cables':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
     }
 
     key_list = list(flip_files.keys())
