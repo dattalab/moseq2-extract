@@ -17,6 +17,17 @@ import urllib.request
 from copy import deepcopy
 
 
+orig_init = click.core.Option.__init__
+
+
+def new_init(self, *args, **kwargs):
+    orig_init(self, *args, **kwargs)
+    self.show_default = True
+
+
+click.core.Option.__init__ = new_init
+
+
 @click.group()
 def cli():
     pass
@@ -321,7 +332,11 @@ def download_flip_file(output_dir):
     # TODO: more flip files!!!!
     flip_files = {
         'large mice with fibers':
-            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl"
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl",
+        'adult male c57s':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl",
+        'mice with Inscopix cables':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
     }
 
     key_list = list(flip_files.keys())
