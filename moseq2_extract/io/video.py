@@ -5,6 +5,7 @@ import subprocess
 import matplotlib.pyplot as plt
 import os
 import datetime
+import cv2
 
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
@@ -201,10 +202,15 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          codec='h264', slices=24, slicecrc=1,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
-                         pipe=None, close_pipe=True):
+                         pipe=None, close_pipe=True, frame_range=None):
     """
     Writes out a false-colored mp4 video
     """
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    white = (255, 255, 255)
+    txt_pos = (5, frames.shape[-1] - 40)
+
     if not np.mod(frames.shape[1], 2) == 0:
         frames = np.pad(frames, ((0, 0), (0, 1), (0, 0)), 'constant', constant_values=0)
 
@@ -250,6 +256,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         disp_img[disp_img < 0] = 0
         disp_img[disp_img > 1] = 1
         disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
+        if frame_range is not None:
+            cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
         pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:

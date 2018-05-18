@@ -312,7 +312,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False, fps=fps)
+                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=frame_range)
 
         if video_pipe:
             video_pipe.stdin.close()
