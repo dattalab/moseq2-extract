@@ -130,7 +130,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         'parameters': deepcopy(locals()),
         'complete': False,
         'skip': False,
-        'uuid': str(uuid.uuid4())
+        'uuid': str(uuid.uuid4()),
+        'metadata': ''
     }
 
     np.seterr(invalid='raise')
@@ -143,6 +144,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     if os.path.exists(metadata_path):
         extraction_metadata = load_metadata(metadata_path)
+        status_dict['metadata'] = extraction_metadata
     else:
         extraction_metadata = {}
 
