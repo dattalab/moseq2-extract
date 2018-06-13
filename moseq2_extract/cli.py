@@ -253,7 +253,11 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
             raw_frames = load_movie_data(input_file, frame_range)
-            raw_frames = bground_im-raw_frames
+            try:
+                raw_frames = bground_im-raw_frames
+            except:
+                raw_frames = np.swapaxes(raw_frames, 1, 2)
+                raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
             raw_frames[raw_frames > max_height] = max_height

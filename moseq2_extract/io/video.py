@@ -170,8 +170,8 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     command = [
         'ffmpeg',
         '-loglevel', 'fatal',
-        '-i', filename,
         '-ss', str(datetime.timedelta(seconds=frames[0]/fps)),
+        '-i', filename,
         '-vframes', str(len(frames)),
         '-f', 'image2pipe',
         '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
@@ -311,6 +311,8 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
         frame_data = read_frames_raw(filename, frames=frames,
                                      frame_dims=frame_dims, bit_depth=bit_depth)
     elif filename.lower().endswith('.avi'):
+        if type(frames) is int:
+            frames = [frames]
         frame_data = read_frames(filename, frames)
 
     return frame_data
