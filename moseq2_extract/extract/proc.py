@@ -54,7 +54,7 @@ def get_largest_cc(frames, progress_bar=False):
         nb_components, output, stats, centroids =\
             cv2.connectedComponentsWithStats(frames[i, ...], connectivity=4)
         szs = stats[:, -1]
-        foreground_obj[i, ...] = output == szs[1:].argmax()+1
+        foreground_obj[i, ...] = output == szs[1:].argmax()+2
 
     return foreground_obj
 
