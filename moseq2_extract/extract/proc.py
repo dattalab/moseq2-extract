@@ -54,7 +54,7 @@ def get_largest_cc(frames, progress_bar=False):
         nb_components, output, stats, centroids =\
             cv2.connectedComponentsWithStats(frames[i, ...], connectivity=4)
         szs = stats[:, -1]
-        foreground_obj[i, ...] = output == szs[1:].argmax()+2
+        foreground_obj[i, ...] = output == szs[1:].argmax()+1
 
     return foreground_obj
 
@@ -246,7 +246,6 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     """
     # seeing enormous speed gains w/ opencv
     filtered_frames = frames.copy().astype('uint8')
-
     for i in tqdm.tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):
 
