@@ -96,7 +96,7 @@ def get_video_info(filename):
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
-                 pixel_format='gray16le', codec='ffv1',
+                 pixel_format='gray16le', codec='ffv1', close_pipe=True,
                  slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     """
     Write frames to avi file using the ffv1 lossless encoder
@@ -134,8 +134,11 @@ def write_frames(filename, frames, threads=6, fps=30,
     for i in tqdm.tqdm(range(frames.shape[0])):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 
-    pipe.stdin.close()
-    pipe.wait()
+    if close_pipe:
+        pipe.stdin.close()
+        return None
+    else:
+        return pipe
 
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
