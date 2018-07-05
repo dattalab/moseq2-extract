@@ -223,6 +223,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     # farm out the batches and write to an hdf5 file
 
     with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
+        f.create_dataset('metadata/uuid', data=status_dict['uuid'])
         for i in range(len(scalars)):
             f.create_dataset('scalars/{}'.format(scalars[i]), (nframes,), 'float32', compression='gzip')
 
