@@ -109,6 +109,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--output-dir', default=None, help='Output directory to save the results h5 file')
 @click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')
 @click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
+@click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
@@ -116,7 +117,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             tracking_model_ll_clip, tracking_model_segment, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
-            config_file):
+            frame_dtype, config_file):
 
     # get the basic metadata
 
@@ -229,7 +230,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         if timestamps is not None:
             f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
-        f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), 'u1', compression='gzip')
+        f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), frame_dtype, compression='gzip')
 
         if use_tracking_model:
             f.create_dataset('frames_mask', (nframes, crop_size[0], crop_size[1]), 'float32', compression='gzip')
@@ -260,7 +261,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
             raw_frames[raw_frames > max_height] = max_height
-            raw_frames = raw_frames.astype('uint8')
+            raw_frames = raw_frames.astype(frame_dtype)
             raw_frames = apply_roi(raw_frames, roi)
 
             results = extract_chunk(raw_frames,
@@ -276,6 +277,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     flip_classifier=flip_classifier,
                                     flip_smoothing=flip_classifier_smoothing,
                                     crop_size=crop_size,
+                                    frame_dtype=frame_dtype,
                                     mask_threshold=tracking_model_mask_threshold,
                                     tracking_ll_threshold=tracking_model_ll_threshold,
                                     tracking_segment=tracking_model_segment,
