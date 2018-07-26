@@ -220,13 +220,16 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
+    true_depth = np.median(bground_im[roi > 0])
+    print('Detected true depth: {}'.format(true_depth))
+
     # farm out the batches and write to an hdf5 file
 
     with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
         f.create_dataset('metadata/uuid', data=status_dict['uuid'])
         for scalar in scalars:
             f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
-            f['scalars/{}'.format(scalar)].attrs['description'] = scalar_attrs[scalars]
+            f['scalars/{}'.format(scalar)].attrs['description'] = scalars_attrs[scalar]
 
         if timestamps is not None:
             f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
@@ -242,7 +245,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         if flip_classifier is not None:
             f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
-            f['metadata/flips'].attrs = 'Output from flip classifier, false=no flip, true=flip'
+            f['metadata/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
 
         # if use_tracking_model:
         #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
@@ -286,7 +289,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     tracking_ll_threshold=tracking_model_ll_threshold,
                                     tracking_segment=tracking_model_segment,
                                     tracking_init_mean=tracking_init_mean,
-                                    tracking_init_cov=tracking_init_cov)
+                                    tracking_init_cov=tracking_init_cov,
+                                    true_depth=true_depth)
 
             # if desired, write out a movie
 

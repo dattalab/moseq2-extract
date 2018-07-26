@@ -131,3 +131,73 @@ def scalar_attributes():
     }
 
     return attributes
+
+
+def convert_legacy_scalars(old_features, true_depth=673.1):
+
+    nframes = len(old_features['centroid_x'])
+
+    features = {
+        'centroid_x_px': np.zeros((nframes,), 'float32'),
+        'centroid_y_px': np.zeros((nframes,), 'float32'),
+        'velocity_2d_px': np.zeros((nframes,), 'float32'),
+        'velocity_3d_px': np.zeros((nframes,), 'float32'),
+        'width_px': np.zeros((nframes,), 'float32'),
+        'length_px': np.zeros((nframes,), 'float32'),
+        'area_px': np.zeros((nframes,)),
+        'centroid_x_mm': np.zeros((nframes,), 'float32'),
+        'centroid_y_mm': np.zeros((nframes,), 'float32'),
+        'velocity_2d_mm': np.zeros((nframes,), 'float32'),
+        'velocity_3d_mm': np.zeros((nframes,), 'float32'),
+        'width_mm': np.zeros((nframes,), 'float32'),
+        'length_mm': np.zeros((nframes,), 'float32'),
+        'area_mm': np.zeros((nframes,)),
+        'height_ave_mm': np.zeros((nframes,), 'float32'),
+        'angle': np.zeros((nframes,), 'float32'),
+        'velocity_theta': np.zeros((nframes,)),
+    }
+
+    centroid = np.vstack((features['centroid_x'], features['centroid_y']))
+
+    centroid_mm = convert_pxs_to_mm(centroid, true_depth=true_depth)
+    centroid_mm_shift = convert_pxs_to_mm(centroid + 1, true_depth=true_depth)
+
+    px_to_mm = np.abs(centroid_mm_shift)
+
+    features['centroid_x_px'] = centroid[:, 0]
+    features['centroid_y_px'] = centroid[:, 1]
+
+    features['centroid_x_mm'] = centroid_mm[:, 0]
+    features['centroid_y_mm'] = centroid_mm[:, 1]
+
+    # based on the centroid of the mouse, get the mm_to_px conversion
+
+    features['width_px'] = old_features['width']
+    features['length_px'] = old_features['length']
+    features['area_px'] = old_features['area']
+
+    features['width_mm'] = features['width_px'] * px_to_mm[:, 1]
+    features['length_mm'] = features['length_px'] * px_to_mm[:, 0]
+    features['area_mm'] = features['area_px'] * px_to_mm.mean(axis=1)
+
+    features['angle'] = old_features['angle']
+    features['height_ave_mm'] = old_features['height_ave']
+
+    vel_x = np.diff(np.concatenate((features['centroid_x_px'][:1], features['centroid_x_px'])))
+    vel_y = np.diff(np.concatenate((features['centroid_y_px'][:1], features['centroid_y_px'])))
+    vel_z = np.diff(np.concatenate((features['height_ave_mm'][:1], features['height_ave_mm'])))
+
+    features['velocity_2d_px'] = np.hypot(vel_x, vel_y)
+    features['velocity_3d_px'] = np.sqrt(
+        np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
+
+    vel_x = np.diff(np.concatenate((features['centroid_x_mm'][:1], features['centroid_x_mm'])))
+    vel_y = np.diff(np.concatenate((features['centroid_y_mm'][:1], features['centroid_y_mm'])))
+
+    features['velocity_2d_mm'] = np.hypot(vel_x, vel_y)
+    features['velocity_3d_mm'] = np.sqrt(
+        np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
+
+    features['velocity_theta'] = np.arctan2(vel_y, vel_x)
+
+    return features
