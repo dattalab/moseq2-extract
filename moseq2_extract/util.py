@@ -135,6 +135,10 @@ def scalar_attributes():
 
 def convert_legacy_scalars(old_features, true_depth=673.1):
 
+    if 'centroid_x_mm' in old_features.keys():
+        print('Scalar features already updated.')
+        return None
+
     nframes = len(old_features['centroid_x'])
 
     features = {
@@ -157,12 +161,14 @@ def convert_legacy_scalars(old_features, true_depth=673.1):
         'velocity_theta': np.zeros((nframes,)),
     }
 
-    centroid = np.vstack((features['centroid_x'], features['centroid_y']))
+    centroid = np.hstack((old_features['centroid_x'][:, None],
+                          old_features['centroid_y'][:, None]))
 
     centroid_mm = convert_pxs_to_mm(centroid, true_depth=true_depth)
     centroid_mm_shift = convert_pxs_to_mm(centroid + 1, true_depth=true_depth)
 
-    px_to_mm = np.abs(centroid_mm_shift)
+    print(centroid.shape)
+    px_to_mm = np.abs(centroid_mm_shift - centroid_mm)
 
     features['centroid_x_px'] = centroid[:, 0]
     features['centroid_y_px'] = centroid[:, 1]
