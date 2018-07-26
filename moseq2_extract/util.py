@@ -85,3 +85,49 @@ def select_strel(string='e', size=(10, 10)):
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
 
     return strel
+
+
+# http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
+# http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
+def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70, 60), true_depth=673.1):
+    """Converts x, y coordinates in pixel space to mm
+    """
+    cx = resolution[0] // 2
+    cy = resolution[1] // 2
+
+    xhat = coords[:, 0] - cx
+    yhat = coords[:, 1] - cy
+
+    fw = resolution[1] / (2 * np.deg2rad(field_of_view[0] / 2))
+    fh = resolution[0] / (2 * np.deg2rad(field_of_view[1] / 2))
+
+    new_coords = np.zeros_like(coords)
+    new_coords[:, 0] = true_depth * xhat / fw
+    new_coords[:, 1] = true_depth * yhat / fh
+
+    return new_coords
+
+
+def scalar_attributes():
+
+    attributes = {
+        'centroid_x_px': 'X centroid (pixels)',
+        'centroid_y_px': 'Y centroid (pixels)',
+        'velocity_2d_px': '2D velocity (pixels / frame), note that missing frames are not accounted for',
+        'velocity_3d_px': '3D velocity (pixels / frame), note that missing frames are not accounted for, also height is in mm, not pixels for calculation',
+        'width_px': 'Mouse width (pixels)',
+        'length_px': 'Mouse length (pixels)',
+        'area_px': 'Mouse area (pixels)',
+        'centroid_x_mm': 'X centroid (mm)',
+        'centroid_y_mm': 'Y centroid (mm)',
+        'velocity_2d_mm': '2D velocity (mm / frame), note that missing frames are not accounted for',
+        'velocity_3d_mm': '2D velocity (mm / frame), note that missing frames are not accounted for',
+        'width_mm': 'Mouse width (mm)',
+        'length_mm': 'Mouse length (mm)',
+        'area_mm': 'Mouse area (mm)',
+        'height_ave_mm': 'Mouse average height (mm)',
+        'angle': 'Angle (radians, unwrapped)',
+        'velocity_theta': 'Angular component of velocity (arctan(vel_x, vel_y))'
+    }
+
+    return attributes

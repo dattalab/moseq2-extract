@@ -4,7 +4,7 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import load_metadata, gen_batch_sequence, load_timestamps,\
-    select_strel, command_with_config
+    select_strel, command_with_config, scalar_attributes
 import click
 import os
 import h5py
@@ -154,9 +154,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     else:
         timestamps = None
 
-    scalars = ['centroid_x', 'centroid_y', 'angle', 'width',
-               'length', 'height_ave', 'velocity_mag',
-               'velocity_theta', 'area', 'velocity_mag_3d']
+    scalars_attrs = scalar_attributes()
+    scalars = list(scalars_attrs.keys())
 
     frame_batches = list(gen_batch_sequence(nframes, chunk_size, chunk_overlap))
 
@@ -225,20 +224,25 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
         f.create_dataset('metadata/uuid', data=status_dict['uuid'])
-        for i in range(len(scalars)):
-            f.create_dataset('scalars/{}'.format(scalars[i]), (nframes,), 'float32', compression='gzip')
+        for scalar in scalars:
+            f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
+            f['scalars/{}'.format(scalar)].attrs['description'] = scalar_attrs[scalars]
 
         if timestamps is not None:
             f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
         f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), frame_dtype, compression='gzip')
+        f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
         if use_tracking_model:
             f.create_dataset('frames_mask', (nframes, crop_size[0], crop_size[1]), 'float32', compression='gzip')
+            f['frames_mask'].attrs['description'] = 'Log-likelihood values from the tracking model (nframes x w x h)'
         else:
             f.create_dataset('frames_mask', (nframes, crop_size[0], crop_size[1]), 'bool', compression='gzip')
+            f['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
 
         if flip_classifier is not None:
             f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
+            f['metadata/flips'].attrs = 'Output from flip classifier, false=no flip, true=flip'
 
         # if use_tracking_model:
         #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
