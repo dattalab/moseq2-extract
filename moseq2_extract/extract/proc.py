@@ -234,7 +234,7 @@ def im_moment_features(IM):
 
 def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
-                 iters_tail=None,
+                 iters_tail=None, frame_dtype='uint8',
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                  iters_min=None, progress_bar=True):
     """
@@ -250,7 +250,8 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
     """
     # seeing enormous speed gains w/ opencv
-    filtered_frames = frames.copy().astype('uint8')
+    filtered_frames = frames.copy().astype(frame_dtype)
+
     for i in tqdm.tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):
 

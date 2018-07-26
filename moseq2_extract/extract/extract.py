@@ -23,13 +23,13 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   tracking_init_mean=None, tracking_init_cov=None,
                   tracking_init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   flip_classifier=None, flip_smoothing=51,
-                  save_path=os.path.join(os.getcwd(), 'proc'),
+                  frame_dtype='uint8', save_path=os.path.join(os.getcwd(), 'proc'),
                   progress_bar=True, crop_size=(80, 80)):
 
     # if we pass bground or roi files, be sure to use 'em...
 
     if bground:
-        chunk = (bground-chunk).astype('uint8')
+        chunk = (bground-chunk).astype(frame_dtype)
 
     if roi:
         chunk = apply_roi(chunk)
@@ -43,6 +43,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                    strel_tail=strel_tail,
                                    iters_min=iters_min,
                                    strel_min=strel_min,
+                                   frame_dtype=frame_dtype,
                                    progress_bar=progress_bar)
 
     # if we need it, compute the em parameters
