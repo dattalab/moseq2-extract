@@ -152,7 +152,7 @@ def convert_legacy_scalars(old_features, true_depth=673.1):
 
         old_features = feature_dict
 
-    if type(old_features) is str and os.path.exists(old_features):
+    if (type(old_features) is str or type(old_features) is np.str_) and os.path.exists(old_features):
         print('Loading scalars from file')
         with h5py.File(old_features, 'r') as f:
             feature_dict = {}
