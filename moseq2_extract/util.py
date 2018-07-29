@@ -4,7 +4,7 @@ import json
 import cv2
 import click
 import ruamel.yaml as yaml
-
+import h5py
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -89,7 +89,8 @@ def select_strel(string='e', size=(10, 10)):
 
 # http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
 # http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
-def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70, 60), true_depth=673.1):
+# http://smeenk.com/kinect-field-of-view-comparison/
+def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), true_depth=673.1):
     """Converts x, y coordinates in pixel space to mm
     """
     cx = resolution[0] // 2
@@ -98,8 +99,8 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70, 60), tru
     xhat = coords[:, 0] - cx
     yhat = coords[:, 1] - cy
 
-    fw = resolution[1] / (2 * np.deg2rad(field_of_view[0] / 2))
-    fh = resolution[0] / (2 * np.deg2rad(field_of_view[1] / 2))
+    fw = resolution[0] / (2 * np.deg2rad(field_of_view[0] / 2))
+    fh = resolution[1] / (2 * np.deg2rad(field_of_view[1] / 2))
 
     new_coords = np.zeros_like(coords)
     new_coords[:, 0] = true_depth * xhat / fw
@@ -134,6 +135,31 @@ def scalar_attributes():
 
 
 def convert_legacy_scalars(old_features, true_depth=673.1):
+    """Converts scalars in the legacy format to the new format, with explicit units.
+    Args:
+        old_features (str, h5 group, or dictionary of scalars): filename, h5 group, or dictionary of scalar values
+        true_depth (float):  true depth of the floor relative to the camera (673.1 mm by default)
+
+    Returns:
+        features (dict): dictionary of scalar values
+    """
+
+    if type(old_features) is h5py.Group and 'centroid_x' in old_features.keys():
+        print('Loading scalars from h5 dataset')
+        feature_dict = {}
+        for k, v in old_features.items():
+            feature_dict[k] = v.value
+
+        old_features = feature_dict
+
+    if type(old_features) is str and os.path.exists(old_features):
+        print('Loading scalars from file')
+        with h5py.File(old_features, 'r') as f:
+            feature_dict = {}
+            for k, v in f['scalars'].items():
+                feature_dict[k] = v.value
+
+        old_features = feature_dict
 
     if 'centroid_x_mm' in old_features.keys():
         print('Scalar features already updated.')
@@ -167,7 +193,6 @@ def convert_legacy_scalars(old_features, true_depth=673.1):
     centroid_mm = convert_pxs_to_mm(centroid, true_depth=true_depth)
     centroid_mm_shift = convert_pxs_to_mm(centroid + 1, true_depth=true_depth)
 
-    print(centroid.shape)
     px_to_mm = np.abs(centroid_mm_shift - centroid_mm)
 
     features['centroid_x_px'] = centroid[:, 0]
