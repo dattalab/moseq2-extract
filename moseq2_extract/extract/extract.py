@@ -24,7 +24,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   tracking_init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   flip_classifier=None, flip_smoothing=51,
                   frame_dtype='uint8', save_path=os.path.join(os.getcwd(), 'proc'),
-                  progress_bar=True, crop_size=(80, 80)):
+                  progress_bar=True, crop_size=(80, 80), true_depth=673.1):
 
     # if we pass bground or roi files, be sure to use 'em...
 
@@ -116,7 +116,10 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     # todo: put in an option to compute scalars on raw or filtered
 
     scalars = compute_scalars(cropped_filtered_frames,
-                              features, min_height, max_height)
+                              features,
+                              min_height=min_height,
+                              max_height=max_height,
+                              true_depth=true_depth)
 
     results = {
         'depth_frames': cropped_frames,

@@ -6,7 +6,7 @@ import json
 import cv2
 import click
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, command_with_config
+    select_strel, command_with_config, scalar_attributes
 
 
 @pytest.fixture(scope='function')
@@ -65,3 +65,10 @@ def test_select_strel():
 
     strel = select_strel('sdfdfsf', size=(9, 9))
     npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+
+
+def test_scalar_attributes():
+
+    dct = scalar_attributes()
+
+    assert(dct is not None)

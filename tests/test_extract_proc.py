@@ -137,17 +137,16 @@ def test_compute_scalars():
     fake_features, mask = get_frame_features(fake_movie, frame_threshold=0.01)
     fake_scalars = compute_scalars(fake_movie, fake_features, min_height=0.01)
 
-    npt.assert_almost_equal(fake_scalars['centroid_x'], center[1], .1)
-    npt.assert_almost_equal(fake_scalars['centroid_y'], center[0], .1)
+    npt.assert_almost_equal(fake_scalars['centroid_x_px'], center[1], .1)
+    npt.assert_almost_equal(fake_scalars['centroid_y_px'], center[0], .1)
     npt.assert_almost_equal(fake_scalars['angle'], 0, 2)
-    npt.assert_almost_equal(fake_scalars['width'], mouse_dims[0]*2, .1)
-    npt.assert_almost_equal(fake_scalars['length'], mouse_dims[1]*2, .1)
-    npt.assert_almost_equal(fake_scalars['height_ave'], 1, 1)
-    npt.assert_almost_equal(fake_scalars['velocity_mag'], 0, 1)
-    npt.assert_almost_equal(fake_scalars['velocity_mag_3d'], 0, 1)
+    npt.assert_almost_equal(fake_scalars['width_px'], mouse_dims[0]*2, .1)
+    npt.assert_almost_equal(fake_scalars['length_px'], mouse_dims[1]*2, .1)
+    npt.assert_almost_equal(fake_scalars['height_ave_mm'], 1, 1)
+    npt.assert_almost_equal(fake_scalars['velocity_2d_px'], 0, 1)
+    npt.assert_almost_equal(fake_scalars['velocity_3d_px'], 0, 1)
     npt.assert_almost_equal(fake_scalars['velocity_theta'], 0, 1)
-    npt.assert_almost_equal(fake_scalars['area'], np.sum(tmp_image), .1)
-    npt.assert_almost_equal(fake_scalars['velocity_mag_3d'], 0, 1)
+    npt.assert_almost_equal(fake_scalars['area_px'], np.sum(tmp_image), .1)
 
 
 def test_get_largest_cc():
