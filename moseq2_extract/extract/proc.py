@@ -409,7 +409,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     centroid_mm = convert_pxs_to_mm(track_features['centroid'], true_depth=true_depth)
     centroid_mm_shift = convert_pxs_to_mm(track_features['centroid'] + 1, true_depth=true_depth)
 
-    px_to_mm = np.abs(centroid_mm_shift)
+    px_to_mm = np.abs(centroid_mm_shift - centroid_mm)
     masked_frames = np.logical_and(frames > min_height, frames < max_height)
 
     features['centroid_x_px'] = track_features['centroid'][:, 0]
