@@ -419,7 +419,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         raw_frames = load_movie_data(input_file, batch)
         encoded_frames = load_movie_data(output_file, batch)
 
-        if not np.all(raw_frames == encoded_frames):
+        if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
 
     print('Encoding successful')
