@@ -68,8 +68,8 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
 
 def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
                 depth_floor=0, depth_ceiling=100, progress_bar=True,
-                init_mean=None, init_cov=None, init_frames=3, init_method='min',
-                init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))):
+                init_mean=None, init_cov=None, init_frames=3, init_method='raw',
+                init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
     Args:
@@ -97,7 +97,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             use_frame = np.min(frames[:init_frames, ...], axis=0)
         elif init_method == 'med':
             use_frame = np.median(frames[:init_frames, ...], axis=0)
-        elif init_method =='raw':
+        elif init_method == 'raw':
             use_frame = frames[0, ...]
 
         mouse_mask = em_init(use_frame,
