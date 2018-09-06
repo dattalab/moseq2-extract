@@ -28,7 +28,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   progress_bar=True, crop_size=(80, 80), true_depth=673.1,
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
-                  model_smoothing_clips=(-300, -150)):
+                  model_smoothing_clips=(-300, -150), tracking_model_init='raw'):
 
     # if we pass bground or roi files, be sure to use 'em...
 
@@ -60,7 +60,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_segment,
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,
-            init_strel=tracking_init_strel)
+            init_strel=tracking_init_strel, init_method=tracking_model_init)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
         # ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
     else:
