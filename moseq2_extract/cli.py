@@ -115,6 +115,11 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')
 @click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
 @click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')
+@click.option('--centroid-hampel-span', default=0, type=int, help='Hampel filter span')
+@click.option('--centroid-hampel-sig', default=3, type=float, help='Hampel filter sig')
+@click.option('--angle-hampel-span', default=0, type=int, help='Angle filter span')
+@click.option('--angle-hampel-sig', default=3, type=float, help='Angle filter sig')
+@click.option('--model-smoothing-clips', default=(0, 0), type=(float, float), help='Model smoothing clips')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
@@ -122,7 +127,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             tracking_model_ll_clip, tracking_model_segment, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
-            frame_dtype, config_file):
+            frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
+            model_smoothing_clips, config_file):
 
     # get the basic metadata
 
@@ -140,7 +146,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         'metadata': ''
     }
 
-    np.seterr(invalid='raise')
+    # np.seterr(invalid='raise')
 
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
@@ -297,7 +303,12 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     tracking_segment=tracking_model_segment,
                                     tracking_init_mean=tracking_init_mean,
                                     tracking_init_cov=tracking_init_cov,
-                                    true_depth=true_depth)
+                                    true_depth=true_depth,
+                                    centroid_hampel_span=centroid_hampel_span,
+                                    centroid_hampel_sig=centroid_hampel_sig,
+                                    angle_hampel_span=angle_hampel_span,
+                                    angle_hampel_sig=angle_hampel_sig,
+                                    model_smoothing_clips=model_smoothing_clips)
 
             # if desired, write out a movie
 
