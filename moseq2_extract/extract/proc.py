@@ -1,4 +1,4 @@
-from moseq2_extract.util import convert_pxs_to_mm
+from moseq2_extract.util import convert_pxs_to_mm, strided_app
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
 import numpy as np
@@ -453,5 +453,67 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
         np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
 
     features['velocity_theta'] = np.arctan2(vel_y, vel_x)
+
+    return features
+
+
+def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_sig=3,
+                          angle_hampel_span=None, angle_hampel_sig=3):
+
+    if centroid_hampel_span is not None and centroid_hampel_span > 0:
+        padded_centroids = np.pad(features['centroid'],
+                                  (((centroid_hampel_span // 2, centroid_hampel_span // 2)),
+                                   (0, 0)),
+                                  'constant', constant_values = np.nan)
+        for i in range(1):
+            vws = strided_app(padded_centroids[:, i], centroid_hampel_span, 1)
+            med = np.nanmedian(vws, axis=1)
+            mad = np.nanmedian(np.abs(vws - med[:, None]), axis=1)
+            vals = np.abs(features['centroid'][:, i] - med)
+            fill_idx = np.where(vals > med + centroid_hampel_sig * mad)[0]
+            features['centroid'][fill_idx, i] = med[fill_idx]
+
+        padded_orientation = np.pad(features['orientation'],
+                                    (angle_hampel_span // 2, angle_hampel_span // 2),
+                                    'constant', constant_values = np.nan)
+
+    if angle_hampel_span is not None and angle_hampel_span > 0:
+        vws = strided_app(padded_orientation, angle_hampel_span, 1)
+        med = np.nanmedian(vws, axis=1)
+        mad = np.nanmedian(np.abs(vws - med[:, None]), axis=1)
+        vals = np.abs(features['orientation'] - med)
+        fill_idx = np.where(vals > med + angle_hampel_sig * mad)[0]
+        features['orientation'][fill_idx] = med[fill_idx]
+
+    return features
+
+
+def model_smoother(features, ll=None, clips=(-300, -125)):
+
+    if ll is None or clips is None or (clips[0] >= clips[1]):
+        return features
+
+    ave_ll = np.zeros((ll.shape[0], ))
+    for i, ll_frame in enumerate(ll):
+
+        max_mu = clips[1]
+        min_mu = clips[0]
+
+        smoother = np.mean(ll[i])
+        smoother -= min_mu
+        smoother /= (max_mu - min_mu)
+
+        smoother = np.clip(smoother, 0, 1)
+        ave_ll[i] = smoother
+
+    for i in range(2, len(ave_ll)):
+        smoother = ave_ll[i]
+        for j, (k, v) in enumerate(features.items()):
+            features[k][i] = (1 - smoother) * v[i - 1] + smoother * v[i]
+
+    for i in range(len(ave_ll) - 1):
+        smoother = ave_ll[i]
+        for j, (k, v) in enumerate(features.items()):
+            features[k][i] = (1 - smoother) * v[i + 1] + smoother * v[i]
 
     return features
