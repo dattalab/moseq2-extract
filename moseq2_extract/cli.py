@@ -101,6 +101,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
 @click.option('--tracking-model-ll-clip', default=-100, type=float, help="Clip log-likelihoods below this value")
 @click.option('--tracking-model-segment', default=True, type=bool, help="Segment likelihood mask from tracking model")
+@click.option('--tracking-model-init', default='raw', type=str, help="Method for tracking model initialization")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -124,7 +125,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
-            tracking_model_ll_clip, tracking_model_segment, cable_filter_iters, cable_filter_shape,
+            tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
@@ -309,7 +310,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     centroid_hampel_sig=centroid_hampel_sig,
                                     angle_hampel_span=angle_hampel_span,
                                     angle_hampel_sig=angle_hampel_sig,
-                                    model_smoothing_clips=model_smoothing_clips)
+                                    model_smoothing_clips=model_smoothing_clips,
+                                    tracking_model_init=tracking_model_init)
 
             # if desired, write out a movie
 
