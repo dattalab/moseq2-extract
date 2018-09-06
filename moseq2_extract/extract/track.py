@@ -97,6 +97,8 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             use_frame = np.min(frames[:init_frames, ...], axis=0)
         elif init_method == 'med':
             use_frame = np.median(frames[:init_frames, ...], axis=0)
+        elif init_method =='raw':
+            use_frame = frames[0, ...]
 
         mouse_mask = em_init(use_frame,
                              depth_floor=depth_floor,
