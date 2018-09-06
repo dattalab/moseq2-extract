@@ -126,7 +126,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, config_file):
 
-    print('Processings: {}'.format(input_file))
+    print('Processing: {}'.format(input_file))
     # get the basic metadata
 
     # if we pass in multiple roi indices, recurse and process each roi
