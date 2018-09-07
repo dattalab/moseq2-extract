@@ -9,7 +9,7 @@ setup(
     packages=find_packages(),
     install_requires=['h5py', 'matplotlib', 'scipy>=0.19',
                       'scikit-image>=0.13', 'scikit-learn==0.19',
-                      'tqdm', 'statsmodels>=0.8.0', 'numpy==1.14.5'
+                      'tqdm', 'statsmodels>=0.8.0', 'numpy==1.14.5',
                       'joblib==0.11', 'opencv-python',
                       'click', 'ruamel.yaml<=0.15'],
     python_requires='>=3.6',
