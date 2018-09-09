@@ -509,11 +509,15 @@ def model_smoother(features, ll=None, clips=(-300, -125)):
     for i in range(2, len(ave_ll)):
         smoother = ave_ll[i]
         for j, (k, v) in enumerate(features.items()):
+            if np.isnan(v[i]).any() and i > 0:
+                v[i] = v[i - 1]
             features[k][i] = (1 - smoother) * v[i - 1] + smoother * v[i]
 
     for i in range(len(ave_ll) - 1):
         smoother = ave_ll[i]
         for j, (k, v) in enumerate(features.items()):
+            if np.isnan(v[i]).any() and i > 0:
+                v[i] = v[i - 1]
             features[k][i] = (1 - smoother) * v[i + 1] + smoother * v[i]
 
     return features

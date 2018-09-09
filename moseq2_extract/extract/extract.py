@@ -56,7 +56,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     if use_em_tracker:
         # print('Computing EM parameters...')
         parameters = em_tracking(
-            filtered_frames, rho_mean=rho_mean,
+            filtered_frames, chunk, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_segment,
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,

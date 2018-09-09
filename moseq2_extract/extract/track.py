@@ -66,8 +66,8 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
     return mouse_mask
 
 
-def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
-                depth_floor=0, depth_ceiling=100, progress_bar=True,
+def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
+                depth_floor=10, depth_ceiling=100, progress_bar=True,
                 init_mean=None, init_cov=None, init_frames=3, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
@@ -115,7 +115,7 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
             try:
                 cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
             except FloatingPointError:
-                cov = np.eye(3)
+                cov = np.eye(3) * 20
     else:
         mean = init_mean
         cov = init_cov
@@ -134,7 +134,11 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     repeat = False
     while i < nframes:
 
-        xyz = np.vstack((coords, frames[i, ...]))
+        if repeat:
+            xyz = np.vstack((coords, raw_frames[i, ...].ravel()))
+        else:
+            xyz = np.vstack((coords, frames[i, ...]))
+
         pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
         # segment to find pixels with likely mice, only use those for updating
@@ -144,14 +148,15 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
                                                     cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             tmp = np.array([cv2.contourArea(x) for x in cnts])
             if tmp.size == 0:
+                print('No contour...')
                 repeat = True
                 continue
             use_cnt = tmp.argmax()
             mask = np.zeros_like(pxtheta_im)
             cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
-            # mask = np.ones(pxtheta_im.shape, dtype='bool')
-            mask = pxtheta_im > ll_threshold
+            mask = np.ones(pxtheta_im.shape, dtype='bool')
+            # mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
         tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
@@ -163,6 +168,11 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
         except FloatingPointError:
             mean_update = mean
             cov_update = cov
+
+        if np.all(mean_update == 0) or np.all(cov_update.ravel() == 0) and not repeat:
+            print('Backing off...')
+            repeat = True
+            continue
 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
