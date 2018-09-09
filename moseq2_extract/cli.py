@@ -39,10 +39,11 @@ def cli():
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
 @click.option('--bg-roi-index', default=[0], type=int, help='Index of roi to use', multiple=True)
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='ROI feature weighting (area, extent, dist)')
+@click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float), help='Range to search for floor of arena (in mm)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
-def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
+def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
@@ -66,14 +67,15 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 
     first_frame = load_movie_data(input_file, 0)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
-                scale_factor=(650, 750))
+                scale_factor=bg_roi_depth_range)
 
     print('Getting roi...')
     strel_dilate = select_strel(bg_roi_shape, bg_roi_dilate)
 
-    rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                  weights=bg_roi_weights)
-
+    rois, _, _, _, _, _ = get_roi(bground_im,
+                                  strel_dilate=strel_dilate,
+                                  weights=bg_roi_weights,
+                                  depth_range=bg_roi_depth_range)
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
         roi_filename = 'roi_{:02d}.tiff'.format(idx)
@@ -88,6 +90,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use for the mask dilation (ellipse or rect)')
 @click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use')
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='Feature weighting (area, extent, dist) of the background mask')
+@click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float), help='Range to search for floor of arena (in mm)')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
@@ -113,7 +116,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
 @click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')
 @click.option("--config-file", type=click.Path())
-def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights,
+def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
             tracking_model_ll_clip, tracking_model_segment, cable_filter_iters, cable_filter_shape,
@@ -193,7 +196,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     first_frame = load_movie_data(input_file, 0)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
-                scale_factor=(650, 750))
+                scale_factor=bg_roi_depth_range)
 
     roi_filename = 'roi_{:02d}.tiff'.format(bg_roi_index)
 
@@ -206,8 +209,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
     else:
         print('Getting roi...')
-        rois, plane, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
-                                          weights=bg_roi_weights)
+        rois, plane, _, _, _, _ = get_roi(bground_im,
+                                          strel_dilate=strel_dilate,
+                                          weights=bg_roi_weights,
+                                          depth_range=bg_roi_depth_range)
 
         if use_plane_bground:
             print('Using plane fit for background...')
