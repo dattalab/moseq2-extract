@@ -37,7 +37,7 @@ def cli():
 @click.argument('input-file', type=click.Path(exists=True))
 @click.option('--bg-roi-dilate', default=(10, 10), type=(int, int), help='Size of strel to dilate roi')
 @click.option('--bg-roi-shape', default='ellipse', type=str, help='Shape to use to dilate roi (ellipse or rect)')
-@click.option('--bg-roi-index', default=0, type=int, help='Index of roi to use', multiple=True)
+@click.option('--bg-roi-index', default=[0], type=int, help='Index of roi to use', multiple=True)
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='ROI feature weighting (area, extent, dist)')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
@@ -73,6 +73,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 
     rois, _, _, _, _, _ = get_roi(bground_im, strel_dilate=strel_dilate,
                                   weights=bg_roi_weights)
+
+    bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
         roi_filename = 'roi_{:02d}.tiff'.format(idx)
         write_image(os.path.join(output_dir, roi_filename),
