@@ -316,8 +316,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             if use_tracking_model:
                 results['mask_frames'][results['depth_frames'] < min_height] = tracking_model_ll_clip
                 results['mask_frames'][results['mask_frames'] < tracking_model_ll_clip] = tracking_model_ll_clip
-                tracking_init_mean = results['parameters']['mean'][-(offset+1)]
-                tracking_init_cov = results['parameters']['cov'][-(offset+1)]
+                tracking_init_mean = results['parameters']['mean'][-(chunk_overlap+1)]
+                tracking_init_cov = results['parameters']['cov'][-(chunk_overlap+1)]
 
             frame_range = frame_range[offset:]
 

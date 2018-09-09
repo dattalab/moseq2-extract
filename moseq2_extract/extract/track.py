@@ -86,7 +86,6 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     # initialize the mean and covariance
 
     nframes, r, c = frames.shape
-
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
     xyz = np.vstack((coords, frames[0, ...].ravel()))
@@ -133,7 +132,6 @@ def em_tracking(frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
     pbar = tqdm.tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
     i = 0
     repeat = False
-
     while i < nframes:
 
         xyz = np.vstack((coords, frames[i, ...]))
