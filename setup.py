@@ -11,7 +11,7 @@ setup(
                       'scikit-image>=0.13', 'scikit-learn==0.19',
                       'tqdm', 'statsmodels>=0.8.0', 'numpy==1.14.5',
                       'joblib==0.11', 'opencv-python',
-                      'click', 'ruamel.yaml<=0.15'],
+                      'click', 'ruamel.yaml'],
     python_requires='>=3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )
