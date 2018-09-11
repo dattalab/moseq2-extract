@@ -155,16 +155,16 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     nframes = video_metadata['nframes']
 
     if frame_trim[0] and frame_trim[0] < nframes:
-        first_frame = frame_trim[0]
+        first_frame_idx = frame_trim[0]
     else:
-        first_frame = 0
+        first_frame_idx = 0
 
-    if frame_trim[1] and frame_trim[1] < nframes:
-        last_frame = frame_trim[1]
+    if nframes - frame_trim[1] > first_frame_idx:
+        last_frame_idx = nframes - frame_trim[1]
     else:
-        last_frame = nframes
+        last_frame_idx = nframes
 
-    nframes = last_frame - first_frame
+    nframes = last_frame_idx - first_frame_idx
 
     metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
     timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
@@ -176,7 +176,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         extraction_metadata = {}
 
     if os.path.exists(timestamp_path):
-        timestamps = load_timestamps(timestamp_path, col=0)[first_frame:last_frame]
+        timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
     else:
         timestamps = None
 
@@ -291,7 +291,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
-            raw_frames = load_movie_data(input_file, [f + first_frame for f in frame_range])
+            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range])
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
@@ -357,7 +357,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=[f + first_frame for f in frame_range])
+                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=[f + first_frame_idx for f in frame_range])
 
         if video_pipe:
             video_pipe.stdin.close()
