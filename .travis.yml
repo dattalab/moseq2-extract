@@ -1,12 +1,9 @@
 #specs for travis ci
 language: python
 os: linux
-matrix:
-  include:
-    - python : 3.6
-    - python : 3.7
-      dist: xenial
-      sudo: true
+python: 
+  - 3.6
+# - 3.7 enable once supported by travis
 # get the dependencies
 install:
   - pip install .
