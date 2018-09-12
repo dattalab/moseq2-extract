@@ -57,7 +57,11 @@ def test_extract(temp_dir):
     fake_movie.tofile(data_path)
 
     runner = CliRunner()
-    result = runner.invoke(extract, [data_path, '--output-dir', temp_dir], catch_exceptions=True)
+    result = runner.invoke(extract, [data_path,
+                                     '--output-dir', temp_dir,
+                                     '--angle-hampel-span', 5,
+                                     '--centroid-hampel-span', 5],
+                           catch_exceptions=True)
     print(result.output)
 
     assert(result.exit_code == 0)
