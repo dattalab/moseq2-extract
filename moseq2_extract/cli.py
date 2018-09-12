@@ -121,6 +121,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--angle-hampel-span', default=0, type=int, help='Angle filter span')
 @click.option('--angle-hampel-sig', default=3, type=float, help='Angle filter sig')
 @click.option('--model-smoothing-clips', default=(0, 0), type=(float, float), help='Model smoothing clips')
+@click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
@@ -129,7 +130,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, config_file):
+            model_smoothing_clips, frame_trim, config_file):
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -153,6 +154,18 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
 
+    if frame_trim[0] and frame_trim[0] < nframes:
+        first_frame_idx = frame_trim[0]
+    else:
+        first_frame_idx = 0
+
+    if nframes - frame_trim[1] > first_frame_idx:
+        last_frame_idx = nframes - frame_trim[1]
+    else:
+        last_frame_idx = nframes
+
+    nframes = last_frame_idx - first_frame_idx
+
     metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
     timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
 
@@ -163,7 +176,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         extraction_metadata = {}
 
     if os.path.exists(timestamp_path):
-        timestamps = load_timestamps(timestamp_path, col=0)
+        timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
     else:
         timestamps = None
 
@@ -278,7 +291,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
-            raw_frames = load_movie_data(input_file, frame_range)
+            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range])
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
@@ -344,7 +357,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=frame_range)
+                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=[f + first_frame_idx for f in frame_range])
 
         if video_pipe:
             video_pipe.stdin.close()
