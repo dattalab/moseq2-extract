@@ -119,14 +119,30 @@ def get_roi(depth_image,
             noise_tolerance=30,
             weights=(1, .1, 1),
             overlap_roi=None,
+            gradient_filter=False,
+            gradient_kernel=7,
+            gradient_threshold=3000,
             **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
     """
 
+    if gradient_filter:
+        gradient_x = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
+                                      1, 0, ksize=gradient_kernel))
+        gradient_y = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
+                                      0, 1, ksize=gradient_kernel))
+        mask = np.logical_and(gradient_x < gradient_threshold, gradient_y < gradient_threshold)
+    else:
+        mask = None
+
     roi_plane, dists = moseq2_extract.extract.roi.plane_ransac(
-        depth_image, noise_tolerance=noise_tolerance, **kwargs)
+        depth_image, noise_tolerance=noise_tolerance, mask=mask, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
+
+    if gradient_filter:
+        dist_ims[~mask] = np.inf
+
     bin_im = dist_ims < noise_tolerance
 
     # anything < noise_tolerance from the plane is part of it
