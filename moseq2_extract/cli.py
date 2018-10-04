@@ -99,6 +99,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use')
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='Feature weighting (area, extent, dist) of the background mask')
 @click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float), help='Range to search for floor of arena (in mm)')
+@click.option('--bg-roi-gradient-filter', default=False, type=bool, help='Exclude walls with gradient filtering')
+@click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
+@click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
@@ -132,6 +135,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
             tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
@@ -241,7 +245,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         rois, plane, _, _, _, _ = get_roi(bground_im,
                                           strel_dilate=strel_dilate,
                                           weights=bg_roi_weights,
-                                          depth_range=bg_roi_depth_range)
+                                          depth_range=bg_roi_depth_range,
+                                          gradient_filter=bg_roi_gradient_filter,
+                                          gradient_threshold=bg_roi_gradient_threshold,
+                                          gradient_kernel=bg_roi_gradient_kernel)
 
         if use_plane_bground:
             print('Using plane fit for background...')
