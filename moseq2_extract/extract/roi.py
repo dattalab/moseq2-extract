@@ -31,7 +31,8 @@ def plane_fit3(points):
 
 
 def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
-                 noise_tolerance=30, in_ratio=.1, progress_bar=True):
+                 noise_tolerance=30, in_ratio=.1, progress_bar=True,
+                 mask=None):
     """Naive RANSAC implementation for plane fitting
     Args:
         depth_image (2d numpy array): hxw, background image to fit plane to
@@ -45,6 +46,9 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
     """
     use_points = np.logical_and(
         depth_image > depth_range[0], depth_image < depth_range[1])
+
+    if mask is not None:
+        use_points = np.logical_and(use_points, mask)
 
     xx, yy = np.meshgrid(
         np.arange(depth_image.shape[1]), np.arange(depth_image.shape[0]))

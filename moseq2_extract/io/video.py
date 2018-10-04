@@ -56,7 +56,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     dims = (len(frames), frame_dims[1], frame_dims[0])
 
     with open(filename, "rb") as f:
-        f.seek(seek_point.astype('int'))
+        f.seek(int(seek_point))
         chunk = np.fromfile(file=f,
                             dtype=np.dtype(dtype),
                             count=read_points).reshape(dims)
