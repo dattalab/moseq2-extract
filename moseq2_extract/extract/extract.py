@@ -1,6 +1,7 @@
-from moseq2_extract.extract.proc import crop_and_rotate_frames,\
-    clean_frames, apply_roi, get_frame_features,\
-    get_flips, compute_scalars
+from moseq2_extract.extract.proc import (crop_and_rotate_frames,
+                                         clean_frames, apply_roi, get_frame_features,
+                                         get_flips, compute_scalars, feature_hampel_filter,
+                                         model_smoother)
 from moseq2_extract.extract.track import em_tracking, em_get_ll
 from copy import deepcopy
 import cv2
@@ -24,7 +25,10 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   tracking_init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   flip_classifier=None, flip_smoothing=51,
                   frame_dtype='uint8', save_path=os.path.join(os.getcwd(), 'proc'),
-                  progress_bar=True, crop_size=(80, 80), true_depth=673.1):
+                  progress_bar=True, crop_size=(80, 80), true_depth=673.1,
+                  centroid_hampel_span=5, centroid_hampel_sig=3,
+                  angle_hampel_span=5, angle_hampel_sig=3,
+                  model_smoothing_clips=(-300, -150), tracking_model_init='raw'):
 
     # if we pass bground or roi files, be sure to use 'em...
 
@@ -52,11 +56,11 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     if use_em_tracker:
         # print('Computing EM parameters...')
         parameters = em_tracking(
-            filtered_frames, rho_mean=rho_mean,
+            filtered_frames, chunk, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_segment,
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,
-            init_strel=tracking_init_strel)
+            init_strel=tracking_init_strel, init_method=tracking_model_init)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
         # ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
     else:
@@ -73,8 +77,18 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                         progress_bar=progress_bar)
 
     incl = ~np.isnan(features['orientation'])
-    features['orientation'][incl] = np.unwrap(
-        features['orientation'][incl]*2)/2
+    features['orientation'][incl] = np.unwrap(features['orientation'][incl] * 2) / 2
+
+    features = feature_hampel_filter(features,
+                                     centroid_hampel_span=centroid_hampel_span,
+                                     centroid_hampel_sig=centroid_hampel_sig,
+                                     angle_hampel_span=angle_hampel_span,
+                                     angle_hampel_sig=angle_hampel_sig)
+
+    if ll is not None:
+        features = model_smoother(features,
+                                  ll=ll,
+                                  clips=model_smoothing_clips)
 
     # crop and rotate the frames
 
@@ -103,9 +117,10 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     if flip_classifier:
         # print('Fixing flips...')
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
-        cropped_frames[flips, ...] = np.flip(cropped_frames[flips, ...], axis=2)
-        cropped_filtered_frames[flips, ...] = np.flip(cropped_filtered_frames[flips, ...], axis=2)
-        mask[flips, ...] = np.flip(mask[flips, ...], axis=2)
+        for flip in np.where(flips)[0]:
+            cropped_frames[flip, ...] = np.rot90(cropped_frames[flip, ...], k=2)
+            cropped_filtered_frames[flip, ...] = np.rot90(cropped_filtered_frames[flip, ...], k=2)
+            mask[flip, ...] = np.rot90(mask[flip, ...], k=2)
         features['orientation'][flips] += np.pi
 
         # if use_em_tracker:

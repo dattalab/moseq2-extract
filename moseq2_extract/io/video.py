@@ -56,7 +56,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     dims = (len(frames), frame_dims[1], frame_dims[0])
 
     with open(filename, "rb") as f:
-        f.seek(seek_point.astype('int'))
+        f.seek(int(seek_point))
         chunk = np.fromfile(file=f,
                             dtype=np.dtype(dtype),
                             count=read_points).reshape(dims)
@@ -97,7 +97,7 @@ def get_video_info(filename):
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
                  pixel_format='gray16le', codec='ffv1', close_pipe=True,
-                 slices=24, slicecrc=1, frame_size=None, get_cmd=False):
+                 pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     """
     Write frames to avi file using the ffv1 lossless encoder
     """
@@ -112,7 +112,6 @@ def write_frames(filename, frames, threads=6, fps=30,
 
     command = ['ffmpeg',
                '-y',
-               '-threads', str(threads),
                '-loglevel', 'fatal',
                '-framerate', str(fps),
                '-f', 'rawvideo',
@@ -121,6 +120,7 @@ def write_frames(filename, frames, threads=6, fps=30,
                '-i', '-',
                '-an',
                '-vcodec', codec,
+               '-threads', str(threads),
                '-slices', str(slices),
                '-slicecrc', str(slicecrc),
                '-r', str(fps),
@@ -129,8 +129,10 @@ def write_frames(filename, frames, threads=6, fps=30,
     if get_cmd:
         return command
 
-    pipe = subprocess.Popen(
-        command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not pipe:
+        pipe = subprocess.Popen(
+            command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+
     for i in tqdm.tqdm(range(frames.shape[0])):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 

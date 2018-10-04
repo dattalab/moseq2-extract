@@ -1,10 +1,10 @@
-from moseq2_extract.io.video import get_movie_info,\
-    load_movie_data, write_frames_preview
+from moseq2_extract.io.video import (get_movie_info, load_movie_data,
+                                     write_frames_preview, write_frames)
 from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
-from moseq2_extract.util import load_metadata, gen_batch_sequence, load_timestamps,\
-    select_strel, command_with_config, scalar_attributes
+from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
+                                 select_strel, command_with_config, scalar_attributes)
 import click
 import os
 import h5py
@@ -40,10 +40,14 @@ def cli():
 @click.option('--bg-roi-index', default=[0], type=int, help='Index of roi to use', multiple=True)
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='ROI feature weighting (area, extent, dist)')
 @click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float), help='Range to search for floor of arena (in mm)')
+@click.option('--bg-roi-gradient-filter', default=False, type=bool, help='Exclude walls with gradient filtering')
+@click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
+@click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
@@ -75,7 +79,11 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
     rois, _, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
                                   weights=bg_roi_weights,
-                                  depth_range=bg_roi_depth_range)
+                                  depth_range=bg_roi_depth_range,
+                                  gradient_filter=bg_roi_gradient_filter,
+                                  gradient_threshold=bg_roi_gradient_threshold,
+                                  gradient_kernel=bg_roi_gradient_kernel)
+
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
         roi_filename = 'roi_{:02d}.tiff'.format(idx)
@@ -91,6 +99,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--bg-roi-index', default=0, type=int, help='Index of which background mask(s) to use')
 @click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float), help='Feature weighting (area, extent, dist) of the background mask')
 @click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float), help='Range to search for floor of arena (in mm)')
+@click.option('--bg-roi-gradient-filter', default=False, type=bool, help='Exclude walls with gradient filtering')
+@click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
+@click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
@@ -101,6 +112,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
 @click.option('--tracking-model-ll-clip', default=-100, type=float, help="Clip log-likelihoods below this value")
 @click.option('--tracking-model-segment', default=True, type=bool, help="Segment likelihood mask from tracking model")
+@click.option('--tracking-model-init', default='raw', type=str, help="Method for tracking model initialization")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -115,15 +127,24 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')
 @click.option('--use-plane-bground', is_flag=True, help='Use a plane fit for the background. Useful for mice that don\'t move much')
 @click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')
+@click.option('--centroid-hampel-span', default=0, type=int, help='Hampel filter span')
+@click.option('--centroid-hampel-sig', default=3, type=float, help='Hampel filter sig')
+@click.option('--angle-hampel-span', default=0, type=int, help='Angle filter span')
+@click.option('--angle-hampel-sig', default=3, type=float, help='Angle filter sig')
+@click.option('--model-smoothing-clips', default=(0, 0), type=(float, float), help='Model smoothing clips')
+@click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
-            tracking_model_ll_clip, tracking_model_segment, cable_filter_iters, cable_filter_shape,
+            tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
-            frame_dtype, config_file):
+            frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
+            model_smoothing_clips, frame_trim, config_file):
 
+    print('Processing: {}'.format(input_file))
     # get the basic metadata
 
     # if we pass in multiple roi indices, recurse and process each roi
@@ -140,10 +161,22 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         'metadata': ''
     }
 
-    np.seterr(invalid='raise')
+    # np.seterr(invalid='raise')
 
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
+
+    if frame_trim[0] and frame_trim[0] < nframes:
+        first_frame_idx = frame_trim[0]
+    else:
+        first_frame_idx = 0
+
+    if nframes - frame_trim[1] > first_frame_idx:
+        last_frame_idx = nframes - frame_trim[1]
+    else:
+        last_frame_idx = nframes
+
+    nframes = last_frame_idx - first_frame_idx
 
     metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
     timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
@@ -155,7 +188,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         extraction_metadata = {}
 
     if os.path.exists(timestamp_path):
-        timestamps = load_timestamps(timestamp_path, col=0)
+        timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
     else:
         timestamps = None
 
@@ -212,7 +245,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         rois, plane, _, _, _, _ = get_roi(bground_im,
                                           strel_dilate=strel_dilate,
                                           weights=bg_roi_weights,
-                                          depth_range=bg_roi_depth_range)
+                                          depth_range=bg_roi_depth_range,
+                                          gradient_filter=bg_roi_gradient_filter,
+                                          gradient_threshold=bg_roi_gradient_threshold,
+                                          gradient_kernel=bg_roi_gradient_kernel)
 
         if use_plane_bground:
             print('Using plane fit for background...')
@@ -270,7 +306,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
-            raw_frames = load_movie_data(input_file, frame_range)
+            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range])
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
@@ -297,7 +333,13 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     tracking_segment=tracking_model_segment,
                                     tracking_init_mean=tracking_init_mean,
                                     tracking_init_cov=tracking_init_cov,
-                                    true_depth=true_depth)
+                                    true_depth=true_depth,
+                                    centroid_hampel_span=centroid_hampel_span,
+                                    centroid_hampel_sig=centroid_hampel_sig,
+                                    angle_hampel_span=angle_hampel_span,
+                                    angle_hampel_sig=angle_hampel_sig,
+                                    model_smoothing_clips=model_smoothing_clips,
+                                    tracking_model_init=tracking_model_init)
 
             # if desired, write out a movie
 
@@ -330,7 +372,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=frame_range)
+                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=[f + first_frame_idx for f in frame_range])
 
         if video_pipe:
             video_pipe.stdin.close()
@@ -389,6 +431,51 @@ def generate_config(output_file):
 
     with open(output_file, 'w') as f:
         yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+
+
+@cli.command(name="convert-raw-to-avi")
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')
+@click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
+@click.option('--fps', type=float, default=30, help='Video FPS')
+@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        output_file = os.path.join(os.path.dirname(input_file),
+                                   '{}.avi'.format(base_filename))
+
+    vid_info = get_movie_info(input_file)
+    frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
+    video_pipe = None
+
+    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        video_pipe = write_frames(output_file,
+                                  frames,
+                                  pipe=video_pipe,
+                                  close_pipe=False,
+                                  threads=threads,
+                                  fps=fps)
+
+    if video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting {}'.format(input_file))
+        os.remove(input_file)
 
 
 if __name__ == '__main__':

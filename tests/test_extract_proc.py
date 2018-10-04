@@ -32,8 +32,12 @@ def test_get_roi(script_loc):
         #     roi_weights = (1, .1, 1)
         # print(roi_weights)
 
-        roi = get_roi(tmp.astype('float32'), depth_range=(650, 750),
-                      iters=5000, noise_tolerance=30)
+        if re.search(r'gradient', bground) is not None:
+            roi = get_roi(tmp.astype('float32'), depth_range=(750, 900),
+                          iters=5000, noise_tolerance=30, gradient_filter=True)
+        else:
+            roi = get_roi(tmp.astype('float32'), depth_range=(650, 750),
+                          iters=5000, noise_tolerance=30)
 
         fname = os.path.basename(bground)
         dirname = os.path.dirname(bground)

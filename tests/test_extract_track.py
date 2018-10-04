@@ -77,7 +77,7 @@ def test_em_tracking():
     nframes = 100
     fake_movie = np.tile(tmp_image, (nframes, 1, 1))
 
-    parameters = em_tracking(frames=fake_movie)
+    parameters = em_tracking(frames=fake_movie, raw_frames=fake_movie)
 
     # this is very loose atm, need to figure out what's going on here...
     for mu in parameters['mean']:
