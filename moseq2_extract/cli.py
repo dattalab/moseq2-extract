@@ -4,7 +4,8 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
-                                 select_strel, command_with_config, scalar_attributes)
+                                 select_strel, command_with_config, scalar_attributes, 
+                                 save_dict_contents_to_h5)
 import click
 import os
 import h5py
@@ -182,10 +183,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
 
     if os.path.exists(metadata_path):
-        extraction_metadata = load_metadata(metadata_path)
-        status_dict['metadata'] = extraction_metadata
+        acquisition_metadata = load_metadata(metadata_path)
+        status_dict['metadata'] = acquisition_metadata
     else:
-        extraction_metadata = {}
+        acquisition_metadata = {}
 
     if os.path.exists(timestamp_path):
         timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
@@ -275,7 +276,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['scalars/{}'.format(scalar)].attrs['description'] = scalars_attrs[scalar]
 
         if timestamps is not None:
-            f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
+            f.create_dataset('timestamps', compression='gzip', data=timestamps)
         f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), frame_dtype, compression='gzip')
         f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
@@ -287,19 +288,33 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
 
         if flip_classifier is not None:
-            f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
-            f['metadata/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
+            f.create_dataset('metadata/extraction/flips', (nframes, ), 'bool', compression='gzip')
+            f['metadata/extraction/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
 
         # if use_tracking_model:
         #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
         #                      'float32', compression='gzip')
+        
+        f.create_dataset('metadata/extraction/true_depth', data=true_depth)
+        f['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
 
-        for key, value in extraction_metadata.items():
+        f.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
+        f['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
+
+        f.create_dataset('metadata/extraction/first_frame', data=first_frame, compression='gzip')
+        f['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
+
+        f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
+        f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
+
+        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
+        
+        for key, value in acquisition_metadata.items():
 
             if type(value) is list and len(value) > 0 and type(value[0]) is str:
                 value = [n.encode('utf8') for n in value]
 
-            f.create_dataset('metadata/extraction/{}'.format(key), data=value)
+            f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
 
         video_pipe = None
         tracking_init_mean = None
@@ -363,7 +378,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['frames_mask'][frame_range] = results['mask_frames'][offset:, ...]
 
             if flip_classifier:
-                f['metadata/flips'][frame_range] = results['flips'][offset:]
+                f['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
             nframes, rows, cols = raw_frames[offset:, ...].shape
             output_movie = np.zeros((nframes, rows+crop_size[0], cols+crop_size[1]), 'uint16')

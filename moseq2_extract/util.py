@@ -140,3 +140,31 @@ def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
     return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S*n, n))
+
+def save_dict_contents_to_h5(h5, dic, root='/'):
+    """ Save an dict to an h5 file, mounting at root
+
+    Keys are mapped to group names recursivly
+
+    Parameters:
+        h5 (h5py.File instance): h5py.file object to operate on
+        root (string): group on which to add additional groups and datasets
+        dic (dict): dictionary of data to write
+    """
+    if not root.endswith('/'):
+        root = root + '/'
+    
+    for key, item in dic.items():
+        dest = root + key
+        if isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
+            h5[dest] = item
+        elif isinstance(item, (tuple, list)):
+            h5[dest] = np.asarray(item)
+        elif isinstance(item, (int, float)):
+            h5[dest] = np.asarray([item])[0]
+        elif item is None:
+            continue
+        elif isinstance(item, dict):
+            save_dict_contents_to_h5(h5, item, dest)
+        else:
+            raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))

@@ -5,8 +5,10 @@ import numpy.testing as npt
 import json
 import cv2
 import click
+import h5py
+
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, command_with_config, scalar_attributes
+    select_strel, command_with_config, scalar_attributes, save_dict_contents_to_h5
 
 
 @pytest.fixture(scope='function')
@@ -72,3 +74,42 @@ def test_scalar_attributes():
     dct = scalar_attributes()
 
     assert(dct is not None)
+
+
+def test_save_dict_contents_to_h5(tmp_path):
+    
+    tmp_dic = {
+        'subdict': {
+            'sd_tuple': (0,1),
+            'sd_string': 'quick brown fox',
+            'sd_integer': 1,
+            'sd_float': 1.0,
+            'sd_bool': False,
+            'sd_list': [1,2,3],
+        },
+        'tuple': (0,1),
+        'string': 'quick brown fox',
+        'integer': 1,
+        'float': 1.0,
+        'bool': False,
+        'list': [1,2,3],
+    }
+    root_path = '/myroot'
+    fpath = os.path.join(tmp_path, 'test.h5')
+    f = h5py.File(fpath, 'w')
+    save_dict_contents_to_h5(f, tmp_dic, root_path)
+    f.close()
+
+    def h5_to_dict(h5file, path):
+        ans = {}
+        if not path.endswith('/'):
+            path = path + '/'
+        for key, item in h5file[path].items():
+            if type(item) is h5py.Dataset:
+                ans[key] = item.value
+            elif type(item) is h5py.Group:
+                ans[key] = h5_to_dict(h5file, path + key + '/')
+        return ans
+
+    result = h5_to_dict(h5py.File(fpath, 'r'), root_path)
+    npt.assert_equal(result, tmp_dic)
