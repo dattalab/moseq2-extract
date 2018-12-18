@@ -301,7 +301,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         f.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
         f['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
 
-        f.create_dataset('metadata/extraction/first_frame', data=first_frame, compression='gzip')
+        f.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
         f['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
 
         f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
