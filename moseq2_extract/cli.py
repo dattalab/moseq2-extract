@@ -5,7 +5,7 @@ from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
                                  select_strel, command_with_config, scalar_attributes, 
-                                 save_dict_contents_to_h5)
+                                 save_dict_contents_to_h5, click_param_annot)
 import click
 import os
 import h5py
@@ -277,6 +277,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         if timestamps is not None:
             f.create_dataset('timestamps', compression='gzip', data=timestamps)
+            f['timestamps'].attrs['description'] = "Depth video timestamps"
+
         f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), frame_dtype, compression='gzip')
         f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
@@ -307,7 +309,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
         f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
 
-        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
+        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
         
         for key, value in acquisition_metadata.items():
 
