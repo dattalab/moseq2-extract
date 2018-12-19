@@ -78,7 +78,7 @@ def test_scalar_attributes():
     assert(dct is not None)
 
 
-def test_save_dict_contents_to_h5(tmp_path):
+def test_save_dict_contents_to_h5(temp_dir):
     
     tmp_dic = {
         'subdict': {
@@ -97,7 +97,7 @@ def test_save_dict_contents_to_h5(tmp_path):
         'list': [1,2,3],
     }
     root_path = '/myroot'
-    fpath = os.path.join(tmp_path, 'test.h5')
+    fpath = os.path.join(temp_dir, 'test.h5')
     f = h5py.File(fpath, 'w')
     save_dict_contents_to_h5(f, tmp_dic, root_path)
     f.close()
