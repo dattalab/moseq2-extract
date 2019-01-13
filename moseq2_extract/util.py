@@ -23,8 +23,9 @@ def command_with_config(config_file_param_name):
             if config_file is not None:
                 with open(config_file) as f:
                     config_data = dict(yaml.load(f, yaml.RoundTripLoader))
+                # modified to only use keys that are actually defined in options
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
-                               for k, v in config_data.items()}
+                               for k, v in config_data.items() if k in param_defaults.keys()}
 
                 # find differences btw config and param defaults
                 diffs = set(param_defaults.items()) ^ set(param_cli.items())
