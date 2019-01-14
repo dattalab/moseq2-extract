@@ -339,7 +339,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         else:
             mask[i, ...] = frame_mask
 
-        im2, cnts, hierarchy = cv2.findContours(
+        cnts, hierarchy = cv2.findContours(
             frame_mask.astype('uint8'),
             cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
