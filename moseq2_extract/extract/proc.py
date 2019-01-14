@@ -185,6 +185,9 @@ def get_roi(depth_image,
             roi = cv2.dilate(roi, strel_dilate, iterations=1)
         if strel_erode is not None:
             roi = cv2.erode(roi, strel_erode, iterations=1)
+        if True: # need to plug this into the IO/cli scheme - I'm not sure how (-- Caleb)
+            roi = scipy.ndimage.morphology.binary_fill_holes(roi)
+        
         # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
