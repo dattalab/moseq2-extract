@@ -122,6 +122,7 @@ def get_roi(depth_image,
             gradient_filter=False,
             gradient_kernel=7,
             gradient_threshold=3000,
+            fill_holes=True,
             **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -185,9 +186,9 @@ def get_roi(depth_image,
             roi = cv2.dilate(roi, strel_dilate, iterations=1)
         if strel_erode is not None:
             roi = cv2.erode(roi, strel_erode, iterations=1)
-        if True: # need to plug this into the IO/cli scheme - I'm not sure how (-- Caleb)
+        if fill_holes:
             roi = scipy.ndimage.morphology.binary_fill_holes(roi)
-        
+
         # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
