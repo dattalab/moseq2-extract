@@ -53,7 +53,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
     mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
     mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
 
-    im2, cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     tmp = np.array([cv2.contourArea(x) for x in cnts])
     try:
         use_cnt = tmp.argmax()
@@ -144,8 +144,8 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         # segment to find pixels with likely mice, only use those for updating
 
         if segment and not repeat:
-            im2, cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-                                                    cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+                                               cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             tmp = np.array([cv2.contourArea(x) for x in cnts])
             if tmp.size == 0:
                 print('No contour...')

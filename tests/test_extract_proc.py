@@ -66,10 +66,10 @@ def test_get_roi(script_loc):
                                                              roi[0][1]))
 
             print(frac_nonoverlap_roi2)
-            assert(np.min(frac_nonoverlap_roi2) < .1)
+            assert(np.min(frac_nonoverlap_roi2) < .2)
 
         print(frac_nonoverlap_roi1)
-        assert(np.min(frac_nonoverlap_roi1) < .1)
+        assert(np.min(frac_nonoverlap_roi1) < .2)
 
 
 def test_crop_and_rotate():

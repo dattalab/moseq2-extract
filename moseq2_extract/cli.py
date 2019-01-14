@@ -43,11 +43,12 @@ def cli():
 @click.option('--bg-roi-gradient-filter', default=False, type=bool, help='Exclude walls with gradient filtering')
 @click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
 @click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
+@click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
-             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
+             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
@@ -82,7 +83,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                                   depth_range=bg_roi_depth_range,
                                   gradient_filter=bg_roi_gradient_filter,
                                   gradient_threshold=bg_roi_gradient_threshold,
-                                  gradient_kernel=bg_roi_gradient_kernel)
+                                  gradient_kernel=bg_roi_gradient_kernel,
+                                  fill_holes=bg_roi_fill_holes)
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
@@ -102,6 +104,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--bg-roi-gradient-filter', default=False, type=bool, help='Exclude walls with gradient filtering')
 @click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
 @click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
+@click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
@@ -135,7 +138,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
-            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
+            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
             min_height, max_height, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
             tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
@@ -248,7 +251,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                           depth_range=bg_roi_depth_range,
                                           gradient_filter=bg_roi_gradient_filter,
                                           gradient_threshold=bg_roi_gradient_threshold,
-                                          gradient_kernel=bg_roi_gradient_kernel)
+                                          gradient_kernel=bg_roi_gradient_kernel,
+                                          fill_holes=bg_roi_fill_holes)
 
         if use_plane_bground:
             print('Using plane fit for background...')
