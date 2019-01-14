@@ -83,7 +83,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                                   depth_range=bg_roi_depth_range,
                                   gradient_filter=bg_roi_gradient_filter,
                                   gradient_threshold=bg_roi_gradient_threshold,
-                                  gradient_kernel=bg_roi_gradient_kernel
+                                  gradient_kernel=bg_roi_gradient_kernel,
                                   fill_holes=bg_roi_fill_holes)
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
@@ -251,7 +251,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                           depth_range=bg_roi_depth_range,
                                           gradient_filter=bg_roi_gradient_filter,
                                           gradient_threshold=bg_roi_gradient_threshold,
-                                          gradient_kernel=bg_roi_gradient_kernel
+                                          gradient_kernel=bg_roi_gradient_kernel,
                                           fill_holes=bg_roi_fill_holes)
 
         if use_plane_bground:
