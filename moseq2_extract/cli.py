@@ -50,7 +50,7 @@ def cli():
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
              output_dir, use_plane_bground, config_file):
-
+    
     # set up the output directory
 
     if type(bg_roi_index) is int:
@@ -85,6 +85,19 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                                   gradient_threshold=bg_roi_gradient_threshold,
                                   gradient_kernel=bg_roi_gradient_kernel,
                                   fill_holes=bg_roi_fill_holes)
+
+    #####
+    max_number_of_rois = 2
+    sort_rois_by_position = True
+    
+    if max_number_of_rois > 0:
+        rois = rois[:max_number_of_rois]
+
+    if sort_rois_by_position:
+        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]    
+    
+    #####
+
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
