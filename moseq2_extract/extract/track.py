@@ -31,8 +31,8 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
         pxtheta_raw = scipy.stats.multivariate_normal.pdf(x=data, mean=mean, cov=cov)
         pxtheta_raw /= np.sum(pxtheta_raw)
 
-        mean = np.sum(data.T*pxtheta_raw, axis=1)
-        dx = (data-mean).T
+        mean = np.sum(data.T * pxtheta_raw, axis=1)
+        dx = (data - mean).T
         cov = stats_tools.cov_nearest(np.dot(dx * pxtheta_raw, dx.T) + lamd*np.eye(3))
 
         ll = np.sum(np.log(pxtheta_raw+1e-300))
@@ -68,7 +68,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
 
 def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
                 depth_floor=10, depth_ceiling=100, progress_bar=True,
-                init_mean=None, init_cov=None, init_frames=3, init_method='raw',
+                init_mean=None, init_cov=None, init_frames=10, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
@@ -91,7 +91,6 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     xyz = np.vstack((coords, frames[0, ...].ravel()))
 
     if init_mean is None or init_cov is None:
-
         if init_method == 'min':
             use_frame = np.min(frames[:init_frames, ...], axis=0)
         elif init_method == 'med':
@@ -110,12 +109,21 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 mean = np.mean(xyz[:, include_pixels], axis=1)
             except FloatingPointError:
                 mean = np.array([0, 0, 0])
+            except RuntimeWarning:
+                mean = np.array([0, 0, 0])
 
         if init_cov is None:
             try:
                 cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
             except FloatingPointError:
                 cov = np.eye(3) * 20
+            except np.linalg.linalg.LinAlgError:
+                cov = np.eye(3) * 20
+            except RuntimeWarning:
+                cov = np.eye(3) * 20
+
+        if np.any(np.isnan(mean)):
+            mean = np.array([0, 0, 0])
     else:
         mean = init_mean
         cov = init_cov
@@ -144,16 +152,23 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         # segment to find pixels with likely mice, only use those for updating
 
         if segment and not repeat:
-            cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-                                               cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            tmp = np.array([cv2.contourArea(x) for x in cnts])
-            if tmp.size == 0:
-                print('No contour...')
+
+            try:
+                cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+                                                   cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                tmp = np.array([cv2.contourArea(x) for x in cnts])
+            except RuntimeWarning:
+                tmp = np.array([])
+
+            if tmp.size == 0 and not repeat:
                 repeat = True
                 continue
-            use_cnt = tmp.argmax()
-            mask = np.zeros_like(pxtheta_im)
-            cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
+            elif tmp.size == 0 and repeat:
+                mask = np.ones(pxtheta_im.shape, dtype='bool')
+            else:
+                use_cnt = tmp.argmax()
+                mask = np.zeros_like(pxtheta_im)
+                cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
             mask = np.ones(pxtheta_im.shape, dtype='bool')
             # mask = pxtheta_im > ll_threshold
@@ -166,6 +181,9 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                                               mean=mean, cov=cov,
                                               epsilon=.25, max_iter=15, lamd=30)
         except FloatingPointError:
+            mean_update = mean
+            cov_update = cov
+        except np.linalg.linalg.LinAlgError:
             mean_update = mean
             cov_update = cov
 
