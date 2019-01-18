@@ -139,7 +139,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         if repeat:
             xyz = np.vstack((coords, raw_frames[i, ...].ravel()))
         else:
-            xyz = np.vstack((coords, frames[i, ...]))
+            xyz = np.vstack((coords, frames[i, ...].ravel()))
 
         pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
@@ -163,7 +163,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 use_cnt = tmp.argmax()
                 mask = np.zeros_like(pxtheta_im)
                 cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
-        else:
+        elif segment and repeat:
             mask = em_init(frames[i, ...],
                            depth_floor=depth_floor,
                            depth_ceiling=depth_ceiling,
@@ -175,8 +175,8 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                                init_strel=init_strel)
                 if np.all(mask == 0):
                     mask = np.ones(pxtheta_im.shape, dtype='bool')
-
-            # mask = pxtheta_im > ll_threshold
+        else:
+            mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
         tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
@@ -192,7 +192,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             mean_update = mean
             cov_update = cov
 
-        if np.all(mean_update == 0) or np.all(cov_update.ravel() == 0) and not repeat:
+        if (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)) and not repeat:
             print('Backing off...')
             repeat = True
             continue
