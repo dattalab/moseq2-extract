@@ -392,7 +392,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         convert_raw_to_avi_function(input_file,
                                     chunk_size=compress_chunk_size,
                                     fps=fps,
-                                    delete=False,
+                                    delete=False, # to be changed when we're ready!
                                     threads=compress_threads)
 
     status_dict['complete'] = True
