@@ -108,7 +108,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             try:
                 mean = np.mean(xyz[:, include_pixels], axis=1)
             except Exception:
-                mean = np.array([0, 0, 0])
+                mean = np.mean(xyz, axis=1)
 
         if init_cov is None:
             try:
@@ -117,7 +117,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 cov = np.eye(3) * 20
 
         if np.any(np.isnan(mean)):
-            mean = np.array([0, 0, 0])
+            mean = np.mean(xyz, axis=1)
     else:
         mean = init_mean
         cov = init_cov
@@ -153,28 +153,44 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
                                                    cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                 tmp = np.array([cv2.contourArea(x) for x in cnts])
-            except RuntimeWarning:
+            except Exception:
                 tmp = np.array([])
 
-            if tmp.size == 0 and not repeat:
+            if tmp.size == 0:
                 repeat = True
+                print('Repeating...')
                 continue
             else:
                 use_cnt = tmp.argmax()
                 mask = np.zeros_like(pxtheta_im)
                 cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         elif segment and repeat:
-            mask = em_init(frames[i, ...],
-                           depth_floor=depth_floor,
-                           depth_ceiling=depth_ceiling,
-                           init_strel=init_strel)
-            if np.all(mask == 0):
-                mask = em_init(raw_frames[i, ...],
+            # basically try each step in succession, first try to get contours
+            # if that fails try re-initialization, if that fails try re-initialization
+            # with raw data, if that fails give up and use all of the pixels
+            try:
+                cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+                                                   cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                tmp = np.array([cv2.contourArea(x) for x in cnts])
+            except Exception:
+                tmp = np.array([])
+
+            if tmp.size == 0:
+                mask = em_init(frames[i, ...],
                                depth_floor=depth_floor,
                                depth_ceiling=depth_ceiling,
                                init_strel=init_strel)
                 if np.all(mask == 0):
-                    mask = np.ones(pxtheta_im.shape, dtype='bool')
+                    mask = em_init(raw_frames[i, ...],
+                                   depth_floor=depth_floor,
+                                   depth_ceiling=depth_ceiling,
+                                   init_strel=init_strel)
+                    if np.all(mask == 0):
+                        mask = np.ones(pxtheta_im.shape, dtype='bool')
+            else:
+                use_cnt = tmp.argmax()
+                mask = np.zeros_like(pxtheta_im)
+                cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
             mask = pxtheta_im > ll_threshold
 
@@ -185,17 +201,21 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
                                               mean=mean, cov=cov,
                                               epsilon=.25, max_iter=15, lamd=30)
-        except FloatingPointError:
-            mean_update = mean
-            cov_update = cov
-        except np.linalg.linalg.LinAlgError:
-            mean_update = mean
-            cov_update = cov
+        except Exception:
+            if not repeat:
+                repeat = True
+                continue
+            else:
+                mean_update = mean
+                cov_update = cov
 
         if (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)) and not repeat:
             print('Backing off...')
             repeat = True
             continue
+        elif (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)):
+            mean_update = np.mean(xyz, axis=1)
+            cov_update = np.eye(3) * 30
 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
