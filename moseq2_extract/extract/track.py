@@ -158,7 +158,6 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 
             if tmp.size == 0:
                 repeat = True
-                print('Repeating...')
                 continue
             else:
                 use_cnt = tmp.argmax()
@@ -168,29 +167,31 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             # basically try each step in succession, first try to get contours
             # if that fails try re-initialization, if that fails try re-initialization
             # with raw data, if that fails give up and use all of the pixels
-            try:
-                cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-                                                   cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                tmp = np.array([cv2.contourArea(x) for x in cnts])
-            except Exception:
-                tmp = np.array([])
+            # try:
+            #     cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+            #                                        cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            #     tmp = np.array([cv2.contourArea(x) for x in cnts])
+            # except Exception:
+            #     tmp = np.array([])
+            #
+            # print(tmp.size())
 
-            if tmp.size == 0:
-                mask = em_init(frames[i, ...],
+            mask = em_init(frames[i, ...],
+                           depth_floor=depth_floor,
+                           depth_ceiling=depth_ceiling,
+                           init_strel=init_strel)
+            if np.all(mask == 0):
+                mask = em_init(raw_frames[i, ...],
                                depth_floor=depth_floor,
                                depth_ceiling=depth_ceiling,
                                init_strel=init_strel)
                 if np.all(mask == 0):
-                    mask = em_init(raw_frames[i, ...],
-                                   depth_floor=depth_floor,
-                                   depth_ceiling=depth_ceiling,
-                                   init_strel=init_strel)
-                    if np.all(mask == 0):
-                        mask = np.ones(pxtheta_im.shape, dtype='bool')
-            else:
-                use_cnt = tmp.argmax()
-                mask = np.zeros_like(pxtheta_im)
-                cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
+                    mask = np.ones(pxtheta_im.shape, dtype='bool')
+
+            # else:
+            #     use_cnt = tmp.argmax()
+            #     mask = np.zeros_like(pxtheta_im)
+            #     cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
             mask = pxtheta_im > ll_threshold
 
