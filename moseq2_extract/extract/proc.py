@@ -6,6 +6,7 @@ import skimage.measure
 import skimage.morphology
 import scipy.stats
 import scipy.signal
+import scipy.interpolate
 import cv2
 import tqdm
 import joblib
@@ -122,6 +123,7 @@ def get_roi(depth_image,
             gradient_filter=False,
             gradient_kernel=7,
             gradient_threshold=3000,
+            fill_holes=True,
             **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -185,6 +187,9 @@ def get_roi(depth_image,
             roi = cv2.dilate(roi, strel_dilate, iterations=1)
         if strel_erode is not None:
             roi = cv2.erode(roi, strel_erode, iterations=1)
+        if fill_holes:
+            roi = scipy.ndimage.morphology.binary_fill_holes(roi)
+
         # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
@@ -336,7 +341,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         else:
             mask[i, ...] = frame_mask
 
-        im2, cnts, hierarchy = cv2.findContours(
+        cnts, hierarchy = cv2.findContours(
             frame_mask.astype('uint8'),
             cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
@@ -522,18 +527,31 @@ def model_smoother(features, ll=None, clips=(-300, -125)):
         smoother = np.clip(smoother, 0, 1)
         ave_ll[i] = smoother
 
+    for k, v in features.items():
+        nans = np.isnan(v)
+        ndims = len(v.shape)
+        xvec = np.arange(len(v))
+        if nans.any():
+            if ndims == 2:
+                for i in range(v.shape[1]):
+                    f = scipy.interpolate.interp1d(xvec[~nans[:, i]], v[~nans[:, i], i],
+                                                   kind='nearest', fill_value='extrapolate')
+                    fill_vals = f(xvec[nans[:, i]])
+                    features[k][xvec[nans[:, i]], i] = fill_vals
+            else:
+                f = scipy.interpolate.interp1d(xvec[~nans], v[~nans],
+                                               kind='nearest', fill_value='extrapolate')
+                fill_vals = f(xvec[nans])
+                features[k][nans] = fill_vals
+
     for i in range(2, len(ave_ll)):
         smoother = ave_ll[i]
-        for j, (k, v) in enumerate(features.items()):
-            if np.isnan(v[i]).any() and i > 0:
-                v[i] = v[i - 1]
+        for k, v in features.items():
             features[k][i] = (1 - smoother) * v[i - 1] + smoother * v[i]
 
-    for i in range(len(ave_ll) - 1):
+    for i in reversed(range(len(ave_ll) - 1)):
         smoother = ave_ll[i]
-        for j, (k, v) in enumerate(features.items()):
-            if np.isnan(v[i]).any() and i > 0:
-                v[i] = v[i - 1]
+        for k, v in features.items():
             features[k][i] = (1 - smoother) * v[i + 1] + smoother * v[i]
 
     return features

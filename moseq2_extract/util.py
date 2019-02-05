@@ -23,8 +23,9 @@ def command_with_config(config_file_param_name):
             if config_file is not None:
                 with open(config_file) as f:
                     config_data = dict(yaml.load(f, yaml.RoundTripLoader))
+                # modified to only use keys that are actually defined in options
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
-                               for k, v in config_data.items()}
+                               for k, v in config_data.items() if k in param_defaults.keys()}
 
                 # find differences btw config and param defaults
                 diffs = set(param_defaults.items()) ^ set(param_cli.items())
@@ -132,6 +133,33 @@ def scalar_attributes():
     }
 
     return attributes
+
+
+def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
+
+    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
+    print('Converting {} to {}'.format(input_file, new_file))
+    # turn into os system call...
+    use_kwargs = {
+        'output-file': new_file,
+        'chunk-size': chunk_size,
+        'fps': fps,
+        'threads': threads
+    }
+    use_flags = {
+        'delete': delete
+    }
+    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
+    for k, v in use_kwargs.items():
+        base_command += ' --{} {}'.format(k, v)
+    for k, v in use_flags.items():
+        if v:
+            base_command += ' --{}'.format(k)
+
+    print(base_command)
+    print('\n')
+
+    os.system(base_command)
 
 
 # from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
