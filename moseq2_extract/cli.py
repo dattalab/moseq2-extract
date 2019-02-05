@@ -4,8 +4,7 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
-                                 select_strel, command_with_config, scalar_attributes,
-                                 convert_raw_to_avi_function)
+                                 select_strel, command_with_config, scalar_attributes)
 import click
 import os
 import h5py
@@ -137,9 +136,6 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--angle-hampel-sig', default=3, type=float, help='Angle filter sig')
 @click.option('--model-smoothing-clips', default=(0, 0), type=(float, float), help='Model smoothing clips')
 @click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
-@click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
-@click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
-@click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
@@ -149,7 +145,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads):
+            model_smoothing_clips, frame_trim, config_file):
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -386,20 +382,12 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             video_pipe.stdin.close()
             video_pipe.wait()
 
-    print('\n')
-
-    if input_file.endswith('dat') and compress:
-        convert_raw_to_avi_function(input_file,
-                                    chunk_size=compress_chunk_size,
-                                    fps=fps,
-                                    delete=False, # to be changed when we're ready!
-                                    threads=compress_threads)
-
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
 
+    print('\n')
 
 
 @cli.command(name="download-flip-file")

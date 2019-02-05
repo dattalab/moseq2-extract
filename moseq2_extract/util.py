@@ -135,33 +135,6 @@ def scalar_attributes():
     return attributes
 
 
-def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
-
-    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
-    print('Converting {} to {}'.format(input_file, new_file))
-    # turn into os system call...
-    use_kwargs = {
-        'output-file': new_file,
-        'chunk-size': chunk_size,
-        'fps': fps,
-        'threads': threads
-    }
-    use_flags = {
-        'delete': delete
-    }
-    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
-    for k, v in use_kwargs.items():
-        base_command += ' --{} {}'.format(k, v)
-    for k, v in use_flags.items():
-        if v:
-            base_command += ' --{}'.format(k)
-
-    print(base_command)
-    print('\n')
-
-    os.system(base_command)
-
-
 # from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
 # dang this is fast!
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
