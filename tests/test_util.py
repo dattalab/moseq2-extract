@@ -108,7 +108,7 @@ def test_save_dict_contents_to_h5(temp_dir):
             path = path + '/'
         for key, item in h5file[path].items():
             if type(item) is h5py.Dataset:
-                ans[key] = item.value
+                ans[key] = item[()]
             elif type(item) is h5py.Group:
                 ans[key] = h5_to_dict(h5file, path + key + '/')
         return ans
@@ -126,6 +126,7 @@ def test_click_param_annot():
         'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
         'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
         'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
+        'bg_roi_fill_holes': 'Fill holes in ROI',
         'output_dir': 'Output directory',
         'use_plane_bground': 'Use plane fit for background',
         'config_file': None
