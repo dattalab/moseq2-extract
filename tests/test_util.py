@@ -5,8 +5,12 @@ import numpy.testing as npt
 import json
 import cv2
 import click
+import h5py
+
+from moseq2_extract.cli import find_roi
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, command_with_config, scalar_attributes
+    select_strel, command_with_config, scalar_attributes, save_dict_contents_to_h5,\
+    click_param_annot
 
 
 @pytest.fixture(scope='function')
@@ -72,3 +76,60 @@ def test_scalar_attributes():
     dct = scalar_attributes()
 
     assert(dct is not None)
+
+
+def test_save_dict_contents_to_h5(temp_dir):
+    
+    tmp_dic = {
+        'subdict': {
+            'sd_tuple': (0,1),
+            'sd_string': 'quick brown fox',
+            'sd_integer': 1,
+            'sd_float': 1.0,
+            'sd_bool': False,
+            'sd_list': [1,2,3],
+        },
+        'tuple': (0,1),
+        'string': 'quick brown fox',
+        'integer': 1,
+        'float': 1.0,
+        'bool': False,
+        'list': [1,2,3],
+    }
+    root_path = '/myroot'
+    fpath = os.path.join(temp_dir, 'test.h5')
+    f = h5py.File(fpath, 'w')
+    save_dict_contents_to_h5(f, tmp_dic, root_path)
+    f.close()
+
+    def h5_to_dict(h5file, path):
+        ans = {}
+        if not path.endswith('/'):
+            path = path + '/'
+        for key, item in h5file[path].items():
+            if type(item) is h5py.Dataset:
+                ans[key] = item[()]
+            elif type(item) is h5py.Group:
+                ans[key] = h5_to_dict(h5file, path + key + '/')
+        return ans
+
+    result = h5_to_dict(h5py.File(fpath, 'r'), root_path)
+    npt.assert_equal(result, tmp_dic)
+
+def test_click_param_annot():
+    ref_dict = {
+        'bg_roi_dilate': 'Size of strel to dilate roi',
+        'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
+        'bg_roi_index': 'Index of roi to use',
+        'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
+        'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
+        'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
+        'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
+        'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
+        'bg_roi_fill_holes': 'Fill holes in ROI',
+        'output_dir': 'Output directory',
+        'use_plane_bground': 'Use plane fit for background',
+        'config_file': None
+    }
+    test_dict = click_param_annot(find_roi)
+    npt.assert_equal(ref_dict, test_dict)
