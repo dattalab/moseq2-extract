@@ -31,8 +31,8 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
         pxtheta_raw = scipy.stats.multivariate_normal.pdf(x=data, mean=mean, cov=cov)
         pxtheta_raw /= np.sum(pxtheta_raw)
 
-        mean = np.sum(data.T * pxtheta_raw, axis=1)
-        dx = (data - mean).T
+        mean = np.sum(data.T*pxtheta_raw, axis=1)
+        dx = (data-mean).T
         cov = stats_tools.cov_nearest(np.dot(dx * pxtheta_raw, dx.T) + lamd*np.eye(3))
 
         ll = np.sum(np.log(pxtheta_raw+1e-300))
@@ -68,7 +68,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
 
 def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, rho_cov=0,
                 depth_floor=10, depth_ceiling=100, progress_bar=True,
-                init_mean=None, init_cov=None, init_frames=10, init_method='raw',
+                init_mean=None, init_cov=None, init_frames=3, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
        around the room!
@@ -91,6 +91,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     xyz = np.vstack((coords, frames[0, ...].ravel()))
 
     if init_mean is None or init_cov is None:
+
         if init_method == 'min':
             use_frame = np.min(frames[:init_frames, ...], axis=0)
         elif init_method == 'med':
@@ -107,17 +108,14 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         if init_mean is None:
             try:
                 mean = np.mean(xyz[:, include_pixels], axis=1)
-            except Exception:
-                mean = np.mean(xyz, axis=1)
+            except FloatingPointError:
+                mean = np.array([0, 0, 0])
 
         if init_cov is None:
             try:
                 cov = stats_tools.cov_nearest(np.cov(xyz[:, include_pixels]))
-            except Exception:
+            except FloatingPointError:
                 cov = np.eye(3) * 20
-
-        if np.any(np.isnan(mean)):
-            mean = np.mean(xyz, axis=1)
     else:
         mean = init_mean
         cov = init_cov
@@ -139,61 +137,26 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         if repeat:
             xyz = np.vstack((coords, raw_frames[i, ...].ravel()))
         else:
-            xyz = np.vstack((coords, frames[i, ...].ravel()))
+            xyz = np.vstack((coords, frames[i, ...]))
 
         pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
         # segment to find pixels with likely mice, only use those for updating
 
-        # if we try to find contours and we fail, repeat with the base initialization
-        # if THAT fails, go back to the unfiltered frame and repeat base initialization
-        # if THAT fails, just set all the pixels to true (tracking is hopeless, get the mouse in later frames)
         if segment and not repeat:
-            try:
-                cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-                                                   cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                tmp = np.array([cv2.contourArea(x) for x in cnts])
-            except Exception:
-                tmp = np.array([])
-
+            cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
+                                               cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            tmp = np.array([cv2.contourArea(x) for x in cnts])
             if tmp.size == 0:
+                print('No contour...')
                 repeat = True
                 continue
-            else:
-                use_cnt = tmp.argmax()
-                mask = np.zeros_like(pxtheta_im)
-                cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
-        elif segment and repeat:
-            # basically try each step in succession, first try to get contours
-            # if that fails try re-initialization, if that fails try re-initialization
-            # with raw data, if that fails give up and use all of the pixels
-            # try:
-            #     cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-            #                                        cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            #     tmp = np.array([cv2.contourArea(x) for x in cnts])
-            # except Exception:
-            #     tmp = np.array([])
-            #
-            # print(tmp.size())
-
-            mask = em_init(frames[i, ...],
-                           depth_floor=depth_floor,
-                           depth_ceiling=depth_ceiling,
-                           init_strel=init_strel)
-            if np.all(mask == 0):
-                mask = em_init(raw_frames[i, ...],
-                               depth_floor=depth_floor,
-                               depth_ceiling=depth_ceiling,
-                               init_strel=init_strel)
-                if np.all(mask == 0):
-                    mask = np.ones(pxtheta_im.shape, dtype='bool')
-
-            # else:
-            #     use_cnt = tmp.argmax()
-            #     mask = np.zeros_like(pxtheta_im)
-            #     cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
+            use_cnt = tmp.argmax()
+            mask = np.zeros_like(pxtheta_im)
+            cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
-            mask = pxtheta_im > ll_threshold
+            mask = np.ones(pxtheta_im.shape, dtype='bool')
+            # mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
         tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
@@ -202,27 +165,19 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
                                               mean=mean, cov=cov,
                                               epsilon=.25, max_iter=15, lamd=30)
-        except Exception:
-            if not repeat:
-                repeat = True
-                continue
-            else:
-                mean_update = mean
-                cov_update = cov
+        except FloatingPointError:
+            mean_update = mean
+            cov_update = cov
 
-        if (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)) and not repeat:
+        if np.all(mean_update == 0) or np.all(cov_update.ravel() == 0) and not repeat:
             print('Backing off...')
             repeat = True
             continue
-        elif (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)):
-            mean_update = np.mean(xyz, axis=1)
-            cov_update = np.eye(3) * 30
 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
         # leave these set to 0 for now
-        # print(mean)
-        # print(cov)
+
         mean = (1-rho_mean)*mean_update+rho_mean*mean
         cov = (1-rho_cov)*cov_update+rho_cov*cov
 
