@@ -196,15 +196,18 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
         elif isinstance(item, (int, float)):
             h5[dest] = np.asarray([item])[0]
         elif item is None:
-            continue
+            h5[dest] = h5py.Empty(dtype='V')
         elif isinstance(item, dict):
             save_dict_contents_to_h5(h5, item, dest)
         else:
             raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
 
-        if key in annotations:
-            h5[dest].attrs['description'] = annotations[key]
-
+        if key in annotations 
+            if annotations[key] is None:
+                h5[dest].attrs['description'] = h5py.Empty(dtype='U')
+            else:
+                h5[dest].attrs['description'] = annotations[key]
+        
 
 def click_param_annot(click_cmd):
     """ Given a click.Command instance, return a dict that maps option names to help strings
