@@ -196,14 +196,17 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
         elif isinstance(item, (int, float)):
             h5[dest] = np.asarray([item])[0]
         elif item is None:
-            continue
+            h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
         elif isinstance(item, dict):
             save_dict_contents_to_h5(h5, item, dest)
         else:
             raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
 
         if key in annotations:
-            h5[dest].attrs['description'] = annotations[key]
+            if annotations[key] is None:
+                h5[dest].attrs['description'] = ""
+            else:
+                h5[dest].attrs['description'] = annotations[key]
 
 
 def click_param_annot(click_cmd):
