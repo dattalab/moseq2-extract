@@ -45,11 +45,11 @@ def command_with_config(config_file_param_name):
     return custom_command_class
 
 
-def gen_batch_sequence(nframes, chunk_size, overlap):
+def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     """Generate a sequence with overlap
     """
-    seq = range(nframes)
-    for i in range(0, len(seq)-overlap, chunk_size-overlap):
+    seq = range(offset, nframes)
+    for i in range(offset, len(seq)-overlap, chunk_size-overlap):
         yield seq[i:i+chunk_size]
 
 
@@ -186,7 +186,7 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
 
     if annotations is None:
         annotations = {} #empty dict is better than None, but dicts shouldn't be default parameters
-    
+
     for key, item in dic.items():
         dest = root + key
         if isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
@@ -219,7 +219,7 @@ def click_param_annot(click_cmd):
 
     Returns:
         dict: click.Option.human_readable_name as keys; click.Option.help as values
-    """ 
+    """
     annotations = {}
     for p in click_cmd.params:
         if isinstance(p, click.Option):

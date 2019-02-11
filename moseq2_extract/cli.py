@@ -4,8 +4,8 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
-                                 select_strel, command_with_config, scalar_attributes, 
-                                 save_dict_contents_to_h5, click_param_annot, 
+                                 select_strel, command_with_config, scalar_attributes,
+                                 save_dict_contents_to_h5, click_param_annot,
                                  convert_raw_to_avi_function)
 import click
 import os
@@ -304,7 +304,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         # if use_tracking_model:
         #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
         #                      'float32', compression='gzip')
-        
+
         f.create_dataset('metadata/extraction/true_depth', data=true_depth)
         f['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
 
@@ -318,7 +318,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
 
         save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
-        
+
         for key, value in acquisition_metadata.items():
 
             if type(value) is list and len(value) > 0 and type(value[0]) is str:
@@ -494,6 +494,69 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
                                   fps=fps)
 
     if video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting {}'.format(input_file))
+        os.remove(input_file)
+
+
+@cli.command(name="copy-slice")
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')
+@click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
+@click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
+@click.option('--fps', type=float, default=30, help='Video FPS')
+@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
+def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        avi_encode = True
+        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+    else:
+        output_filename, ext = os.path.splitext(os.path.basename(output_file))
+        if ext == '.avi':
+            avi_encode = True
+        else:
+            avi_encode = False
+
+    vid_info = get_movie_info(input_file)
+    copy_slice = (copy_slice[0], np.minimum(copy_slice[1], vid_info['nframes']))
+    nframes = copy_slice[1] - copy_slice[0]
+    offset = copy_slice[0]
+
+    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    video_pipe = None
+
+    if os.path.exists(output_file):
+        raise RuntimeError('Output file {} already exists'.format(output_file))
+
+    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        if avi_encode:
+            video_pipe = write_frames(output_file,
+                                      frames,
+                                      pipe=video_pipe,
+                                      close_pipe=False,
+                                      threads=threads,
+                                      fps=fps)
+        else:
+            with open(output_file, "ab") as f:
+                f.write(frames.astype('uint16').tobytes())
+
+    if avi_encode and video_pipe:
         video_pipe.stdin.close()
         video_pipe.wait()
 
