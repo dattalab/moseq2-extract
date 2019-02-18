@@ -17,6 +17,7 @@ import uuid
 import pathlib
 import urllib.request
 from copy import deepcopy
+from pkg_resources import get_distribution
 
 
 orig_init = click.core.Option.__init__
@@ -316,6 +317,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
         f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
         f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
+
+        extract_version = np.string_(get_distribution('moseq2-extract').version)
+        f.create_dataset('metadata/extraction/extract_version', data=extract_version)
+        f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
         save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
 
