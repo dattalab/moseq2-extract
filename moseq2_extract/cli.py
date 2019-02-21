@@ -47,11 +47,14 @@ def cli():
 @click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
 @click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
 @click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')
+@click.option('--bg-sort-roi-by-position', default=False, type=bool, help='Sort ROIs by position')
+@click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int, help='Max original ROIs to sort by position')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
+             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
@@ -88,6 +91,10 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                                   gradient_threshold=bg_roi_gradient_threshold,
                                   gradient_kernel=bg_roi_gradient_kernel,
                                   fill_holes=bg_roi_fill_holes)
+
+    if bg_sort_roi_by_position:
+        rois = rois[:bg_sort_roi_by_position_max_rois]
+        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
