@@ -79,7 +79,7 @@ def test_scalar_attributes():
 
 
 def test_save_dict_contents_to_h5(temp_dir):
-    
+
     tmp_dic = {
         'subdict': {
             'sd_tuple': (0,1),
@@ -126,6 +126,8 @@ def test_click_param_annot():
         'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
         'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
         'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
+        'bg_sort_roi_by_position': 'Sort ROIs by position',
+        'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
         'bg_roi_fill_holes': 'Fill holes in ROI',
         'output_dir': 'Output directory',
         'use_plane_bground': 'Use plane fit for background',
