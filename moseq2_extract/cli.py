@@ -163,12 +163,6 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     print('Processing: {}'.format(input_file))
     # get the basic metadata
 
-    # if we pass in multiple roi indices, recurse and process each roi
-    # if len(bg_roi_index) > 1:
-    #     for roi in bg_roi_index:
-    #         extract(bg_roi_index=roi, **locals())
-    #     return None
-
     status_dict = {
         'parameters': deepcopy(locals()),
         'complete': False,
@@ -182,7 +176,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
 
-    if frame_trim[0] and frame_trim[0] < nframes:
+    if frame_trim[0] > 0 and frame_trim[0] < nframes:
         first_frame_idx = frame_trim[0]
     else:
         first_frame_idx = 0
