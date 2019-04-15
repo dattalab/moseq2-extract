@@ -25,12 +25,12 @@ def get_flips(frames, flip_file=None, smoothing=None):
     try:
         clf = joblib.load(flip_file)
     except IOError:
-        print("Could not open file {}".format(flip_file))
+        print(f"Could not open file {flip_file}")
         raise
 
     flip_class = np.where(clf.classes_ == 1)[0]
     probas = clf.predict_proba(
-        frames.reshape((-1, frames.shape[1]*frames.shape[2])))
+        frames.reshape((-1, frames.shape[1] * frames.shape[2])))
 
     if smoothing:
         for i in range(probas.shape[1]):
@@ -97,8 +97,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
             frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
         frame_store[i, ...] = cv2.medianBlur(frs, med_scale)
 
-    bground = np.median(frame_store, 0)
-    return bground
+    return get_bground_im(frame_store)
 
 
 def get_bbox(roi):
