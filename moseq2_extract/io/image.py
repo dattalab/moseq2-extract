@@ -33,7 +33,7 @@ def write_image(filename, image, scale=True,
 
     directory = file.parent
     if not directory.exists():
-        directory.mkdir(parents=True, exists_ok=True)
+        directory.mkdir(parents=True, exist_ok=True)
 
     tifffile.imsave(file.as_posix(), image, compress=compress, metadata=metadata)
 
