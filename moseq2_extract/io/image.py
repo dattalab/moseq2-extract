@@ -21,13 +21,12 @@ def write_image(filename, image, scale=True,
 
         if not scale_factor:
             # scale image to `dtype`'s full range
-            scale_factor = np.floor(max_int / np.nanmax(image), dtype=dtype)
+            scale_factor = int(max_int / np.nanmax(image))
             image = image * scale_factor
         elif isinstance(scale_factor, tuple):
             image = np.float32(image)
             image = (image - scale_factor[0]) / (scale_factor[1] - scale_factor[0])
             image = np.clip(image, 0, 1) * max_int
-            image = image.astype(dtype)
 
         metadata = {'scale_factor': str(scale_factor)}
 
@@ -35,7 +34,7 @@ def write_image(filename, image, scale=True,
     if not directory.exists():
         directory.mkdir(parents=True, exist_ok=True)
 
-    tifffile.imsave(file.as_posix(), image, compress=compress, metadata=metadata)
+    tifffile.imsave(file.as_posix(), image.astype(dtype), compress=compress, metadata=metadata)
 
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
