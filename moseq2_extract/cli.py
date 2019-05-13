@@ -190,6 +190,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
     timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
+    alternate_timestamp_path = os.path.join(os.path.dirname(input_file), 'timestamps.csv')
 
     if os.path.exists(metadata_path):
         acquisition_metadata = load_metadata(metadata_path)
@@ -199,6 +200,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     if os.path.exists(timestamp_path):
         timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
+    elif os.path.exists(alternate_timestamp_path):
+        timestamps = load_timestamps(alternate_timestamp_path, col=0)[first_frame_idx:last_frame_idx] * 1000.0
     else:
         timestamps = None
 
@@ -326,11 +329,13 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
 
         for key, value in acquisition_metadata.items():
-
             if type(value) is list and len(value) > 0 and type(value[0]) is str:
                 value = [n.encode('utf8') for n in value]
 
-            f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
+            if value is not None:
+                f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
+            else:
+                f.create_dataset('metadata/acquisition/{}'.format(key), dtype="f")
 
         video_pipe = None
         tracking_init_mean = None
