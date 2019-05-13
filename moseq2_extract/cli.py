@@ -16,6 +16,7 @@ import ruamel.yaml as yaml
 import uuid
 import pathlib
 import urllib.request
+import tarfile
 from copy import deepcopy
 from pkg_resources import get_distribution
 
@@ -173,8 +174,25 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     # np.seterr(invalid='raise')
 
+    # handle tarball stuff
+    dirname = os.path.dirname(input_file)
+
+    if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
+        print('Scanning tarball {} (this will take a minute)'.format(input_file))
+        tar = tarfile.open(input_file, 'r:gz')
+        tar_members = tar.getmembers()
+        tar_names = [_.name for _ in tar_members]
+        input_file = tar_members[tar_names.index('depth.dat')]
+    else:
+        tar = None
+        tar_members = None
+
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
+
+    # if tar is not None:
+    #     # convert TarInfo into bufferedreader
+    #     input_file = tar.extractfile(input_file)
 
     if frame_trim[0] > 0 and frame_trim[0] < nframes:
         first_frame_idx = frame_trim[0]
@@ -188,22 +206,25 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     nframes = last_frame_idx - first_frame_idx
 
-    metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
-    timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
-    alternate_timestamp_path = os.path.join(os.path.dirname(input_file), 'timestamps.csv')
-
-    if os.path.exists(metadata_path):
-        acquisition_metadata = load_metadata(metadata_path)
-        status_dict['metadata'] = acquisition_metadata
+    if tar is not None:
+        metadata_path = tar.extractfile(tar_members[tar_names.index('metadata.json')])
+        if "depth_ts.txt" in tar_names:
+            timestamp_path = tar.extractfile(tar_members[tar_names.index('depth_ts.txt')])
+        elif "timestamps.csv" in tar_names:
+            timestamp_path = tar.extractfile(tar_members[tar_names.index('timestamps.csv')])
+            alternate_correct = True
     else:
-        acquisition_metadata = {}
+        metadata_path = os.path.join(dirname, 'metadata.json')
+        timestamp_path = os.path.join(dirname, 'depth_ts.txt')
+        alternate_timestamp_path = os.path.join(dirname, 'timestamps.csv')
+        if not os.path.exists(timestamp_path) and os.path.exists(alternate_timestamp_path):
+            timestamp_path = alternate_timestamp_path
+            alternate_correct = True
 
-    if os.path.exists(timestamp_path):
-        timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
-    elif os.path.exists(alternate_timestamp_path):
-        timestamps = load_timestamps(alternate_timestamp_path, col=0)[first_frame_idx:last_frame_idx] * 1000.0
-    else:
-        timestamps = None
+    acquisition_metadata = load_metadata(metadata_path)
+    timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
+    if alternate_correct:
+        timestamps *= 1000.0
 
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs.keys())
@@ -213,9 +234,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     # set up the output directory
 
     if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+        output_dir = os.path.join(dirname, 'proc')
     else:
-        output_dir = os.path.join(os.path.dirname(input_file), output_dir)
+        output_dir = os.path.join(dirname, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -236,11 +257,11 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
     else:
         print('Getting background...')
-        bground_im = get_bground_im_file(input_file)
+        bground_im = get_bground_im_file(input_file, tar_object=tar)
         if not use_plane_bground:
             write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
-    first_frame = load_movie_data(input_file, 0)
+    first_frame = load_movie_data(input_file, 0, tar_object=tar)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=bg_roi_depth_range)
 
@@ -342,7 +363,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
-            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range])
+            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
@@ -418,12 +439,15 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     print('\n')
 
-    if input_file.endswith('dat') and compress:
-        convert_raw_to_avi_function(input_file,
-                                    chunk_size=compress_chunk_size,
-                                    fps=fps,
-                                    delete=False, # to be changed when we're ready!
-                                    threads=compress_threads)
+    try:
+        if input_file.endswith('dat') and compress:
+            convert_raw_to_avi_function(input_file,
+                                        chunk_size=compress_chunk_size,
+                                        fps=fps,
+                                        delete=False, # to be changed when we're ready!
+                                        threads=compress_threads)
+    except AttributeError as e:
+        pass
 
     status_dict['complete'] = True
 

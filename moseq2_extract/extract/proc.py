@@ -73,7 +73,7 @@ def get_bground_im(frames):
     return bground
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     """Returns background from file
     Args:
         frames_file (path): path to data with frames
@@ -82,19 +82,27 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
     Returns:
         bground (2d numpy array):  r x c, background image
     """
-    if frames_file.endswith('dat'):
+
+    try:
+        if frames_file.endswith('dat'):
+            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+        elif frames_file.endswith('avi'):
+            finfo = moseq2_extract.io.video.get_video_info(frames_file)
+    except AttributeError as e:
         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-    elif frames_file.endswith('avi'):
-        finfo = moseq2_extract.io.video.get_video_info(frames_file)
 
     frame_idx = np.arange(0, finfo['nframes'], frame_stride)
     frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
 
     for i, frame in enumerate(frame_idx):
-        if frames_file.endswith('dat'):
-            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
-        elif frames_file.endswith('avi'):
-            frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+        try:
+            if frames_file.endswith('dat'):
+                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
+            elif frames_file.endswith('avi'):
+                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+        except AttributeError as e:
+            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+
         frame_store[i, ...] = cv2.medianBlur(frs, med_scale)
 
     return get_bground_im(frame_store)

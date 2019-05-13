@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import datetime
 import cv2
+import tarfile
 
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
@@ -18,27 +19,35 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
         frame_dims (tuple): wxh or hxw of each frame
     """
 
-    bytes_per_frame = (frame_dims[0]*frame_dims[1]*bit_depth)/8
+    bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
 
-    file_info = {
-        'bytes': os.stat(filename).st_size,
-        'nframes': int(os.stat(filename).st_size/bytes_per_frame),
-        'dims': frame_dims,
-        'bytes_per_frame': bytes_per_frame
-    }
-
+    if type(filename) is str:
+        file_info = {
+            'bytes': os.stat(filename).st_size,
+            'nframes': int(os.stat(filename).st_size / bytes_per_frame),
+            'dims': frame_dims,
+            'bytes_per_frame': bytes_per_frame
+        }
+    elif type(filename) is tarfile.TarInfo:
+        file_info = {
+            'bytes': filename.size,
+            'nframes': int(filename.size / bytes_per_frame),
+            'dims': frame_dims,
+            'bytes_per_frame': bytes_per_frame
+        }
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2"):
+def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
     """
     Reads in data from raw binary file
 
     Args:
-        filename (string): name of raw data files
+        filename (string): name of raw data file
         frames (list or range): frames to extract
         frame_dims (tuple): wxh of frames in pixels
         bit_depth (int): bits per pixel (default: 16)
+        tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
 
     Returns:
         frames (numpy ndarray): frames x h x w
@@ -55,11 +64,17 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     read_points = len(frames)*frame_dims[0]*frame_dims[1]
     dims = (len(frames), frame_dims[1], frame_dims[0])
 
-    with open(filename, "rb") as f:
-        f.seek(int(seek_point))
-        chunk = np.fromfile(file=f,
-                            dtype=np.dtype(dtype),
-                            count=read_points).reshape(dims)
+    if type(tar_object) is tarfile.TarFile:
+        with tar_object.extractfile(filename) as f:
+            f.seek(int(seek_point))
+            chunk = f.read(int(len(frames) * vid_info['bytes_per_frame']))
+            chunk = np.frombuffer(chunk, dtype=np.dtype(dtype)).reshape(dims)
+    else:
+        with open(filename, "rb") as f:
+            f.seek(int(seek_point))
+            chunk = np.fromfile(file=f,
+                                dtype=np.dtype(dtype),
+                                count=read_points).reshape(dims)
 
     return chunk
 
@@ -308,18 +323,31 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 #     return dest_filename
 
 
-def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16):
+def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
     """
     Reads in frames
     """
-    if filename.lower().endswith('.dat'):
-        frame_data = read_frames_raw(filename, frames=frames,
-                                     frame_dims=frame_dims, bit_depth=bit_depth)
-    elif filename.lower().endswith('.avi'):
-        if type(frames) is int:
-            frames = [frames]
-        frame_data = read_frames(filename, frames)
 
+    try:
+        if filename.lower().endswith('.dat'):
+            frame_data = read_frames_raw(filename,
+                                         frames=frames,
+                                         frame_dims=frame_dims,
+                                         bit_depth=bit_depth,
+                                         **kwargs)
+        elif filename.lower().endswith('.avi'):
+            if type(frames) is int:
+                frames = [frames]
+            frame_data = read_frames(filename,
+                                     frames,
+                                     **kwargs)
+
+    except AttributeError as e:
+        frame_data = read_frames_raw(filename,
+                                     frames=frames,
+                                     frame_dims=frame_dims,
+                                     bit_depth=bit_depth,
+                                     **kwargs)
     return frame_data
 
 
@@ -327,9 +355,12 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     """
     Gets movie info
     """
-    if filename.lower().endswith('.dat'):
-        metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-    elif filename.lower().endswith('.avi'):
-        metadata = get_video_info(filename)
+    try:
+        if filename.lower().endswith('.dat'):
+            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+        elif filename.lower().endswith('.avi'):
+            metadata = get_video_info(filename)
+    except AttributeError as e:
+        metadata = get_raw_info(filename)
 
     return metadata

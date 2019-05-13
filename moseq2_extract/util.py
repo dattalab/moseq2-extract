@@ -58,21 +58,35 @@ def load_timestamps(timestamp_file, col=0):
     """
 
     ts = []
-    with open(timestamp_file, 'r') as f:
-        for line in f:
+    try:
+        with open(timestamp_file, 'r') as f:
+            for line in f:
+                cols = line.split()
+                ts.append(float(cols[col]))
+        ts = np.array(ts)
+    except TypeError as e:
+        # try iterating directly
+        for line in timestamp_file:
             cols = line.split()
             ts.append(float(cols[col]))
+        ts = np.array(ts)
+    except FileNotFoundError as e:
+        ts = None
 
-    return np.array(ts)
+    return ts
 
 
 def load_metadata(metadata_file):
 
     metadata = {}
 
-    if os.path.exists(metadata_file):
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
+    try:
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+    except TypeError as e:
+        # try loading directly
+        metadata = json.load(metadata_file)
 
     return metadata
 
