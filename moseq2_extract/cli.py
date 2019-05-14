@@ -223,6 +223,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             alternate_correct = True
 
     acquisition_metadata = load_metadata(metadata_path)
+    status_dict['metadata'] = acquisition_metadata
     timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
     if alternate_correct:
         timestamps *= 1000.0
