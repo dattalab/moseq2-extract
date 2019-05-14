@@ -333,14 +333,12 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
-                                         bit_depth=bit_depth,
-                                         **kwargs)
+                                         bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
             if type(frames) is int:
                 frames = [frames]
             frame_data = read_frames(filename,
-                                     frames,
-                                     **kwargs)
+                                     frames)
 
     except AttributeError as e:
         frame_data = read_frames_raw(filename,
