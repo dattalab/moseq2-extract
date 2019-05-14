@@ -205,6 +205,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         last_frame_idx = nframes
 
     nframes = last_frame_idx - first_frame_idx
+    alternate_correct = False
 
     if tar is not None:
         metadata_path = tar.extractfile(tar_members[tar_names.index('metadata.json')])
