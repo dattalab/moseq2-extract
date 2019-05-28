@@ -20,7 +20,7 @@ setup(
     version='0.1.3',
     platforms=['mac', 'unix'],
     packages=find_packages(),
-    install_requires=['h5py', 'matplotlib', 'scipy>=0.19',
+    install_requires=['h5py', 'matplotlib', 'scipy>=0.19,<1.3.0',
                       'scikit-image>=0.13', 'scikit-learn==0.19',
                       'tqdm', 'statsmodels>=0.8.0', 'numpy',
                       'joblib==0.13.1',
