@@ -3,6 +3,7 @@ import numpy as np
 import json
 import os
 import ast
+from pathlib import Path
 
 
 def write_image(filename, image, scale=True,
@@ -10,32 +11,30 @@ def write_image(filename, image, scale=True,
                 metadata={}, compress=0):
     """Save image data, possibly with scale factor for easy display
     """
+    file = Path(filename)
 
     metadata = {}
 
     if scale:
-        iinfo = np.iinfo(dtype)
+        max_int = np.iinfo(dtype).max
         image = image.astype(dtype)
 
         if not scale_factor:
-            scale_factor = np.floor(iinfo.max/image.max()).astype(dtype)
-            image = image*scale_factor
-        elif type(scale_factor) is tuple:
-            image = image.astype('float32')
-            image = (image-scale_factor[0])/(scale_factor[1]-scale_factor[0])
-            image[image < 0] = 0
-            image[image > 1] = 1
-            image = image*iinfo.max
-            image = image.astype(dtype)
+            # scale image to `dtype`'s full range
+            scale_factor = int(max_int / np.nanmax(image))
+            image = image * scale_factor
+        elif isinstance(scale_factor, tuple):
+            image = np.float32(image)
+            image = (image - scale_factor[0]) / (scale_factor[1] - scale_factor[0])
+            image = np.clip(image, 0, 1) * max_int
 
         metadata = {'scale_factor': str(scale_factor)}
 
-    directory = os.path.dirname(filename)
-    if directory and not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = file.parent
+    if not directory.exists():
+        directory.mkdir(parents=True, exist_ok=True)
 
-    with open(filename, 'wb') as f:
-        tifffile.imsave(f, image, compress=compress, metadata=metadata)
+    tifffile.imsave(file.as_posix(), image.astype(dtype), compress=compress, metadata=metadata)
 
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):

@@ -61,7 +61,7 @@ def test_extract(temp_dir):
                                      '--output-dir', temp_dir,
                                      '--angle-hampel-span', 5,
                                      '--centroid-hampel-span', 5],
-                           catch_exceptions=True)
+                           catch_exceptions=False)
     print(result.output)
 
     assert(result.exit_code == 0)
@@ -112,7 +112,7 @@ def test_extract_trim(temp_dir):
     result = runner.invoke(extract, [data_path,
                                      '--output-dir', temp_dir,
                                      '--frame-trim', 20, 50],
-                           catch_exceptions=True)
+                           catch_exceptions=False)
     print(result.output)
     assert(result.exit_code == 0)
 

@@ -4,7 +4,9 @@ from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
 from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timestamps,
-                                 select_strel, command_with_config, scalar_attributes)
+                                 select_strel, command_with_config, scalar_attributes,
+                                 save_dict_contents_to_h5, click_param_annot,
+                                 convert_raw_to_avi_function)
 import click
 import os
 import h5py
@@ -14,7 +16,9 @@ import ruamel.yaml as yaml
 import uuid
 import pathlib
 import urllib.request
+import tarfile
 from copy import deepcopy
+from pkg_resources import get_distribution
 
 
 orig_init = click.core.Option.__init__
@@ -44,11 +48,14 @@ def cli():
 @click.option('--bg-roi-gradient-threshold', default=3000, type=float, help='Gradient must be < this to include points')
 @click.option('--bg-roi-gradient-kernel', default=7, type=int, help='Kernel size for Sobel gradient filtering')
 @click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')
+@click.option('--bg-sort-roi-by-position', default=False, type=bool, help='Sort ROIs by position')
+@click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int, help='Max original ROIs to sort by position')
 @click.option('--output-dir', default=None, help='Output directory')
 @click.option('--use-plane-bground', default=False, type=bool, help='Use plane fit for background')
 @click.option("--config-file", type=click.Path())
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
+             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois,
              output_dir, use_plane_bground, config_file):
 
     # set up the output directory
@@ -85,6 +92,10 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
                                   gradient_threshold=bg_roi_gradient_threshold,
                                   gradient_kernel=bg_roi_gradient_kernel,
                                   fill_holes=bg_roi_fill_holes)
+
+    if bg_sort_roi_by_position:
+        rois = rois[:bg_sort_roi_by_position_max_rois]
+        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
@@ -136,6 +147,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--angle-hampel-sig', default=3, type=float, help='Angle filter sig')
 @click.option('--model-smoothing-clips', default=(0, 0), type=(float, float), help='Model smoothing clips')
 @click.option('--frame-trim', default=(0, 0), type=(int, int), help='Frames to trim from beginning and end of data')
+@click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
+@click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
+@click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
@@ -145,16 +159,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file):
+            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads):
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
-
-    # if we pass in multiple roi indices, recurse and process each roi
-    # if len(bg_roi_index) > 1:
-    #     for roi in bg_roi_index:
-    #         extract(bg_roi_index=roi, **locals())
-    #     return None
 
     status_dict = {
         'parameters': deepcopy(locals()),
@@ -166,10 +174,27 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     # np.seterr(invalid='raise')
 
+    # handle tarball stuff
+    dirname = os.path.dirname(input_file)
+
+    if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
+        print('Scanning tarball {} (this will take a minute)'.format(input_file))
+        tar = tarfile.open(input_file, 'r:gz')
+        tar_members = tar.getmembers()
+        tar_names = [_.name for _ in tar_members]
+        input_file = tar_members[tar_names.index('depth.dat')]
+    else:
+        tar = None
+        tar_members = None
+
     video_metadata = get_movie_info(input_file)
     nframes = video_metadata['nframes']
 
-    if frame_trim[0] and frame_trim[0] < nframes:
+    # if tar is not None:
+    #     # convert TarInfo into bufferedreader
+    #     input_file = tar.extractfile(input_file)
+
+    if frame_trim[0] > 0 and frame_trim[0] < nframes:
         first_frame_idx = frame_trim[0]
     else:
         first_frame_idx = 0
@@ -180,20 +205,32 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         last_frame_idx = nframes
 
     nframes = last_frame_idx - first_frame_idx
+    alternate_correct = False
 
-    metadata_path = os.path.join(os.path.dirname(input_file), 'metadata.json')
-    timestamp_path = os.path.join(os.path.dirname(input_file), 'depth_ts.txt')
-
-    if os.path.exists(metadata_path):
-        extraction_metadata = load_metadata(metadata_path)
-        status_dict['metadata'] = extraction_metadata
+    if tar is not None:
+        metadata_path = tar.extractfile(tar_members[tar_names.index('metadata.json')])
+        if "depth_ts.txt" in tar_names:
+            timestamp_path = tar.extractfile(tar_members[tar_names.index('depth_ts.txt')])
+        elif "timestamps.csv" in tar_names:
+            timestamp_path = tar.extractfile(tar_members[tar_names.index('timestamps.csv')])
+            alternate_correct = True
     else:
-        extraction_metadata = {}
+        metadata_path = os.path.join(dirname, 'metadata.json')
+        timestamp_path = os.path.join(dirname, 'depth_ts.txt')
+        alternate_timestamp_path = os.path.join(dirname, 'timestamps.csv')
+        if not os.path.exists(timestamp_path) and os.path.exists(alternate_timestamp_path):
+            timestamp_path = alternate_timestamp_path
+            alternate_correct = True
 
-    if os.path.exists(timestamp_path):
-        timestamps = load_timestamps(timestamp_path, col=0)[first_frame_idx:last_frame_idx]
-    else:
-        timestamps = None
+    acquisition_metadata = load_metadata(metadata_path)
+    status_dict['metadata'] = acquisition_metadata
+    timestamps = load_timestamps(timestamp_path, col=0)
+
+    if timestamps is not None:
+        timestamps = timestamps[first_frame_idx:last_frame_idx]
+
+    if alternate_correct:
+        timestamps *= 1000.0
 
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs.keys())
@@ -203,9 +240,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     # set up the output directory
 
     if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+        output_dir = os.path.join(dirname, 'proc')
     else:
-        output_dir = os.path.join(os.path.dirname(input_file), output_dir)
+        output_dir = os.path.join(dirname, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -226,11 +263,11 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
         bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
     else:
         print('Getting background...')
-        bground_im = get_bground_im_file(input_file)
+        bground_im = get_bground_im_file(input_file, tar_object=tar)
         if not use_plane_bground:
             write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
-    first_frame = load_movie_data(input_file, 0)
+    first_frame = load_movie_data(input_file, 0, tar_object=tar)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=bg_roi_depth_range)
 
@@ -279,7 +316,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['scalars/{}'.format(scalar)].attrs['description'] = scalars_attrs[scalar]
 
         if timestamps is not None:
-            f.create_dataset('metadata/timestamps', compression='gzip', data=timestamps)
+            f.create_dataset('timestamps', compression='gzip', data=timestamps)
+            f['timestamps'].attrs['description'] = "Depth video timestamps"
+
         f.create_dataset('frames', (nframes, crop_size[0], crop_size[1]), frame_dtype, compression='gzip')
         f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
@@ -291,26 +330,46 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
 
         if flip_classifier is not None:
-            f.create_dataset('metadata/flips', (nframes, ), 'bool', compression='gzip')
-            f['metadata/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
+            f.create_dataset('metadata/extraction/flips', (nframes, ), 'bool', compression='gzip')
+            f['metadata/extraction/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
 
         # if use_tracking_model:
         #     f.create_dataset('frames_ll', (nframes, crop_size[0], crop_size[1]),
         #                      'float32', compression='gzip')
 
-        for key, value in extraction_metadata.items():
+        f.create_dataset('metadata/extraction/true_depth', data=true_depth)
+        f['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
 
+        f.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
+        f['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
+
+        f.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
+        f['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
+
+        f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
+        f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
+
+        extract_version = np.string_(get_distribution('moseq2-extract').version)
+        f.create_dataset('metadata/extraction/extract_version', data=extract_version)
+        f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
+
+        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+
+        for key, value in acquisition_metadata.items():
             if type(value) is list and len(value) > 0 and type(value[0]) is str:
                 value = [n.encode('utf8') for n in value]
 
-            f.create_dataset('metadata/extraction/{}'.format(key), data=value)
+            if value is not None:
+                f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
+            else:
+                f.create_dataset('metadata/acquisition/{}'.format(key), dtype="f")
 
         video_pipe = None
         tracking_init_mean = None
         tracking_init_cov = None
 
         for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
-            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range])
+            raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < min_height] = 0
@@ -367,7 +426,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             f['frames_mask'][frame_range] = results['mask_frames'][offset:, ...]
 
             if flip_classifier:
-                f['metadata/flips'][frame_range] = results['flips'][offset:]
+                f['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
             nframes, rows, cols = raw_frames[offset:, ...].shape
             output_movie = np.zeros((nframes, rows+crop_size[0], cols+crop_size[1]), 'uint16')
@@ -376,18 +435,31 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
             video_pipe = write_frames_preview(
                 os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
-                pipe=video_pipe, close_pipe=False, fps=fps, frame_range=[f + first_frame_idx for f in frame_range])
+                pipe=video_pipe, close_pipe=False, fps=fps,
+                frame_range=[f + first_frame_idx for f in frame_range],
+                depth_max=max_height, depth_min=min_height)
 
         if video_pipe:
             video_pipe.stdin.close()
             video_pipe.wait()
+
+    print('\n')
+
+    try:
+        if input_file.endswith('dat') and compress:
+            convert_raw_to_avi_function(input_file,
+                                        chunk_size=compress_chunk_size,
+                                        fps=fps,
+                                        delete=False, # to be changed when we're ready!
+                                        threads=compress_threads)
+    except AttributeError as e:
+        pass
 
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
 
-    print('\n')
 
 
 @cli.command(name="download-flip-file")
@@ -465,6 +537,69 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
                                   fps=fps)
 
     if video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting {}'.format(input_file))
+        os.remove(input_file)
+
+
+@cli.command(name="copy-slice")
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')
+@click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
+@click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
+@click.option('--fps', type=float, default=30, help='Video FPS')
+@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
+def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        avi_encode = True
+        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+    else:
+        output_filename, ext = os.path.splitext(os.path.basename(output_file))
+        if ext == '.avi':
+            avi_encode = True
+        else:
+            avi_encode = False
+
+    vid_info = get_movie_info(input_file)
+    copy_slice = (copy_slice[0], np.minimum(copy_slice[1], vid_info['nframes']))
+    nframes = copy_slice[1] - copy_slice[0]
+    offset = copy_slice[0]
+
+    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    video_pipe = None
+
+    if os.path.exists(output_file):
+        raise RuntimeError('Output file {} already exists'.format(output_file))
+
+    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        if avi_encode:
+            video_pipe = write_frames(output_file,
+                                      frames,
+                                      pipe=video_pipe,
+                                      close_pipe=False,
+                                      threads=threads,
+                                      fps=fps)
+        else:
+            with open(output_file, "ab") as f:
+                f.write(frames.astype('uint16').tobytes())
+
+    if avi_encode and video_pipe:
         video_pipe.stdin.close()
         video_pipe.wait()
 

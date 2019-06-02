@@ -6,6 +6,7 @@ import skimage.measure
 import skimage.morphology
 import scipy.stats
 import scipy.signal
+import scipy.interpolate
 import cv2
 import tqdm
 import joblib
@@ -24,12 +25,12 @@ def get_flips(frames, flip_file=None, smoothing=None):
     try:
         clf = joblib.load(flip_file)
     except IOError:
-        print("Could not open file {}".format(flip_file))
+        print(f"Could not open file {flip_file}")
         raise
 
     flip_class = np.where(clf.classes_ == 1)[0]
     probas = clf.predict_proba(
-        frames.reshape((-1, frames.shape[1]*frames.shape[2])))
+        frames.reshape((-1, frames.shape[1] * frames.shape[2])))
 
     if smoothing:
         for i in range(probas.shape[1]):
@@ -72,7 +73,7 @@ def get_bground_im(frames):
     return bground
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     """Returns background from file
     Args:
         frames_file (path): path to data with frames
@@ -81,23 +82,30 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5):
     Returns:
         bground (2d numpy array):  r x c, background image
     """
-    if frames_file.endswith('dat'):
+
+    try:
+        if frames_file.endswith('dat'):
+            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+        elif frames_file.endswith('avi'):
+            finfo = moseq2_extract.io.video.get_video_info(frames_file)
+    except AttributeError as e:
         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-    elif frames_file.endswith('avi'):
-        finfo = moseq2_extract.io.video.get_video_info(frames_file)
 
     frame_idx = np.arange(0, finfo['nframes'], frame_stride)
     frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
 
     for i, frame in enumerate(frame_idx):
-        if frames_file.endswith('dat'):
-            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
-        elif frames_file.endswith('avi'):
-            frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+        try:
+            if frames_file.endswith('dat'):
+                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
+            elif frames_file.endswith('avi'):
+                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+        except AttributeError as e:
+            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+
         frame_store[i, ...] = cv2.medianBlur(frs, med_scale)
 
-    bground = np.median(frame_store, 0)
-    return bground
+    return get_bground_im(frame_store)
 
 
 def get_bbox(roi):
@@ -526,18 +534,31 @@ def model_smoother(features, ll=None, clips=(-300, -125)):
         smoother = np.clip(smoother, 0, 1)
         ave_ll[i] = smoother
 
+    for k, v in features.items():
+        nans = np.isnan(v)
+        ndims = len(v.shape)
+        xvec = np.arange(len(v))
+        if nans.any():
+            if ndims == 2:
+                for i in range(v.shape[1]):
+                    f = scipy.interpolate.interp1d(xvec[~nans[:, i]], v[~nans[:, i], i],
+                                                   kind='nearest', fill_value='extrapolate')
+                    fill_vals = f(xvec[nans[:, i]])
+                    features[k][xvec[nans[:, i]], i] = fill_vals
+            else:
+                f = scipy.interpolate.interp1d(xvec[~nans], v[~nans],
+                                               kind='nearest', fill_value='extrapolate')
+                fill_vals = f(xvec[nans])
+                features[k][nans] = fill_vals
+
     for i in range(2, len(ave_ll)):
         smoother = ave_ll[i]
-        for j, (k, v) in enumerate(features.items()):
-            if np.isnan(v[i]).any() and i > 0:
-                v[i] = v[i - 1]
+        for k, v in features.items():
             features[k][i] = (1 - smoother) * v[i - 1] + smoother * v[i]
 
-    for i in range(len(ave_ll) - 1):
+    for i in reversed(range(len(ave_ll) - 1)):
         smoother = ave_ll[i]
-        for j, (k, v) in enumerate(features.items()):
-            if np.isnan(v[i]).any() and i > 0:
-                v[i] = v[i - 1]
+        for k, v in features.items():
             features[k][i] = (1 - smoother) * v[i + 1] + smoother * v[i]
 
     return features

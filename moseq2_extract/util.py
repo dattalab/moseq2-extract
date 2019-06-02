@@ -45,11 +45,11 @@ def command_with_config(config_file_param_name):
     return custom_command_class
 
 
-def gen_batch_sequence(nframes, chunk_size, overlap):
+def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     """Generate a sequence with overlap
     """
-    seq = range(nframes)
-    for i in range(0, len(seq)-overlap, chunk_size-overlap):
+    seq = range(offset, nframes)
+    for i in range(offset, len(seq)-overlap, chunk_size-overlap):
         yield seq[i:i+chunk_size]
 
 
@@ -58,21 +58,35 @@ def load_timestamps(timestamp_file, col=0):
     """
 
     ts = []
-    with open(timestamp_file, 'r') as f:
-        for line in f:
+    try:
+        with open(timestamp_file, 'r') as f:
+            for line in f:
+                cols = line.split()
+                ts.append(float(cols[col]))
+        ts = np.array(ts)
+    except TypeError as e:
+        # try iterating directly
+        for line in timestamp_file:
             cols = line.split()
             ts.append(float(cols[col]))
+        ts = np.array(ts)
+    except FileNotFoundError as e:
+        ts = None
 
-    return np.array(ts)
+    return ts
 
 
 def load_metadata(metadata_file):
 
     metadata = {}
 
-    if os.path.exists(metadata_file):
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
+    try:
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+    except TypeError as e:
+        # try loading directly
+        metadata = json.load(metadata_file)
 
     return metadata
 
@@ -135,9 +149,93 @@ def scalar_attributes():
     return attributes
 
 
+def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
+
+    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
+    print('Converting {} to {}'.format(input_file, new_file))
+    # turn into os system call...
+    use_kwargs = {
+        'output-file': new_file,
+        'chunk-size': chunk_size,
+        'fps': fps,
+        'threads': threads
+    }
+    use_flags = {
+        'delete': delete
+    }
+    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
+    for k, v in use_kwargs.items():
+        base_command += ' --{} {}'.format(k, v)
+    for k, v in use_flags.items():
+        if v:
+            base_command += ' --{}'.format(k)
+
+    print(base_command)
+    print('\n')
+
+    os.system(base_command)
+
+
 # from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
 # dang this is fast!
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
     return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S*n, n))
+
+
+def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
+    """ Save an dict to an h5 file, mounting at root
+
+    Keys are mapped to group names recursivly
+
+    Parameters:
+        h5 (h5py.File instance): h5py.file object to operate on
+        dic (dict): dictionary of data to write
+        root (string): group on which to add additional groups and datasets
+        annotations (dict): annotation data to add to corresponding h5 datasets. Should contain same keys as dic.
+    """
+    if not root.endswith('/'):
+        root = root + '/'
+
+    if annotations is None:
+        annotations = {} #empty dict is better than None, but dicts shouldn't be default parameters
+
+    for key, item in dic.items():
+        dest = root + key
+        if isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
+            h5[dest] = item
+        elif isinstance(item, (tuple, list)):
+            h5[dest] = np.asarray(item)
+        elif isinstance(item, (int, float)):
+            h5[dest] = np.asarray([item])[0]
+        elif item is None:
+            h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
+        elif isinstance(item, dict):
+            save_dict_contents_to_h5(h5, item, dest)
+        else:
+            raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
+
+        if key in annotations:
+            if annotations[key] is None:
+                h5[dest].attrs['description'] = ""
+            else:
+                h5[dest].attrs['description'] = annotations[key]
+
+
+def click_param_annot(click_cmd):
+    """ Given a click.Command instance, return a dict that maps option names to help strings
+
+    Currently skips click.Arguments, as they do not have help strings
+
+    Parameters:
+        click_cmd (click.Command): command to introspect
+
+    Returns:
+        dict: click.Option.human_readable_name as keys; click.Option.help as values
+    """
+    annotations = {}
+    for p in click_cmd.params:
+        if isinstance(p, click.Option):
+            annotations[p.human_readable_name] = p.help
+    return annotations
