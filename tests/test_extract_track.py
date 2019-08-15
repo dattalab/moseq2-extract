@@ -1,8 +1,88 @@
 import numpy.testing as npt
 import numpy as np
 import statsmodels.stats.correlation_tools as stats_tools
+import scipy
+import pytest
 from moseq2_extract.extract.track import em_get_ll, em_iter, em_tracking
+import cv2
 
+
+def test_em_iter():
+    """Single iteration of EM tracker
+        Args:
+            data (3d numpy array): nx3, x, y, z coordinates to use
+            mean (1d numpy array): dx1, current mean estimate
+            cov (2d numpy array): dxd, current covariance estimate
+            lambd (float): constant to add to diagonal of covariance matrix
+            epsilon (float): tolerance on change in likelihood to terminate iteration
+            max_iter (int):
+
+        Returns:
+            mean (1d numpy array): updated mean
+            cov (2d numpy array): updated covariance
+    """
+    data = cv2.getStructuringElement(cv2.MORPH_RECT,(1,5))
+    mean = [np.mean(data)]
+    cov = np.ones((1,1),np.uint8)
+    lamd = .1
+    epsilon = 1e-1
+    max_iter = 1
+
+    prev_likelihood = 0
+    ll = 0
+
+    ndatapoints = data.shape[1]
+    pxtheta_raw = np.zeros((ndatapoints,), dtype='float64')
+
+    for i in range(max_iter):
+        pxtheta_raw = scipy.stats.multivariate_normal.pdf(x=data, mean=mean, cov=cov)
+        pxtheta_raw /= np.sum(pxtheta_raw)
+
+        mean = np.sum(data.T * pxtheta_raw, axis=1)
+        dx = (data - mean).T
+        cov = stats_tools.cov_nearest(np.dot(dx * pxtheta_raw, dx.T) + lamd*np.eye(3))
+
+        ll = np.sum(np.log(pxtheta_raw+1e-300))
+        delta_likelihood = (ll-prev_likelihood)
+
+        if (delta_likelihood >= 0 and
+                delta_likelihood < epsilon*abs(prev_likelihood)):
+            break
+
+        prev_likelihood = ll
+
+        if mean.shape != (1,):
+            pytest.fail('MEAN IS INCORRECT SHAPE')
+
+        if cov.shape != (3, 3):
+            pytest.fail('COV IS INCORRECT SHAPE')
+        print(mean, cov)
+
+def test_em_init():
+    # original params: depth_frame, depth_floor, depth_ceiling,
+#             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1
+
+    # mock parameters
+    depth_frame = 300
+    depth_floor = 100
+    depth_ceiling = 400
+    init_strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    strel_iters = 1
+
+    mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
+    # assuming inputing a rectangular image
+    mask = cv2.morphologyEx(cv2.getStructuringElement(cv2.MORPH_RECT,(depth_floor,depth_ceiling)), cv2.MORPH_OPEN, init_strel, strel_iters)
+
+    cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    tmp = np.array([cv2.contourArea(x) for x in cnts])
+    try:
+        use_cnt = tmp.argmax()
+        mouse_mask = np.zeros_like(mask)
+        cv2.drawContours(mouse_mask, cnts, use_cnt, (255), cv2.FILLED)
+        mouse_mask = mouse_mask > 0
+    except Exception:
+        mouse_mask = mask > 0
+        pytest.fail('Exception thrown')
 
 def test_em_get_ll():
 

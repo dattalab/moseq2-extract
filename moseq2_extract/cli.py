@@ -179,13 +179,13 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
         print('Scanning tarball {} (this will take a minute)'.format(input_file))
-        #compute NEW psuedo-dirname now, `input_file` gets overwritten below with depth.dat tarinfo...
+        #compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
 
         tar = tarfile.open(input_file, 'r:gz')
         tar_members = tar.getmembers()
         tar_names = [_.name for _ in tar_members]
-        input_file = tar_members[tar_names.index('depth.dat')]
+        input_file = tar_members[tar_names.index('test_vid.dat')]
     else:
         tar = None
         tar_members = None

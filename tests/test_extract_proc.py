@@ -5,16 +5,134 @@ import glob
 import re
 import pytest
 import cv2
+import joblib
+import scipy
 from moseq2_extract.io.image import read_image
 from moseq2_extract.extract.proc import get_roi, crop_and_rotate_frames,\
-    get_frame_features, compute_scalars, clean_frames, get_largest_cc
-
+    get_frame_features, compute_scalars, clean_frames, get_largest_cc, get_bbox
+from moseq2_extract.extract.track import em_get_ll
 
 # https://stackoverflow.com/questions/34504757/
 # get-pytest-to-look-within-the-base-directory-of-the-testing-script
 @pytest.fixture(scope="function")
 def script_loc(request):
     return request.fspath.join('..')
+
+
+# TODO: Perfect input data to get accurate failure rate
+def test_get_flips():
+    # original params: frames (crop_rotated frames in usage), flip_file = None, smoothing = None (defaulted at 51)
+
+    # create mock frames of correct shape
+    fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (80, 80))
+
+    tmp_image = np.zeros((80, 80), dtype='int8')
+    center = np.array(tmp_image.shape) // 2
+
+    mouse_dims = np.array(fake_mouse.shape) // 2
+
+    tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+    center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+    test_data = np.tile(tmp_image, (100, 1, 1))
+
+    # get all 3 truth flip_file_classifiers
+    flip_files = ['tests/test_flip_classifiers/'+f for f in os.listdir('tests/test_flip_classifiers/')]
+
+    # test each classifier separately
+    for flip_file in flip_files:
+        try:
+            clf = joblib.load(flip_file)
+        except IOError:
+            pytest.fail(f"IOERROR {flip_file}")
+            print(f"Could not open file {flip_file}")
+            raise
+
+        # run clf on mock data to get mock_probas
+        flip_class = np.where(clf.classes_ == 1)[0]
+
+        try:
+            mock_probas = clf.predict_proba(
+                test_data.reshape((-1, test_data.shape[1] * test_data.shape[2])))
+        except:
+            pytest.fail(f"model issue: {flip_file}\n")
+        # test smoothing option with mock
+        for i in range(mock_probas.shape[1]):
+            mock_probas[:, i] = scipy.signal.medfilt(mock_probas[:, i], 51)
+
+        # compare result of "mock_probas.argmax(axis=1) == flip_class" with ground truth
+        mock_flips = mock_probas.argmax(axis=1) == flip_class
+        assert mock_flips.all() == True
+
+
+    print('done')
+
+
+# TODO: find correct way to validate ground truth with assertion
+def test_get_bground_im():
+    # original params: frames (3d numpy array: frames x r x c)
+
+    # create mock frames of correct shape
+    fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (80, 80))
+
+    tmp_image = np.zeros((80, 80), dtype='int8')
+    center = np.array(tmp_image.shape) // 2
+
+    mouse_dims = np.array(fake_mouse.shape) // 2
+
+    tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+    center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+    test_data = np.tile(tmp_image, (100, 1, 1))
+
+    # run np.median(frames, 0) and compare result with ground truth
+    bground = np.median(test_data, 0)
+    print(bground)
+
+    # according to the return statement where shape of bg image must be r x c
+    assert bground.shape == (80, 80)
+
+#TODO: Complete io.video unit tests to ensure this function is secure
+def test_get_bground_im_file():
+    # original params: frames_file, frame_stride=500, med_scale=5, **kwargs
+
+    # create mock existing path for frame_file with necessary info for io.video
+
+    '''
+    NOTE: get_bground_im_file contains the following external functions from io.video:
+    get_raw_info() [UNIT TEST COMPLETE]
+    get_video_info() [UNIT TEST NOT COMPLETE]
+    read_frames_raw() [UNIT TEST NOT COMPLETE]
+    read_frames() [UNIT TEST NOT COMPLETE]
+    '''
+
+    # Once tested above, check frame_idx/store sizes and compare with ground truth
+
+    print('done')
+
+# TODO: Ensure these assertions are sufficient.
+def test_get_bbox():
+    # original params: roi
+
+    # load in a bunch of ROIs where we have some ground truth
+    cwd = str(script_loc)
+    bground_list = glob.glob(os.path.join(cwd, 'test_rois/bground*.tiff'))
+
+    for bground in bground_list:
+        tmp = read_image(bground, scale=True)
+        y, x = np.where(bground > 0)
+
+        if len(y) == 0 or len(x) == 0:
+            pytest.fail("x or y == 0")
+        else:
+            # Apply same transformations on mock
+            assert y.min() < y.max()
+            assert x.min() < x.max()
+            bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
+
+    # Compare with ground truth
+
+    print('done-ish: get_bbox check final assertion for actual bbox')
 
 
 def test_get_roi(script_loc):
@@ -70,6 +188,119 @@ def test_get_roi(script_loc):
 
         print(frac_nonoverlap_roi1)
         assert(np.min(frac_nonoverlap_roi1) < .2)
+
+# TODO: use proper comparison assertion and possibly change input data
+def test_apply_roi():
+    # original params: frames, roi
+
+    '''
+    NOTE: this function contains internal function: get_bbox(roi) [SEMI-COMPLETED TEST]
+    '''
+
+    # create mock roi and frames of appropriate shapes
+    fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 20))
+
+    tmp_image = np.zeros((80, 80), dtype='int8')
+    center = np.array(tmp_image.shape) // 2
+
+    mouse_dims = np.array(fake_mouse.shape) // 2
+
+    tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+    center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+    test_data = np.tile(tmp_image, (100, 1, 1))
+
+    bbox = get_bbox(fake_mouse)
+
+    test_data = test_data[:, bbox[0, 0]:bbox[1, 0], bbox[0, 1]:bbox[1, 1]]
+
+    # compare cropped frames with ground truth
+    print(test_data)
+
+
+    print('done')
+
+def test_im_moment_features():
+    # original params: IM (2d numpy array): depth image
+
+    # create mock 2d numpy array image of randoms
+    fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 20))
+
+    tmp_image = np.zeros((80, 80), dtype='int8')
+    center = np.array(tmp_image.shape) // 2
+
+    mouse_dims = np.array(fake_mouse.shape) // 2
+
+    tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+    center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+    # run computations as in original function to get centroid and ellipse axis info
+    cnts, hierarchy = cv2.findContours(
+        tmp_image.astype('uint8'),
+        cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    tmp = np.array([cv2.contourArea(x) for x in cnts])
+
+    mouse_cnt = tmp.argmax()
+
+    tmp = cv2.moments(cnts[mouse_cnt])
+    num = 2 * tmp['mu11']
+    den = tmp['mu20'] - tmp['mu02']
+
+    common = np.sqrt(4 * np.square(tmp['mu11']) + np.square(den))
+
+    # assert that the dict does not contain nans.
+    if tmp['m00'] == 0:
+        pytest.fail('NANs')
+
+    print('done-ish: moments check final assertions')
+
+
+#TODO: complete util.py: test_strided_app() unit test to complete this test.
+def test_feature_hampel_filter():
+    # original params: features, centroid_hampel_span=None, centroid_hampel_sig=3,
+#                           angle_hampel_span=None, angle_hampel_sig=3
+
+    '''
+
+    NOTE: this function contains util.py function strided_app() [INCOMPLETE]
+
+    '''
+
+
+    # use mock features input with appropriate values
+
+    # after strided_app test is complete, continue performing numpy computations
+
+    # compare current result with ground truth
+    pytest.fail('not implemented')
+    print('not done')
+
+
+def test_model_smoother():
+    # original params: features (dict), ll=None, clips=(-300, -125)
+
+    fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 20))
+
+    tmp_image = np.zeros((80, 80), dtype='int8')
+    center = np.array(tmp_image.shape) // 2
+
+    mouse_dims = np.array(fake_mouse.shape) // 2
+
+    tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+    center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+    # create mock features, ll and clips
+    rotations = np.random.rand(100) * 180 - 90
+    features = {}
+
+    features['centroid'] = np.tile(center, (len(rotations), 1))
+    features['orientation'] = np.deg2rad(rotations)
+    clips = (-300, -125)
+
+    # make mock filterframes, progress bar for em_get_ll() [TESTED]
+    pytest.fail('not implemented')
+
+    print('test')
 
 
 def test_crop_and_rotate():

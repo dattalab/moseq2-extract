@@ -5,6 +5,7 @@ import click
 import numpy.testing as npt
 import numpy as np
 import cv2
+import time
 from click.testing import CliRunner
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config
 
@@ -17,7 +18,7 @@ def temp_dir(tmpdir):
 
 def test_extract(temp_dir):
 
-    data_path = os.path.join(temp_dir, 'depth.dat')
+    data_path = os.path.join(temp_dir, 'test_vid.dat')
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
@@ -69,7 +70,7 @@ def test_extract(temp_dir):
 
 def test_extract_trim(temp_dir):
 
-    data_path = os.path.join(temp_dir, 'depth.dat')
+    data_path = os.path.join(temp_dir, 'test_vid.dat')
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
@@ -117,9 +118,52 @@ def test_extract_trim(temp_dir):
     assert(result.exit_code == 0)
 
 
+def test_convert_raw_to_avi_function():
+    # original params: input_file, chunk_size=2000, fps=30, delete=False, threads=3
+    input_file = 'tests/test_video_files/test_raw.dat'
+    chunk_size = 2000
+    fps = 30
+    delete = False
+    threads = 3
+
+    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
+
+    # turn into os system call...
+    use_kwargs = {
+        'output-file': new_file,
+        'chunk-size': chunk_size,
+        'fps': fps,
+        'threads': threads
+    }
+    use_flags = {
+        'delete': delete
+    }
+    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
+    for k, v in use_kwargs.items():
+        base_command += ' --{} {}'.format(k, v)
+    for k, v in use_flags.items():
+        if v:
+            base_command += ' --{}'.format(k)
+
+    print(base_command)
+    print('\n')
+
+    os.system(base_command)
+    time.sleep(14) # waiting for file to save to desired test dir
+
+    files = [os.listdir('tests/test_video_files')]
+    if ('test_raw.dat' in files[0]) and (delete):
+        print(files)
+        pytest.fail('raw was not deleted')
+    if 'test_raw.avi' not in files[0]:
+        print(files)
+        pytest.fail('avi file not found')
+
+    os.remove('tests/test_video_files/test_raw.avi')
+
 # def test_extract_em(temp_dir):
 #
-#     data_path = os.path.join(temp_dir, 'depth.dat')
+#     data_path = os.path.join(temp_dir, 'test_vid.dat')
 #     edge_size = 40
 #     points = np.arange(-edge_size, edge_size)
 #     sig1 = 10
@@ -169,7 +213,7 @@ def test_extract_trim(temp_dir):
 
 def test_find_roi(temp_dir):
 
-    data_path = os.path.join(temp_dir, 'depth.dat')
+    data_path = os.path.join(temp_dir, 'test_vid.dat')
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
