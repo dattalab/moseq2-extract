@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 import time
 from click.testing import CliRunner
+import shutil
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, copy_slice
 
 
@@ -18,23 +19,77 @@ def temp_dir(tmpdir):
 def test_copy_slice():
 
     temp_dir = 'tests/test_video_files/'
-    data_path = os.path.join(temp_dir, 'test_vid.avi')
-    temp_path = os.path.join(temp_dir, 'output.avi')
+    data_path = os.path.join(temp_dir, 'extract_vid.avi')
+    output_path = 'tests/test_video_files/extracted_copy/output.avi'
+
+    slice_params = ['--output-file', output_path,
+                    '--chunk-size', 2000,
+                    '--copy-slice', '0', '1000',
+                    '--fps', 30,
+                    '--delete', False,
+                    '--threads', 3,
+                    data_path]
 
     runner = CliRunner()
-    result = runner.invoke(copy_slice, ['--output-file', temp_path,
-                                        '--chunk-size', 2000,
-                                        '--threads', 3,
-                                        data_path])
+    result = runner.invoke(copy_slice, slice_params)
 
-    assert (os.path.exists(temp_path) == True)
-    os.remove(temp_path)
+    assert (os.path.exists(output_path) == True)
+    if True:
+        os.remove(output_path)
+
     assert (result.exit_code == 0)
 
+def test_extract():
 
-def test_extract(temp_dir):
+    extract_dir = 'tests/test_video_files/'
+    flip_path = 'tests/test_flip_classifiers/flip_test1.pkl'
+    output_path = 'extracted/'
+    data_path = os.path.join(extract_dir, 'test_raw.dat')
+    param_set = [data_path,
+                 '--output-dir', output_path,
+                 #'--config_file', None, ## IS OPTIONAL FLAG
+                 '--crop-size', 80, 80,
+                 '--bg-roi-dilate', 10, 10,
+                 '--bg-roi-shape', 'ellipse',
+                 '--bg-roi-index', 0,
+                 '--bg-roi-weights', 1, .1, 1,
+                 '--bg-roi-depth-range', 650, 750,
+                 '--bg-roi-gradient-kernel', 7,
+                 '--bg-roi-fill-holes', True,
+                 '--min-height', 10,
+                 '--max-height', 100,
+                 '--fps', 30,
+                 '--flip-classifier', flip_path,
+                 '--flip-classifier-smoothing', 51,
+                 '--use-tracking-model', False,
+                 '--tracking-model-ll-threshold', -100,
+                 '--tracking-model-ll-clip', -100,
+                 '--tracking-model-mask-threshold', -16,
+                 '--tracking-model-segment', True,
+                 '--tracking-model-init', 'raw',
+                 '--cable-filter-iters', 0,
+                 '--cable-filter-size', 5, 5,
+                 '--cable-filter-shape', 'rectangle',
+                 '--tail-filter-size', 9, 9,
+                 '--tail-filter-iters', 1,
+                 '--tail-filter-shape', 'ellipse',
+                 '--spatial-filter-size', 3,
+                 '--temporal-filter-size', 0,
+                 '--chunk-size', 1200,
+                 '--chunk-overlap', 0,
+                 '--write-movie', True,
+                 '--use-plane-bground', # FLAG
+                 '--frame-dtype', 'uint8',
+                 '--angle-hampel-span', 0,
+                 '--angle-hampel-sig', 3,
+                 '--centroid-hampel-span', 0,
+                 '--centroid-hampel-sig', 3,
+                 '--model-smoothing-clips', 0, 0,
+                 '--frame-trim',0 , 0,
+                 '--compress', False,
+                 '--compress-chunk-size', 3000,
+                 '--compress-threads', 3]
 
-    data_path = os.path.join(temp_dir, 'test_vid.dat')
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
@@ -74,21 +129,16 @@ def test_extract(temp_dir):
     fake_movie.tofile(data_path)
 
     runner = CliRunner()
-    result = runner.invoke(extract, [data_path,
-                                     '--output-dir', temp_dir,
-                                     '--angle-hampel-span', 5,
-                                     '--centroid-hampel-span', 5,
-                                     '--use-tracking-model', True,
-                                     '--chunk-size', 1200],
+    result = runner.invoke(extract, param_set,
                            catch_exceptions=False)
 
-    assert (os.path.exists(temp_dir) == True)
+    assert (os.path.exists(extract_dir+'extracted/') == True)
+    shutil.rmtree(extract_dir+'extracted/')
     assert(result.exit_code == 0)
-
 
 def test_extract_trim(temp_dir):
 
-    data_path = os.path.join(temp_dir, 'test_vid.dat')
+    data_path = os.path.join(temp_dir, 'test_raw.dat')
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
@@ -184,9 +234,24 @@ def test_convert_raw_to_avi_function():
     os.remove('tests/test_video_files/test_raw.avi')
 
 
-def test_find_roi(temp_dir):
+def test_find_roi():
+    temp_dir = 'tests/test_video_files/roi_output/'
+    data_path = os.path.join(temp_dir, 'test_raw.dat')
 
-    data_path = os.path.join(temp_dir, 'test_vid.dat')
+    roi_params = [data_path,
+                  '--output-dir', temp_dir,
+                  '--bg-roi-dilate', 10, 10,
+                  '--bg-roi-shape', 'ellipse',
+                  '--bg-roi-index', 0,
+                  '--bg-roi-weights', 1, .1, 1,
+                  '--bg-roi-depth-range', 650, 750,
+                  '--bg-roi-gradient-filter', False,
+                  '--bg-roi-gradient-threshold', 3000,
+                  '--bg-roi-gradient-kernel', 7,
+                  '--bg-roi-fill-holes', True,
+                  '--bg-sort-roi-by-position', False,
+                  '--bg-sort-roi-by-position-max-rois', 2,
+                  '--use-plane-bground', False]
     edge_size = 40
     points = np.arange(-edge_size, edge_size)
     sig1 = 10
@@ -226,9 +291,10 @@ def test_find_roi(temp_dir):
     fake_movie.tofile(data_path)
 
     runner = CliRunner()
-    result = runner.invoke(find_roi, [data_path, '--output-dir', temp_dir])
+    result = runner.invoke(find_roi, roi_params)
 
     assert (os.path.exists(temp_dir) == True)
+    shutil.rmtree(temp_dir)
     assert(result.exit_code == 0)
 
 

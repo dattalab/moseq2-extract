@@ -77,11 +77,11 @@ def test_convert_raw_to_avi_function():
     if ('test_raw.dat' in files[0]) and (delete):
         print(files)
         #pytest.fail('raw was not deleted')
-    if 'test_raw.avi' not in files[0]:
+    if 'test_vid.avi' not in files[0]:
         print(files)
         pytest.fail('avi file not found')
 
-    os.remove('tests/test_video_files/test_raw.avi')
+    os.remove('tests/test_video_files/test_vid.avi')
 
 
 def test_gen_batch_sequence():

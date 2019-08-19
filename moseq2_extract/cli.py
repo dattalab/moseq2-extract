@@ -563,7 +563,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 @click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
 @click.option('--fps', type=float, default=30, help='Video FPS')
-@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('--delete', type=bool, default=True, help='Delete raw file if encoding is sucessful')
 @click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
 
