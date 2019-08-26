@@ -2,6 +2,10 @@
 
 Welcome to moseq2, the latest version of a software package for mouse tracking in depth videos first developed by Alex Wiltschko in the Datta Lab at Harvard Medical School.
 
+## Documentation
+
+All documentation regarding moseq2-extract can be found in our [github wiki](https://github.com/dattalab/moseq2-extract/wiki).
+
 ## Contributing
 
 If you would like to contribute, fork the repository and issue a pull request.  
