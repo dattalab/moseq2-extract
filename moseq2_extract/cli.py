@@ -466,9 +466,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
+@click.option('--selected-flip', '-s', default=None, type=int, help="Preselected flip file to remove CLI prompt when using GUI.")
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(output_dir):
+def download_flip_file(output_dir, selected_flip):
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -485,6 +486,9 @@ def download_flip_file(output_dir):
         print('[{}] {} ---> {}'.format(idx, k, v))
 
     selection = None
+
+    if selected_flip is not None:
+        selection = selected_flip
 
     while selection is None:
         selection = click.prompt('Enter a selection', type=int)
