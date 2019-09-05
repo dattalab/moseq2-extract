@@ -466,9 +466,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
-@click.option('--output-dir', type=click.Path(),
-              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(output_dir):
+@click.option('--output-dir', type=click.Path(), default='~/moseq2', help="Directory to save flip file in")
+@click.option('--selected-file-index', '-s', default=None, type=int, help="Selected file index (useful in GUI)")
+def download_flip_file(output_dir, selected_file_index):
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -486,10 +486,14 @@ def download_flip_file(output_dir):
 
     selection = None
 
-    while selection is None:
-        selection = click.prompt('Enter a selection', type=int)
-        if selection > len(flip_files.keys()):
-            selection = None
+    if selected_file_index is None:
+        while selection is None:
+            selection = click.prompt('Enter a selection', type=int)
+            if selection > len(flip_files.keys()):
+                selection = None
+                print('Key error: inputted key is invalid.')
+    else:
+        selection = selected_file_index
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -504,12 +508,18 @@ def download_flip_file(output_dir):
 
 @cli.command(name="generate-config")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
-def generate_config(output_file):
-    objs = extract.params
-    params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+@click.option('--gui-options', '-g', type=dict, default={}, help='GUI inputted parameters for generating a config')
+def generate_config(output_file, gui_options):
+    if gui_options == {}:
+        objs = extract.params
+        params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
-    with open(output_file, 'w') as f:
-        yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+        with open(output_file, 'w') as f:
+            yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+    else:
+        params = gui_options
+        with open(output_file, 'w') as f:
+            yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
 
 @cli.command(name="convert-raw-to-avi")
