@@ -466,16 +466,11 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
-<<<<<<< HEAD
-@click.option('--output-dir', type=click.Path(), default='~/moseq2', help="Directory to save flip file in")
-@click.option('--selected-file-index', '-s', default=None, type=int, help="Selected file index (useful in GUI)")
-def download_flip_file(output_dir, selected_file_index):
-=======
 @click.option('--selected-flip', '-s', default=None, type=int, help="Preselected flip file to remove CLI prompt when using GUI.")
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
 def download_flip_file(output_dir, selected_flip):
->>>>>>> origin/ayman_updates
+
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -493,16 +488,6 @@ def download_flip_file(output_dir, selected_flip):
 
     selection = None
 
-<<<<<<< HEAD
-    if selected_file_index is None:
-        while selection is None:
-            selection = click.prompt('Enter a selection', type=int)
-            if selection > len(flip_files.keys()):
-                selection = None
-                print('Key error: inputted key is invalid.')
-    else:
-        selection = selected_file_index
-=======
     if selected_flip is not None:
         selection = selected_flip
 
@@ -510,7 +495,6 @@ def download_flip_file(output_dir, selected_flip):
         selection = click.prompt('Enter a selection', type=int)
         if selection > len(flip_files.keys()):
             selection = None
->>>>>>> origin/ayman_updates
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
