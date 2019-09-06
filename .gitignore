@@ -109,3 +109,19 @@ venv.bak/
 .DS_Store
 
 .vscode
+*.xml
+*.idea/*
+*.dat
+.idea/vcs.xml
+
+.idea/other.xml
+
+.idea/moseq2-extract.iml
+
+.idea/modules.xml
+
+.idea/misc.xml
+
+.idea/inspectionProfiles/profiles_settings.xml
+/tests/test_video_files/
+/tests/test_flip_classifiers/

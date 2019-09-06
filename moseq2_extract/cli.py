@@ -179,13 +179,13 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
         print('Scanning tarball {} (this will take a minute)'.format(input_file))
-        #compute NEW psuedo-dirname now, `input_file` gets overwritten below with depth.dat tarinfo...
+        #compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
 
         tar = tarfile.open(input_file, 'r:gz')
         tar_members = tar.getmembers()
         tar_names = [_.name for _ in tar_members]
-        input_file = tar_members[tar_names.index('depth.dat')]
+        input_file = tar_members[tar_names.index('test_vid.dat')]
     else:
         tar = None
         tar_members = None
@@ -466,9 +466,11 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
+@click.option('--selected-flip', '-s', default=None, type=int, help="Preselected flip file to remove CLI prompt when using GUI.")
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(output_dir):
+def download_flip_file(output_dir, selected_flip):
+
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -485,6 +487,9 @@ def download_flip_file(output_dir):
         print('[{}] {} ---> {}'.format(idx, k, v))
 
     selection = None
+
+    if selected_flip is not None:
+        selection = selected_flip
 
     while selection is None:
         selection = click.prompt('Enter a selection', type=int)
@@ -504,12 +509,18 @@ def download_flip_file(output_dir):
 
 @cli.command(name="generate-config")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
-def generate_config(output_file):
-    objs = extract.params
-    params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+@click.option('--gui-options', '-g', type=dict, default={}, help='GUI inputted parameters for generating a config')
+def generate_config(output_file, gui_options):
+    if gui_options == {}:
+        objs = extract.params
+        params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
-    with open(output_file, 'w') as f:
-        yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+        with open(output_file, 'w') as f:
+            yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+    else:
+        params = gui_options
+        with open(output_file, 'w') as f:
+            yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
 
 @cli.command(name="convert-raw-to-avi")
@@ -563,7 +574,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 @click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
 @click.option('--fps', type=float, default=30, help='Video FPS')
-@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('--delete', type=bool, default=True, help='Delete raw file if encoding is sucessful')
 @click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
 

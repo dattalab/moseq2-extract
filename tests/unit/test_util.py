@@ -1,9 +1,13 @@
+import sys
+
 import pytest
+import unittest
 import os
 import numpy as np
 import numpy.testing as npt
 import json
 import cv2
+import time
 import click
 import h5py
 
@@ -17,6 +21,67 @@ from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestam
 def temp_dir(tmpdir):
     f = tmpdir.mkdir('test_dir')
     return str(f)
+
+def test_strided_app():
+    # original params: a, L, S
+    # Window len = L, Stride len/stepsize = S
+    a = np.asarray([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
+    L = 5
+    S = 3
+
+    nrows = ((a.size - L) // S) + 1
+    n = a.strides[0]
+
+    mock_result = np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S * n, n))
+    test_result = [[1, 2, 3, 4, 5],
+     [4, 5, 6, 7, 8],
+     [7, 8, 9, 10, 11]]
+
+    assert all([c == d for a, b in zip(mock_result, test_result) for c, d in zip(a, b)])
+
+
+def test_convert_raw_to_avi_function():
+    # original params: input_file, chunk_size=2000, fps=30, delete=False, threads=3
+    input_file = 'tests/test_video_files/test_raw.dat'
+    chunk_size = 2000
+    fps = 30
+    delete = False
+    threads = 3
+
+    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
+
+    # turn into os system call...
+    use_kwargs = {
+        'output-file': new_file,
+        'chunk-size': chunk_size,
+        'fps': fps,
+        'threads': threads
+    }
+    use_flags = {
+        'delete': delete
+    }
+    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
+    for k, v in use_kwargs.items():
+        base_command += ' --{} {}'.format(k, v)
+    for k, v in use_flags.items():
+        if v:
+            base_command += ' --{}'.format(k)
+
+    print(base_command)
+    print('\n')
+
+    os.system(base_command)
+    time.sleep(14) # waiting for file to save to desired test dir
+
+    files = [os.listdir('tests/test_video_files')]
+    if ('test_raw.dat' in files[0]) and (delete):
+        print(files)
+        #pytest.fail('raw was not deleted')
+    if 'test_vid.avi' not in files[0]:
+        print(files)
+        pytest.fail('avi file not found')
+
+    os.remove('tests/test_video_files/test_vid.avi')
 
 
 def test_gen_batch_sequence():
