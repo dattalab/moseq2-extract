@@ -22,6 +22,114 @@ def generate_config_command(output_file, gui_options):
         with open(output_file, 'w') as f:
             yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
+def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        avi_encode = True
+        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+    else:
+        output_filename, ext = os.path.splitext(os.path.basename(output_file))
+        if ext == '.avi':
+            avi_encode = True
+        else:
+            avi_encode = False
+
+    vid_info = get_movie_info(input_file)
+    copy_slice = (copy_slice[0], np.minimum(copy_slice[1], vid_info['nframes']))
+    nframes = copy_slice[1] - copy_slice[0]
+    offset = copy_slice[0]
+
+    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    video_pipe = None
+
+    if os.path.exists(output_file):
+        raise RuntimeError('Output file {} already exists'.format(output_file))
+
+    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        if avi_encode:
+            video_pipe = write_frames(output_file,
+                                      frames,
+                                      pipe=video_pipe,
+                                      close_pipe=False,
+                                      threads=threads,
+                                      fps=fps)
+        else:
+            with open(output_file, "ab") as f:
+                f.write(frames.astype('uint16').tobytes())
+
+    if avi_encode and video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting {}'.format(input_file))
+        os.remove(input_file)
+
+    return True
+
+def find_roi_command(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
+             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois,
+             output_dir, use_plane_bground, config_file):
+
+    # set up the output directory
+
+    if type(bg_roi_index) is int:
+        bg_roi_index = [bg_roi_index]
+
+    if not output_dir:
+        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
+        print('Loading background...')
+        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
+    else:
+        print('Getting background...')
+        bground_im = get_bground_im_file(input_file)
+        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+
+    first_frame = load_movie_data(input_file, 0)
+    write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
+                scale_factor=bg_roi_depth_range)
+
+    print('Getting roi...')
+    strel_dilate = select_strel(bg_roi_shape, bg_roi_dilate)
+
+    rois, _, _, _, _, _ = get_roi(bground_im,
+                                  strel_dilate=strel_dilate,
+                                  weights=bg_roi_weights,
+                                  depth_range=bg_roi_depth_range,
+                                  gradient_filter=bg_roi_gradient_filter,
+                                  gradient_threshold=bg_roi_gradient_threshold,
+                                  gradient_kernel=bg_roi_gradient_kernel,
+                                  fill_holes=bg_roi_fill_holes)
+
+    if bg_sort_roi_by_position:
+        rois = rois[:bg_sort_roi_by_position_max_rois]
+        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
+
+    bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
+    for idx in bg_roi_index:
+        roi_filename = 'roi_{:02d}.tiff'.format(idx)
+        write_image(os.path.join(output_dir, roi_filename),
+                    rois[idx], scale=True, dtype='uint8')
+
+    return True
+
 
 def extract_command(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
