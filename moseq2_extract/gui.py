@@ -220,7 +220,7 @@ def extract_command(input_file, output_dir, config_file):
     # get the basic metadata
 
     status_dict = {
-        'parameters': deepcopy(locals()),
+        'parameters': deepcopy(config_data),
         'complete': False,
         'skip': False,
         'uuid': str(uuid.uuid4()),
@@ -331,9 +331,9 @@ def extract_command(input_file, output_dir, config_file):
 
     roi_filename = 'roi_{:02d}.tiff'.format(config_data['bg_roi_index'])
 
-    strel_dilate = select_strel(config_data['bg_roi_shape'], config_data['bg_roi_dilate'])
-    strel_tail = select_strel(config_data['tail_filter_shape'], config_data['tail_filter_size'])
-    strel_min = select_strel(config_data['cable_filter_shape'], config_data['cable_filter_size'])
+    strel_dilate = select_strel((config_data['bg_roi_shape'], config_data['bg_roi_dilate']))
+    strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
+    strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
 
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
