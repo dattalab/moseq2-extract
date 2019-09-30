@@ -5,6 +5,8 @@ from moseq2_extract.io.video import (get_movie_info, load_movie_data,
 import urllib
 import h5py
 import tqdm
+import os, sys
+from PIL import Image
 from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, get_roi, get_bground_im_file
@@ -19,7 +21,6 @@ from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
 
 def generate_config_command(output_file):
     objs = extract.params
-
     objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
     objsM, objsF = learn_model.params, count_frames.params
     objsV1, objsV2 = make_crowd_movies.params, plot_transition_graph.params
@@ -222,6 +223,13 @@ def find_roi_command(input_file, output_dir, config_file):
         write_image(os.path.join(output_dir, roi_filename),
                     rois[idx], scale=True, dtype='uint8')
 
+    for infile in os.listdir(output_dir):
+        if infile[-4:] == "tiff":
+            # print "is tif or bmp"
+            outfile = infile[:-4] + "png"
+            im = Image.open(os.path.join(output_dir, infile))
+            out = im.convert("RGBA")
+            out.save(os.path.join(output_dir, outfile), "PNG", quality=90)
     return True
 
 def sample_extract_command(input_file, output_dir, config_file, nframes):
