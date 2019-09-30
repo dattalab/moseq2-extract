@@ -15,6 +15,7 @@ from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timesta
 from moseq2_pca.cli import train_pca, apply_pca, compute_changepoints
 from moseq2_model.cli import learn_model, count_frames
 from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
+from moseq2_batch.cli import *
 
 def generate_config_command(output_file):
     objs = extract.params
@@ -22,8 +23,9 @@ def generate_config_command(output_file):
     objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
     objsM, objsF = learn_model.params, count_frames.params
     objsV1, objsV2 = make_crowd_movies.params, plot_transition_graph.params
+    obsB1, obsB2, obsB3, obsB4 = extract_batch.params, aggregate_extract_results.params, learn_model_parameter_scan.params, aggregate_modeling_results.params
 
-    objsT = objs2+objs3+objs4+objs5+objsM+objsF+objsV1+objsV2
+    objsT = objs2+objs3+objs4+objs5+objsM+objsF+objsV1+objsV2+obsB1+obsB2+obsB3+obsB4
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
     for obj in objsT:
