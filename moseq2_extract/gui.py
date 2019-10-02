@@ -19,6 +19,18 @@ from moseq2_model.cli import learn_model, count_frames
 from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
 #from moseq2_batch.cli import extract_batch, aggregate_extract_results, learn_model_parameter_scan, aggregate_modeling_results
 
+def get_found_sessions():
+    cwd = os.getcwd()+'/'
+    found_sessions = 0
+    for file in os.listdir(cwd):
+        if os.path.isdir(file):
+            dir_files = os.listdir(cwd+file)
+            if 'depth.dat' in dir_files:
+                found_sessions += 1
+
+    return found_sessions
+
+
 def generate_config_command(output_file):
     objs = extract.params
     objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
