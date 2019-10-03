@@ -48,6 +48,8 @@ def generate_config_command(output_file):
     with open(output_file, 'w') as f:
         yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
+    return 'Configuration file has been successfully generated.'
+
 def download_flip_command(output_dir, config_file, selected_flip):
 
 
@@ -86,9 +88,7 @@ def download_flip_command(output_dir, config_file, selected_flip):
     with open(config_file, 'w') as f:
         yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
 
-    print('Successfully updated configuration file with downloaded flip classifier.')
-
-    return True
+    return 'Successfully updated configuration file with downloaded flip classifier.'
 
 
 def convert_raw_to_avi_command(input_file, output_file, chunk_size, fps, delete, threads):
@@ -240,9 +240,10 @@ def find_roi_command(input_file, output_dir, config_file):
             # print "is tif or bmp"
             outfile = infile[:-4] + "png"
             im = Image.open(os.path.join(output_dir, infile))
-            out = im.convert("RGBA")
-            out.save(os.path.join(output_dir, outfile), "PNG", quality=90)
-    return True
+            im.save(os.path.join(output_dir, outfile), "PNG", quality=100)
+
+    return 'ROIs were successfully computed.'
+
 
 def sample_extract_command(input_file, output_dir, config_file, nframes):
 
@@ -338,7 +339,9 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if os.path.exists(status_filename):
-        raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
@@ -543,6 +546,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
 
+    return 'Sample extraction of '+str(nframes)+' frames completed successfully.'
 
 def extract_command(input_file, output_dir, config_file):
 
@@ -843,3 +847,5 @@ def extract_command(input_file, output_dir, config_file):
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+
+    return 'Extraction completed.'
