@@ -336,7 +336,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
         os.makedirs(output_dir)
 
     output_filename = 'results_{:02d}'.format(config_data['bg_roi_index'])
-    status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
+    status_filename = os.path.join(output_dir, '{}.testyaml'.format(output_filename))
 
     if os.path.exists(status_filename):
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
@@ -399,7 +399,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
 
     # farm out the batches and write to an hdf5 file
 
-    with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
+    with h5py.File(os.path.join(output_dir, '{}.testh5'.format(output_filename)), 'w') as f:
         f.create_dataset('metadata/uuid', data=status_dict['uuid'])
         for scalar in scalars:
             f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
@@ -439,7 +439,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
         f.create_dataset('metadata/extraction/extract_version', data=extract_version)
         f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
-        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+        #save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
 
         for key, value in acquisition_metadata.items():
             if type(value) is list and len(value) > 0 and type(value[0]) is str:
