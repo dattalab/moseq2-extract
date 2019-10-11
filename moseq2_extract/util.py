@@ -5,6 +5,10 @@ import cv2
 import click
 import ruamel.yaml as yaml
 import h5py
+import re
+from typing import Pattern
+import warnings
+from cytoolz import valmap, assoc
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -221,6 +225,177 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
                 h5[dest].attrs['description'] = ""
             else:
                 h5[dest].attrs['description'] = annotations[key]
+
+
+def recursive_find_h5s(root_dir=os.getcwd(),
+                       ext='.h5',
+                       yaml_string='{}.yaml'):
+    """Recursively find h5 files, along with yaml files with the same basename
+    """
+    dicts = []
+    h5s = []
+    yamls = []
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            yaml_file = yaml_string.format(os.path.splitext(file)[0])
+            if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
+                try:
+                    with h5py.File(os.path.join(root, file), 'r') as f:
+                        if 'frames' not in f.keys():
+                            continue
+                except OSError:
+                    warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
+                    continue
+                h5s.append(os.path.join(root, file))
+                yamls.append(os.path.join(root, yaml_file))
+                dicts.append(read_yaml(os.path.join(root, yaml_file)))
+
+    return h5s, dicts, yamls
+
+
+def escape_path(path):
+    return re.sub(r'\s', '\ ', path)
+
+def clean_file_str(file_str: str, replace_with: str = '-') -> str:
+    '''removes invalid characters for a file name from a string
+    '''
+    out = re.sub(r'[ <>:"/\\|?*\']', replace_with, file_str)
+    # find any occurrences of `replace_with`, i.e. (--)
+    return re.sub(replace_with * 2, replace_with, out)
+
+def load_textdata(data_file, dtype=np.float32):
+
+    data = []
+    timestamps = []
+    with open(data_file, "r") as f:
+        for line in f.readlines():
+            tmp = line.split(' ', 1)
+            timestamps.append(int(tmp[0]))
+            clean_data = np.fromstring(tmp[1].replace(" ", "").strip(), sep=',', dtype=dtype)
+            data.append(clean_data)
+
+    data = np.stack(data, axis=0).squeeze()
+    timestamps = np.array(timestamps, dtype=np.int)
+
+    return data, timestamps
+
+
+def time_str_for_filename(time_str: str) -> str:
+    '''Process the time string supplied by moseq to be used in a filename. This
+    removes colons, milliseconds, and timezones.
+    '''
+    out = time_str.split('.')[0]
+    out = out.replace(':', '-').replace('T', '_')
+    return out
+
+def build_path(keys: dict, format_string: str, snake_case=True) -> str:
+    '''Produce a new file name using keys collected from extraction h5 files. The format string
+    must be using python's formatting specification, i.e. '{subject_name}_{session_name}'.
+
+    Args:
+        keys (dict): dictionary specifying which keys used to produce the new file name
+        format_string (str): the string to reformat using the `keys` dictionary
+    Returns:
+        a newly formatted filename useable with any operating system
+
+    >>> build_path(dict(a='hello', b='world'), '{a}_{b}')
+    'hello_world'
+    >>> build_path(dict(a='hello', b='world'), '{a}/{b}')
+    'hello-world'
+    '''
+    if 'start_time' in keys:
+        # process the time value
+        val = keys['start_time']
+        keys = assoc(keys, 'start_time', time_str_for_filename(val))
+
+    if snake_case:
+        keys = valmap(camel_to_snake, keys)
+
+    return clean_file_str(format_string.format(**keys))
+
+def read_yaml(yaml_file):
+    with open(yaml_file, 'r') as f:
+        dat = f.read()
+        try:
+            return_dict = yaml.safe_load(dat)
+        except AttributeError:
+            return_dict = yaml.safe_load(dat)
+
+    return return_dict
+
+def mouse_threshold_filter(h5file, thresh=0):
+    with h5py.File(h5file, 'r') as f:
+        # select 1st 1000 frames
+        frames = f['frames'][:min(f['frames'].shape[0], 1000)]
+    return np.nanmean(frames) > thresh
+
+def _load_h5_to_dict(file: h5py.File, path) -> dict:
+    ans = {}
+    for key, item in file[path].items():
+        if isinstance(item, h5py._hl.dataset.Dataset):
+            ans[key] = item[()]
+        elif isinstance(item, h5py._hl.group.Group):
+            ans[key] = _load_h5_to_dict(file, '/'.join([path, key]))
+    return ans
+
+
+def h5_to_dict(h5file, path) -> dict:
+    """
+    Args:
+        h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
+        path: path to the base dataset within the h5 file
+    Returns:
+        a dict with h5 file contents with the same path structure
+    """
+    if isinstance(h5file, str):
+        with h5py.File(h5file, 'r') as f:
+            out = _load_h5_to_dict(f, path)
+    elif isinstance(h5file, h5py.File):
+        out = _load_h5_to_dict(h5file, path)
+    else:
+        raise Exception('file input not understood - need h5 file path or file object')
+    return out
+
+
+_underscorer1: Pattern[str] = re.compile(r'(.)([A-Z][a-z]+)')
+_underscorer2 = re.compile('([a-z0-9])([A-Z])')
+
+def camel_to_snake(s):
+    """Converts CamelCase to snake_case
+    """
+    subbed = _underscorer1.sub(r'\1_\2', s)
+    return _underscorer2.sub(r'\1_\2', subbed).lower()
+
+
+def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
+                                    session_pattern=r'session_\d+\.(?:tgz|tar\.gz)',
+                                    filename='depth.dat',
+                                    yaml_path='proc/results_00.yaml',
+                                    metadata_path='metadata.json',
+                                    skip_checks=False):
+    """Recursively find unextracted directories
+    """
+    session_archive_pattern = re.compile(session_pattern)
+
+    proc_dirs = []
+    for root, _, files in os.walk(root_dir):
+        for file in files:
+            if file == filename:  # test for uncompressed session
+                status_file = os.path.join(root, yaml_path)
+                metadata_file = os.path.join(root, metadata_path)
+
+            elif session_archive_pattern.fullmatch(file):  # test for compressed session
+                session_name = os.path.basename(file).replace('.tar.gz', '').replace('.tgz', '')
+                status_file = os.path.join(root, session_name, yaml_path)
+                metadata_file = os.path.join(root, '{}.json'.format(session_name))
+            else:
+                continue  # skip this current file as it does not look like session data
+
+            # perform checks
+            if skip_checks or (not os.path.exists(status_file) and os.path.exists(metadata_file)):
+                proc_dirs.append(os.path.join(root, file))
+
+    return proc_dirs
 
 
 def click_param_annot(click_cmd):
