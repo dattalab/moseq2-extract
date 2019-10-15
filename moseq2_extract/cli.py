@@ -10,7 +10,7 @@ from moseq2_extract.util import (load_metadata, gen_batch_sequence, load_timesta
 import click
 import os
 import h5py
-from tqdm.auto import tqdm
+import tqdm
 import numpy as np
 import ruamel.yaml as yaml
 import uuid

@@ -4,12 +4,14 @@ from moseq2_extract.io.video import (get_movie_info, load_movie_data,
                                      write_frames_preview, write_frames)
 import urllib
 import h5py
-from tqdm.auto import tqdm
+import tqdm
 import os
+import warnings
 import shutil
 import datetime
 from pathlib import Path
 from PIL import Image
+from glob import glob
 from cytoolz import keymap, partial, valmap, assoc
 from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
@@ -120,7 +122,64 @@ def extract_found_sessions(input_dir, config_file, filename):
 
     return commands
 
-def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold):
+
+def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
+
+    # gather than h5s and the pca scores file
+    # uuids should match keys in the scores file
+
+    h5s, dicts, yamls = recursive_find_h5s(input_dir)
+    if not os.path.exists(pca_file) or all_uuids:
+        warnings.warn('Will include all files')
+        pca_uuids = [dct['uuid'] for dct in dicts]
+    else:
+        with h5py.File(pca_file, 'r') as f:
+            pca_uuids = list(f['scores'].keys())
+
+
+    file_with_uuids = [(os.path.relpath(h5), os.path.relpath(yml), meta) for h5, yml, meta in
+                       zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+
+    if 'metadata' not in file_with_uuids[0][2]:
+        raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
+
+    output_dict = {
+        'files': [],
+        'pca_path': pca_file
+    }
+
+    index_uuids = []
+    for i, file_tup in enumerate(file_with_uuids):
+        if file_tup[2]['uuid'] not in index_uuids:
+            output_dict['files'].append({
+                'path': (file_tup[0], file_tup[1]),
+                'uuid': file_tup[2]['uuid'],
+                'group': 'default'
+            })
+            index_uuids.append(file_tup[2]['uuid'])
+
+            output_dict['files'][i]['metadata'] = {}
+
+            for k, v in file_tup[2]['metadata'].items():
+                for filt in filter:
+                    if k == filt[0]:
+                        tmp = re.match(filt[1], v)
+                        if tmp is not None:
+                            v = tmp[0]
+
+                output_dict['files'][i]['metadata'][k] = v
+
+    # write out index yaml
+
+    with open(output_file, 'w') as f:
+        yaml.dump(output_dict, f, Dumper=yaml.RoundTripDumper)
+
+    return 'Index file successfully generated.'
+
+
+def aggregate_extract_results_command(input_dir, format, output_dir):
+
+    mouse_threshold = 0
     snake_case = True
     output_dir = os.path.join(input_dir, output_dir)
 
@@ -144,7 +203,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     to_load = list(filter(filter_h5, zip(dicts, h5s)))
 
     loaded = []
-    for _dict, _h5f in tqdm.tqdm(to_load, desc='Scanning data'):
+    for _dict, _h5f in tqdm.tqdm_notebook(to_load, desc='Scanning data'):
         try:
             # v0.1.3 introduced a change - acq. metadata now here
             tmp = h5_to_dict(_h5f, '/metadata/acquisition')
@@ -213,7 +272,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
 
     # now the key is the source h5 file and the value is the path to copy to
 
-    for k, v in tqdm.tqdm(manifest.items(), desc='Copying files'):
+    for k, v in tqdm.tqdm_notebook(manifest.items(), desc='Copying files'):
 
         if os.path.exists(os.path.join(output_dir, '{}.h5'.format(v['copy_path']))):
             continue
@@ -244,28 +303,28 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
         v['yaml_dict'].pop('extraction_metadata', None)
         with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
             yaml.dump(v['yaml_dict'], f)
+    generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
 
-def get_found_sessions(search_path=None):
-    if search_path is None:
-        cwd = os.getcwd()+'/'
-        found_sessions = 0
-        for file in os.listdir(cwd):
-            if os.path.isdir(file):
-                dir_files = os.listdir(cwd+file)
-                if 'depth.dat' in dir_files:
-                    found_sessions += 1
-        return found_sessions
-    else:
-        if search_path[len(search_path)-1] != '/':
-            search_path = search_path + '/'
-        if os.path.isdir(search_path):
-            found_sessions = 0
-            for file in os.listdir(search_path):
-                if os.path.isdir(file):
-                    dir_files = os.listdir(search_path + file)
-                    if 'depth.dat' in dir_files:
-                        found_sessions += 1
-        return found_sessions
+def get_found_sessions():
+
+    found_sessions = 0
+    while (True):
+        upath = input("Input path to directory containing all sessions to analyze. [ENTER] for default (cwd): ")
+        if len(upath) == 0:
+            upath = os.getcwd()
+            files = glob('*/*.dat')
+            print(len(files))
+            found_sessions = len(files)
+            break
+        else:
+            if os.path.isdir(upath):
+                files = glob(upath + '/*.dat')
+                print(len(files))
+                found_sessions = len(files)
+                break
+
+        print('directory not found, try again.')
+    return upath, found_sessions
 
 
 def generate_config_command(output_file):
@@ -338,7 +397,7 @@ def convert_raw_to_avi_command(input_file, output_file, chunk_size, fps, delete,
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
     video_pipe = None
 
-    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+    for batch in tqdm.tqdm_notebook(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)
         video_pipe = write_frames(output_file,
                                   frames,
@@ -351,7 +410,7 @@ def convert_raw_to_avi_command(input_file, output_file, chunk_size, fps, delete,
         video_pipe.stdin.close()
         video_pipe.wait()
 
-    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+    for batch in tqdm.tqdm_notebook(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch)
         encoded_frames = load_movie_data(output_file, batch)
 
@@ -390,7 +449,7 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
     if os.path.exists(output_file):
         raise RuntimeError('Output file {} already exists'.format(output_file))
 
-    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+    for batch in tqdm.tqdm_notebook(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)
         if avi_encode:
             video_pipe = write_frames(output_file,
@@ -407,7 +466,7 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
         video_pipe.stdin.close()
         video_pipe.wait()
 
-    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+    for batch in tqdm.tqdm_notebook(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch)
         encoded_frames = load_movie_data(output_file, batch)
 
@@ -698,7 +757,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
         tracking_init_mean = None
         tracking_init_cov = None
 
-        for i, frame_range in enumerate(tqdm.tqdm(frame_batches, desc='Processing batches')):
+        for i, frame_range in enumerate(tqdm.tqdm_notebook(frame_batches, desc='Processing batches')):
             raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
