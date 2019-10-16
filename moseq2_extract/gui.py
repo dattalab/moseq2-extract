@@ -258,20 +258,27 @@ def aggregate_extract_results_command(input_dir, format, output_dir):
             copy_path = fallback.format(fallback_count)
             fallback_count += 1
         else:
-            copy_path = build_path(_dict['extraction_metadata'], print_format, snake_case=snake_case)
+            try:
+                copy_path = build_path(_dict['extraction_metadata'], print_format, snake_case=snake_case)
+            except:
+                copy_path = fallback.format(fallback_count)
+                fallback_count += 1
+                pass
         # add a bonus dictionary here to be copied to h5 file itself
         manifest[_h5f] = {'copy_path': copy_path, 'yaml_dict': _dict, 'additional_metadata': {}}
         for meta in additional_meta:
             filename = os.path.join(os.path.dirname(_h5f), '..', meta['filename'])
             if os.path.exists(filename):
-                data, timestamps = load_textdata(filename, dtype=meta['dtype'])
-                manifest[_h5f]['additional_metadata'][meta['var_name']] = {
-                    'data': data,
-                    'timestamps': timestamps
-                }
+                try:
+                    data, timestamps = load_textdata(filename, dtype=meta['dtype'])
+                    manifest[_h5f]['additional_metadata'][meta['var_name']] = {
+                        'data': data,
+                        'timestamps': timestamps
+                    }
+                except:
+                    print('Did not load timestamps')
 
     # now the key is the source h5 file and the value is the path to copy to
-
     for k, v in tqdm.tqdm_notebook(manifest.items(), desc='Copying files'):
 
         if os.path.exists(os.path.join(output_dir, '{}.h5'.format(v['copy_path']))):
