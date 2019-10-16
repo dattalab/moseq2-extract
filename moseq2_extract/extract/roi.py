@@ -63,25 +63,45 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     npoints = np.sum(use_points)
 
-    for i in tqdm.tqdm(range(iters),
-                       disable=not progress_bar, desc='Finding plane'):
+    try:
+        for i in tqdm.tqdm_notebook(range(iters),
+                           disable=not progress_bar, desc='Finding plane'):
 
-        sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
-        tmp_plane = plane_fit3(sel)
+            sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
+            tmp_plane = plane_fit3(sel)
 
-        if np.all(np.isnan(tmp_plane)):
-            continue
+            if np.all(np.isnan(tmp_plane)):
+                continue
 
-        dist = np.abs(np.dot(coords, tmp_plane[:3])+tmp_plane[3])
-        inliers = dist < noise_tolerance
-        ninliers = np.sum(inliers)
+            dist = np.abs(np.dot(coords, tmp_plane[:3])+tmp_plane[3])
+            inliers = dist < noise_tolerance
+            ninliers = np.sum(inliers)
 
-        if ((ninliers/npoints) > in_ratio
-                and ninliers > best_num and np.mean(dist) < best_dist):
+            if ((ninliers/npoints) > in_ratio
+                    and ninliers > best_num and np.mean(dist) < best_dist):
 
-            best_dist = np.mean(dist)
-            best_num = ninliers
-            best_plane = tmp_plane
+                best_dist = np.mean(dist)
+                best_num = ninliers
+                best_plane = tmp_plane
+    except:
+        for i in tqdm.tqdm(range(iters),
+                           disable=not progress_bar, desc='Finding plane'):
+
+            sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
+            tmp_plane = plane_fit3(sel)
+
+            if np.all(np.isnan(tmp_plane)):
+                continue
+
+            dist = np.abs(np.dot(coords, tmp_plane[:3]) + tmp_plane[3])
+            inliers = dist < noise_tolerance
+            ninliers = np.sum(inliers)
+
+            if ((ninliers / npoints) > in_ratio
+                    and ninliers > best_num and np.mean(dist) < best_dist):
+                best_dist = np.mean(dist)
+                best_num = ninliers
+                best_plane = tmp_plane
 
             # use all consensus samples to fit a better model
 
