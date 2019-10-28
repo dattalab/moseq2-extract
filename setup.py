@@ -20,11 +20,11 @@ setup(
     version='0.1.3',
     platforms=['mac', 'unix'],
     packages=find_packages(),
-    install_requires=['h5py', 'matplotlib', 'scipy>=0.19,<1.3.0',
-                      'scikit-image>=0.13', 'cytoolz',
-                      'tqdm', 'statsmodels>=0.8.0', 'numpy',
-                      'joblib==0.13.1', 'scikit-learn',
-                      'click', 'ruamel.yaml>=0.15.0'],
+    install_requires=['h5py', 'matplotlib', 'scipy',
+                      'scikit-image', 'cytoolz',
+                      'tqdm', 'statsmodels', 'numpy',
+                      'joblib', 'scikit-learn',
+                      'click', 'ruamel.yaml'],
     python_requires='>=3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )

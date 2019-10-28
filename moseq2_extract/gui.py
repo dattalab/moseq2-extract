@@ -688,7 +688,8 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
                                           gradient_filter=config_data['bg_roi_gradient_filter'],
                                           gradient_threshold=config_data['bg_roi_gradient_threshold'],
                                           gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                          fill_holes=config_data['bg_roi_fill_holes'])
+                                          fill_holes=config_data['bg_roi_fill_holes'],
+                                          gui=True)
 
         if config_data['use_plane_bground']:
             print('Using plane fit for background...')
@@ -960,7 +961,9 @@ def extract_command(input_file, output_dir, config_file):
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if os.path.exists(status_filename):
-        raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
