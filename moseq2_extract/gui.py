@@ -177,12 +177,15 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     index_uuids = []
     for i, file_tup in enumerate(file_with_uuids):
         if file_tup[2]['uuid'] not in index_uuids:
-            output_dict['files'].append({
-                'path': (file_tup[0], file_tup[1]),
-                'uuid': file_tup[2]['uuid'],
-                'group': 'default'
-            })
-            index_uuids.append(file_tup[2]['uuid'])
+            try:
+                output_dict['files'].append({
+                    'path': (file_tup[0], file_tup[1]),
+                    'uuid': file_tup[2]['uuid'],
+                    'group': 'default'
+                })
+                index_uuids.append(file_tup[2]['uuid'])
+            except:
+                pass
 
             output_dict['files'][i]['metadata'] = {}
 
@@ -336,6 +339,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir):
         v['yaml_dict'].pop('extraction_metadata', None)
         with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
             yaml.dump(v['yaml_dict'], f)
+
+    print('Results successfully aggregated in', output_dir)
+
     generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
 
 def get_found_sessions():
@@ -351,7 +357,7 @@ def get_found_sessions():
             break
         else:
             if os.path.isdir(upath):
-                files = glob(upath + '/*.dat')
+                files = glob(os.path.join(upath, '*/*.dat'))
                 print(len(files))
                 found_sessions = len(files)
                 break
