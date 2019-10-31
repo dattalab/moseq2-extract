@@ -54,7 +54,7 @@ def extract_found_sessions(input_dir, config_file, filename):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
-    skip_checks = False
+    skip_checks = True
     config_file = Path(config_file)
 
     prefix = ''
@@ -146,6 +146,7 @@ def extract_found_sessions(input_dir, config_file, filename):
     else:
         raise NotImplementedError('Other cluster types not supported')
 
+    print('Extractions Complete.')
     return commands
 
 
