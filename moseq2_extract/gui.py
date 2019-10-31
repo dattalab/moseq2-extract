@@ -198,7 +198,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
 
     # write out index yaml
 
-    with open(output_file, 'w') as f:
+    with open(os.path.join(input_dir, output_file), 'w') as f:
         yaml.dump(output_dict, f, Dumper=yaml.RoundTripDumper)
 
     return 'Index file successfully generated.'
