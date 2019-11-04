@@ -19,7 +19,7 @@ import urllib.request
 import tarfile
 from copy import deepcopy
 from pkg_resources import get_distribution
-
+import sys
 
 orig_init = click.core.Option.__init__
 
@@ -150,6 +150,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
+@click.option('--verbose', type=int, default=0, help='Level of verbosity during extraction process. [0-2]')
 @click.option("--config-file", type=click.Path())
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
@@ -159,7 +160,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads):
+            model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -254,7 +255,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if os.path.exists(status_filename):
-        raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            sys.exit(0)
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
@@ -292,7 +295,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                           gradient_filter=bg_roi_gradient_filter,
                                           gradient_threshold=bg_roi_gradient_threshold,
                                           gradient_kernel=bg_roi_gradient_kernel,
-                                          fill_holes=bg_roi_fill_holes)
+                                          fill_holes=bg_roi_fill_holes,
+                                          verbose=verbose)
 
         if use_plane_bground:
             print('Using plane fit for background...')
@@ -405,7 +409,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                     angle_hampel_span=angle_hampel_span,
                                     angle_hampel_sig=angle_hampel_sig,
                                     model_smoothing_clips=model_smoothing_clips,
-                                    tracking_model_init=tracking_model_init)
+                                    tracking_model_init=tracking_model_init,
+                                    verbose=verbose)
 
             # if desired, write out a movie
 
@@ -466,9 +471,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
+@click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(output_dir):
+def download_flip_file(config_file, output_dir):
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -499,7 +505,16 @@ def download_flip_file(output_dir):
     output_filename = os.path.join(output_dir, os.path.basename(selection))
     urllib.request.urlretrieve(selection, output_filename)
     print('Successfully downloaded flip file to {}'.format(output_filename))
-    print('Be sure to supply this as your flip-file during extraction')
+    try:
+        with open(config_file, 'r') as f:
+            config_data = yaml.safe_load(f)
+
+        config_data['flip_classifier'] = output_filename
+        with open(config_file, 'w') as f:
+            yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
+    except:
+        pass
+    print('Successfully updated configuration file with flip file path')
 
 
 @cli.command(name="generate-config")
@@ -511,6 +526,8 @@ def generate_config(output_file):
     with open(output_file, 'w') as f:
         yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
 
+    print('Successfully generated config file in base directory.')
+
 
 @cli.command(name="convert-raw-to-avi")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
@@ -519,7 +536,8 @@ def generate_config(output_file):
 @click.option('--fps', type=float, default=30, help='Video FPS')
 @click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
 @click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
+@click.option('-v', '--verbose', type=int, default=0, help='Verbosity level out batch encoding. [0-1]')
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, verbose):
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
@@ -537,7 +555,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
                                   pipe=video_pipe,
                                   close_pipe=False,
                                   threads=threads,
-                                  fps=fps)
+                                  fps=fps, verbose=verbose)
 
     if video_pipe:
         video_pipe.stdin.close()
@@ -587,7 +605,9 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
     video_pipe = None
 
     if os.path.exists(output_file):
-        raise RuntimeError('Output file {} already exists'.format(output_file))
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            sys.exit(0)
 
     for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)

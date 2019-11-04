@@ -131,6 +131,8 @@ def get_roi(depth_image,
             gradient_kernel=7,
             gradient_threshold=3000,
             fill_holes=True,
+            gui=False,
+            verbose=0,
             **kwargs):
     """
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -146,7 +148,7 @@ def get_roi(depth_image,
         mask = None
 
     roi_plane, dists = moseq2_extract.extract.roi.plane_ransac(
-        depth_image, noise_tolerance=noise_tolerance, mask=mask, **kwargs)
+        depth_image, noise_tolerance=noise_tolerance, mask=mask, gui=gui, verbose=verbose, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
 
     if gradient_filter:
@@ -265,7 +267,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
                  iters_tail=None, frame_dtype='uint8',
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-                 iters_min=None, progress_bar=True):
+                 iters_min=None, progress_bar=True, gui=False, verbose=0):
     """
     Simple filtering, median filter and morphological opening
 
@@ -281,7 +283,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     # seeing enormous speed gains w/ opencv
     filtered_frames = frames.copy().astype(frame_dtype)
 
-    try:
+    if gui:
         for i in tqdm.tqdm_notebook(range(frames.shape[0]),
                            disable=not progress_bar, desc='Cleaning frames'):
 
@@ -295,7 +297,9 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
             if iters_tail is not None and iters_tail > 0:
                 filtered_frames[i, ...] = cv2.morphologyEx(
                     filtered_frames[i, ...], cv2.MORPH_OPEN, strel_tail, iters_tail)
-    except:
+    else:
+        if verbose == 0:
+            progress_bar = False
         for i in tqdm.tqdm(range(frames.shape[0]),
                            disable=not progress_bar, desc='Cleaning frames'):
 
@@ -319,7 +323,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
 
 def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
-                       mask_threshold=-30, use_cc=False, progress_bar=True):
+                       mask_threshold=-30, use_cc=False, progress_bar=True, gui=False, verbose=0):
     """
     Use image moments to compute features of the largest object in the frame
 
@@ -350,7 +354,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     for k, v in features.items():
         features[k][:] = np.nan
 
-    try:
+    if gui:
         for i in tqdm.tqdm_notebook(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
             frame_mask = frames[i, ...] > frame_threshold
@@ -376,7 +380,9 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
 
             for key, value in im_moment_features(cnts[mouse_cnt]).items():
                 features[key][i] = value
-    except:
+    else:
+        if verbose == 0:
+            progress_bar = False
         for i in tqdm.tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
             frame_mask = frames[i, ...] > frame_threshold
@@ -408,13 +414,13 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
 
 
 def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
-                           progress_bar=True):
+                           progress_bar=True, gui=False, verbose=0):
 
     nframes = frames.shape[0]
     cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
     win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
     border = (crop_size[1], crop_size[1], crop_size[0], crop_size[0])
-    try:
+    if gui:
         for i in tqdm.tqdm_notebook(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
             if np.any(np.isnan(features['centroid'][i, :])):
@@ -439,7 +445,9 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
                                               -np.rad2deg(features['orientation'][i]), 1)
             cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
                                                      rot_mat, (crop_size[0], crop_size[1]))
-    except:
+    else:
+        if verbose == 0:
+            progress_bar = False
         for i in tqdm.tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
             if np.any(np.isnan(features['centroid'][i, :])):

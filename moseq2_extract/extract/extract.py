@@ -28,7 +28,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   progress_bar=True, crop_size=(80, 80), true_depth=673.1,
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
-                  model_smoothing_clips=(-300, -150), tracking_model_init='raw'):
+                  model_smoothing_clips=(-300, -150), tracking_model_init='raw',
+                  verbose=0):
 
     # if we pass bground or roi files, be sure to use 'em...
 
@@ -48,7 +49,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                    iters_min=iters_min,
                                    strel_min=strel_min,
                                    frame_dtype=frame_dtype,
-                                   progress_bar=progress_bar)
+                                   progress_bar=progress_bar,
+                                   verbose=verbose)
 
     # if we need it, compute the em parameters
     # (for tracking in presence of occluders)
@@ -74,7 +76,8 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                         frame_threshold=min_height, mask=ll,
                                         mask_threshold=mask_threshold,
                                         use_cc=use_cc,
-                                        progress_bar=progress_bar)
+                                        progress_bar=progress_bar,
+                                        verbose=verbose)
 
     incl = ~np.isnan(features['orientation'])
     features['orientation'][incl] = np.unwrap(features['orientation'][incl] * 2) / 2
@@ -94,9 +97,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
 
     # print('Cropping frames...')
     cropped_frames = crop_and_rotate_frames(
-        chunk, features, crop_size=crop_size, progress_bar=progress_bar)
+        chunk, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
     cropped_filtered_frames = crop_and_rotate_frames(
-        filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar)
+        filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
 
     if use_em_tracker:
         use_parameters = deepcopy(parameters)

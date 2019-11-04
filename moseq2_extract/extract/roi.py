@@ -32,7 +32,7 @@ def plane_fit3(points):
 
 def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
                  noise_tolerance=30, in_ratio=.1, progress_bar=True,
-                 mask=None):
+                 mask=None, gui=False, verbose=0):
     """Naive RANSAC implementation for plane fitting
     Args:
         depth_image (2d numpy array): hxw, background image to fit plane to
@@ -63,7 +63,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     npoints = np.sum(use_points)
 
-    try:
+    if gui:
         for i in tqdm.tqdm_notebook(range(iters),
                            disable=not progress_bar, desc='Finding plane'):
 
@@ -83,7 +83,9 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
                 best_dist = np.mean(dist)
                 best_num = ninliers
                 best_plane = tmp_plane
-    except:
+    else:
+        if verbose == 0:
+            progress_bar = False
         for i in tqdm.tqdm(range(iters),
                            disable=not progress_bar, desc='Finding plane'):
 

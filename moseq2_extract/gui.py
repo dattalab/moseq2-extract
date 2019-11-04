@@ -179,13 +179,15 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     index_uuids = []
     for i, file_tup in enumerate(file_with_uuids):
         if file_tup[2]['uuid'] not in index_uuids:
-            output_dict['files'].append({
-                'path': (os.path.abspath(file_tup[0]), os.path.abspath(file_tup[1])),
-                'uuid': file_tup[2]['uuid'],
-                'group': 'default'
-            })
-
-            index_uuids.append(file_tup[2]['uuid'])
+            try:
+                output_dict['files'].append({
+                    'path': (file_tup[0], file_tup[1]),
+                    'uuid': file_tup[2]['uuid'],
+                    'group': 'default'
+                })
+                index_uuids.append(file_tup[2]['uuid'])
+            except:
+                pass
 
             output_dict['files'][i]['metadata'] = {}
 
@@ -339,6 +341,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir):
         v['yaml_dict'].pop('extraction_metadata', None)
         with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
             yaml.dump(v['yaml_dict'], f)
+
+    print('Results successfully aggregated in', output_dir)
+
     generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
 
 def get_found_sessions():
@@ -354,7 +359,7 @@ def get_found_sessions():
             break
         else:
             if os.path.isdir(upath):
-                files = glob(upath + '/*.dat')
+                files = glob(os.path.join(upath, '*/*.dat'))
                 print(len(files))
                 found_sessions = len(files)
                 break
@@ -363,7 +368,7 @@ def get_found_sessions():
     return upath, found_sessions
 
 
-def download_flip_command(output_dir, config_file):
+def download_flip_command(output_dir, config_file=""):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     selected_flip = 1
 
@@ -691,7 +696,8 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
                                           gradient_filter=config_data['bg_roi_gradient_filter'],
                                           gradient_threshold=config_data['bg_roi_gradient_threshold'],
                                           gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                          fill_holes=config_data['bg_roi_fill_holes'])
+                                          fill_holes=config_data['bg_roi_fill_holes'],
+                                          gui=True)
 
         if config_data['use_plane_bground']:
             print('Using plane fit for background...')
@@ -963,7 +969,9 @@ def extract_command(input_file, output_dir, config_file):
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if os.path.exists(status_filename):
-        raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
 
     with open(status_filename, 'w') as f:
         yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
