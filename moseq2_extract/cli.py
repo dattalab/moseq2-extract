@@ -471,10 +471,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 @cli.command(name="download-flip-file")
-@click.argument('config-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(config_file="config.yaml", output_dir):
+def download_flip_file(config_file, output_dir):
 
     # TODO: more flip files!!!!
     flip_files = {
