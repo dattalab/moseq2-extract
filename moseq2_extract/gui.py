@@ -54,7 +54,7 @@ def extract_found_sessions(input_dir, config_file, filename):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
-    skip_checks = False
+    skip_checks = True
     config_file = Path(config_file)
 
     prefix = ''
@@ -146,6 +146,7 @@ def extract_found_sessions(input_dir, config_file, filename):
     else:
         raise NotImplementedError('Other cluster types not supported')
 
+    print('Extractions Complete.')
     return commands
 
 
@@ -165,6 +166,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
 
     file_with_uuids = [(os.path.relpath(h5), os.path.relpath(yml), meta) for h5, yml, meta in
                        zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+
 
     if 'metadata' not in file_with_uuids[0][2]:
         raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
@@ -200,7 +202,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
 
     # write out index yaml
 
-    with open(output_file, 'w') as f:
+    with open(os.path.join(input_dir, output_file), 'w') as f:
         yaml.dump(output_dict, f, Dumper=yaml.RoundTripDumper)
 
     return 'Index file successfully generated.'

@@ -369,10 +369,10 @@ def camel_to_snake(s):
 
 def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     session_pattern=r'session_\d+\.(?:tgz|tar\.gz)',
-                                    filename='depth.dat',
+                                    filename='.dat',
                                     yaml_path='proc/results_00.yaml',
                                     metadata_path='metadata.json',
-                                    skip_checks=False):
+                                    skip_checks=True):
     """Recursively find unextracted directories
     """
     session_archive_pattern = re.compile(session_pattern)
@@ -380,7 +380,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     proc_dirs = []
     for root, _, files in os.walk(root_dir):
         for file in files:
-            if file == filename:  # test for uncompressed session
+            if filename in file:  # test for uncompressed session
                 status_file = os.path.join(root, yaml_path)
                 metadata_file = os.path.join(root, metadata_path)
 
