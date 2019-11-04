@@ -368,7 +368,7 @@ def get_found_sessions():
     return upath, found_sessions
 
 
-def download_flip_command(output_dir, config_file):
+def download_flip_command(output_dir, config_file=""):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     selected_flip = 1
 

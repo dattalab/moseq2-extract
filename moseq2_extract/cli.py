@@ -474,7 +474,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True))
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
-def download_flip_file(config_file, output_dir):
+def download_flip_file(config_file="config.yaml", output_dir):
 
     # TODO: more flip files!!!!
     flip_files = {
@@ -505,14 +505,15 @@ def download_flip_file(config_file, output_dir):
     output_filename = os.path.join(output_dir, os.path.basename(selection))
     urllib.request.urlretrieve(selection, output_filename)
     print('Successfully downloaded flip file to {}'.format(output_filename))
+    try:
+        with open(config_file, 'r') as f:
+            config_data = yaml.safe_load(f)
 
-    with open(config_file, 'r') as f:
-        config_data = yaml.safe_load(f)
-
-    config_data['flip_classifier'] = output_filename
-    with open(config_file, 'w') as f:
-        yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
-
+        config_data['flip_classifier'] = output_filename
+        with open(config_file, 'w') as f:
+            yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
+    except:
+        pass
     print('Successfully updated configuration file with flip file path')
 
 
