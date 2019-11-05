@@ -243,10 +243,12 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
         with h5py.File(pca_file, 'r') as f:
             pca_uuids = list(f['scores'].keys())
 
-
-    file_with_uuids = [(os.path.relpath(h5), os.path.relpath(yml), meta) for h5, yml, meta in
-                       zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
-
+    try:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+    except:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts)]
     try:
         if 'metadata' not in file_with_uuids[0][2]:
             raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
@@ -263,14 +265,14 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
         if file_tup[2]['uuid'] not in index_uuids:
             try:
                 output_dict['files'].append({
-                    'path': (os.path.abspath(file_tup[0]), os.path.abspath(file_tup[1])),
+                    'path': (file_tup[0], file_tup[1]),
                     'uuid': file_tup[2]['uuid'],
                     'group': 'default'
                 })
                 index_uuids.append(file_tup[2]['uuid'])
             except:
                 output_dict['files'].append({
-                    'path': (os.path.abspath(file_tup[0]), os.path.abspath(file_tup[1])),
+                    'path': (file_tup[0], file_tup[1]),
                     'uuid': 'uuid_'+str(i),
                     'group': 'default'
                 })
