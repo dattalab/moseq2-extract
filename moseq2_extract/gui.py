@@ -45,7 +45,7 @@ def generate_config_command(output_file):
     params['nworkers'] = 1
 
     if os.path.exists(output_file):
-        print('This file already exists, would you like to overwrite it? [Y/n]')
+        print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
         ow = input()
         if ow == 'Y':
             with open(output_file, 'w') as f:
@@ -494,7 +494,7 @@ def download_flip_command(output_dir, config_file=""):
 
     output_filename = os.path.join(output_dir, os.path.basename(selection))
     if os.path.exists(output_filename):
-        print('This file already exists, would you like to overwrite it? [Y/n]')
+        print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
         ow = input()
         if ow == 'Y':
             urllib.request.urlretrieve(selection, output_filename)
