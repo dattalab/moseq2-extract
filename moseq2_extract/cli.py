@@ -260,7 +260,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             sys.exit(0)
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
     # get the background and roi, which will be used across all batches
 
@@ -466,7 +466,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
 
 
@@ -511,7 +511,7 @@ def download_flip_file(config_file, output_dir):
 
         config_data['flip_classifier'] = output_filename
         with open(config_file, 'w') as f:
-            yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
+            yaml.safe_dump(config_data, f)
     except:
         pass
     print('Successfully updated configuration file with flip file path')
@@ -524,7 +524,7 @@ def generate_config(output_file):
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
     with open(output_file, 'w') as f:
-        yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(params, f)
 
     print('Successfully generated config file in base directory.')
 
