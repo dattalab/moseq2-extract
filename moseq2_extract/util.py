@@ -52,9 +52,9 @@ def command_with_config(config_file_param_name):
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     """Generate a sequence with overlap
     """
-    seq = range(offset, offset+nframes)
-    for i in range(offset, len(seq)-overlap+nframes, chunk_size-overlap):
-        yield seq[i:i+chunk_size]
+    seq = range(offset, nframes)
+    for i in range(offset, len(seq) - overlap, chunk_size - overlap):
+        yield seq[i:i + chunk_size]
 
 
 def load_timestamps(timestamp_file, col=0):
