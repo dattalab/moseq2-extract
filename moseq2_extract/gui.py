@@ -28,6 +28,18 @@ from moseq2_model.cli import learn_model, count_frames
 from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
 
 
+def update_progress(progress_file, varK, varV):
+    with open(progress_file, 'r') as f:
+        progress = yaml.safe_load(f)
+    f.close()
+
+    progress[varK] = varV
+    with open(progress_file, 'w') as f:
+        yaml.safe_dump(progress, f)
+
+    print(f'Successfully updated progress file with {varK} -> {varV}')
+
+
 def generate_config_command(output_file):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     objs = extract.params
@@ -44,8 +56,18 @@ def generate_config_command(output_file):
 
     params['nworkers'] = 1
 
-    with open(output_file, 'w') as f:
-        yaml.dump(params, f, Dumper=yaml.RoundTripDumper)
+    if os.path.exists(output_file):
+        print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
+        ow = input()
+        if ow == 'Y':
+            with open(output_file, 'w') as f:
+                yaml.safe_dump(params, f)
+        else:
+            return 'Configuration file has been retained'
+    else:
+        print('Creating configuration file.')
+        with open(output_file, 'w') as f:
+            yaml.safe_dump(params, f)
 
     return 'Configuration file has been successfully generated.'
 
@@ -59,6 +81,76 @@ def extract_found_sessions(input_dir, config_file, filename):
 
     prefix = ''
     to_extract = recursive_find_unextracted_dirs(input_dir, filename=filename, skip_checks=skip_checks)
+    temp = []
+    for dir in to_extract:
+        if '/tmp/' not in dir:
+            temp.append(dir)
+
+    to_extract = temp
+
+    if len(to_extract) > 1:
+        for i, sess in enumerate(to_extract):
+            print(f'[{str(i + 1)}] {sess}')
+
+        input_file_indices = []
+        while (True):
+            try:
+                input_file_indices = input("Input session indices to extract separated by commas, or empty string for all sessions.\nTo extract all except certain sessions: type 'e index1,index2,...'\n").strip()
+                if 'e' not in input_file_indices:
+                    if ',' in input_file_indices:
+                        input_file_indices = input_file_indices.split(',')
+                        for i in input_file_indices:
+                            i = int(i.strip())
+                            if i > len(to_extract):
+                                print('invalid index try again.')
+                                input_file_index = []
+                                break
+
+                        tmp = []
+                        for index in input_file_indices:
+                            index = int(index.strip())
+                            print('extracting ', to_extract[index-1])
+                            tmp.append(to_extract[index-1])
+                        to_extract = tmp
+                        break
+                    elif len(input_file_indices.strip()) == 1:
+                        index = int(input_file_indices.strip())
+                        to_extract = [to_extract[index-1]]
+                        print('extracting ', to_extract)
+                        break
+                    elif input_file_indices == '':
+                        break
+                else:
+                    input_file_indices = input_file_indices.strip('e ')
+                    if ',' in input_file_indices:
+                        input_file_indices = input_file_indices.split(',')
+                        for i in input_file_indices:
+                            i = int(i.strip())
+                            if i > len(to_extract):
+                                print('invalid index try again.')
+                                input_file_index = []
+                                break
+                        # values to remove
+                        vals = []
+                        for index in input_file_indices:
+                            index = int(index.strip())
+                            print('excluding ', to_extract[index-1])
+                            vals.append(to_extract[index-1])
+                        for val in vals:
+                            to_extract.remove(val)
+                        break
+                    elif len(input_file_indices.strip()) == 1:
+                        index = int(input_file_indices.strip())
+                        print('excluding ', to_extract[index-1])
+                        to_extract.remove(to_extract[index-1])
+                        break
+                    elif input_file_indices == '':
+                        break
+
+            except:
+                print('invalid input, only input correct comma separated indices, or no empty string for all sessions.')
+    else:
+        print(f'Extracting {to_extract[0]}')
 
     if config_file is None:
         raise RuntimeError('Need a config file to continue')
@@ -66,7 +158,7 @@ def extract_found_sessions(input_dir, config_file, filename):
         raise IOError(f'Config file {config_file} does not exist')
 
     with config_file.open() as f:
-        params = yaml.load(f)
+        params = yaml.safe_load(f)
 
     cluster_type = params['cluster_type']
     # bg_roi_index = params['bg_roi_index'] ## replaced input parameter with config parameter
@@ -82,7 +174,7 @@ def extract_found_sessions(input_dir, config_file, filename):
     config_store = temp_storage / f'job_config{suffix}.yaml'
 
     with config_store.open('w') as f:
-        yaml.dump(params, f)
+        yaml.safe_dump(params, f)
 
     commands = []
 
@@ -106,7 +198,7 @@ def extract_found_sessions(input_dir, config_file, filename):
                 roi_config_store = escape_path(os.path.join(
                     temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi)))
                 with open(roi_config_store, 'w') as f:
-                    yaml.dump(roi_config, f)
+                    yaml.safe_dump(roi_config, f)
 
                 base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
                     .format(roi_config_store, roi, ext)
@@ -135,7 +227,7 @@ def extract_found_sessions(input_dir, config_file, filename):
                 roi_config_store = os.path.join(
                     temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi))
                 with open(roi_config_store, 'w') as f:
-                    yaml.dump(roi_config, f)
+                    yaml.safe_dump(roi_config, f)
 
                 base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
                     .format(roi_config_store, roi, ext)
@@ -163,13 +255,17 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
         with h5py.File(pca_file, 'r') as f:
             pca_uuids = list(f['scores'].keys())
 
-
-    file_with_uuids = [(os.path.relpath(h5), os.path.relpath(yml), meta) for h5, yml, meta in
-                       zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
-
-
-    if 'metadata' not in file_with_uuids[0][2]:
-        raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
+    try:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+    except:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts)]
+    try:
+        if 'metadata' not in file_with_uuids[0][2]:
+            raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
+    except:
+        print('Metadata not found, creating minimal Index file.')
 
     output_dict = {
         'files': [],
@@ -187,6 +283,12 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
                 })
                 index_uuids.append(file_tup[2]['uuid'])
             except:
+                output_dict['files'].append({
+                    'path': (file_tup[0], file_tup[1]),
+                    'uuid': 'uuid_'+str(i),
+                    'group': 'default'
+                })
+                index_uuids.append('uuid_'+str(i))
                 pass
 
             output_dict['files'][i]['metadata'] = {}
@@ -203,9 +305,10 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     # write out index yaml
 
     with open(os.path.join(input_dir, output_file), 'w') as f:
-        yaml.dump(output_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(output_dict, f,)
 
-    return 'Index file successfully generated.'
+    print('Index file successfully generated.')
+    return os.path.join(input_dir, output_file)
 
 
 def aggregate_extract_results_command(input_dir, format, output_dir):
@@ -340,32 +443,39 @@ def aggregate_extract_results_command(input_dir, format, output_dir):
 
         v['yaml_dict'].pop('extraction_metadata', None)
         with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
-            yaml.dump(v['yaml_dict'], f)
+            yaml.safe_dump(v['yaml_dict'], f)
 
     print('Results successfully aggregated in', output_dir)
 
-    generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
+    indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
 
-def get_found_sessions():
+    print(f'Index file path: {indexpath}')
+    return indexpath
+
+def get_found_sessions(data_dir=""):
+    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
 
     found_sessions = 0
-    while (True):
-        upath = input("Input path to directory containing all sessions to analyze. [ENTER] for default (cwd): ")
-        if len(upath) == 0:
-            upath = os.getcwd()
-            files = glob('*/*.dat')
-            print(len(files))
+    sessions = []
+    if len(data_dir) == 0:
+        data_dir = os.getcwd()
+        files = sorted(glob('*/*.dat'))
+        found_sessions = len(files)
+        sessions = files
+    else:
+        data_dir = data_dir.strip()
+        if os.path.isdir(data_dir):
+            files = sorted(glob(os.path.join(data_dir,'*/*.dat')))
             found_sessions = len(files)
-            break
+            sessions = files
         else:
-            if os.path.isdir(upath):
-                files = glob(os.path.join(upath, '*/*.dat'))
-                print(len(files))
-                found_sessions = len(files)
-                break
+            print('directory not found, try again.')
+            return data_dir, 0
 
-        print('directory not found, try again.')
-    return upath, found_sessions
+    for i, sess in enumerate(sessions):
+        print(f'[{str(i+1)}] {sess}')
+
+    return data_dir, found_sessions
 
 
 def download_flip_command(output_dir, config_file=""):
@@ -395,15 +505,28 @@ def download_flip_command(output_dir, config_file=""):
     selection = flip_files[key_list[selection]]
 
     output_filename = os.path.join(output_dir, os.path.basename(selection))
-    urllib.request.urlretrieve(selection, output_filename)
-    print('Successfully downloaded flip file to {}'.format(output_filename))
+    if os.path.exists(output_filename):
+        print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
+        ow = input()
+        if ow == 'Y':
+            urllib.request.urlretrieve(selection, output_filename)
+            print('Successfully downloaded flip file to {}'.format(output_filename))
+        else:
+            return 'Retained older flip file version: {}'.format(output_filename)
+    else:
+        urllib.request.urlretrieve(selection, output_filename)
+        print('Successfully downloaded flip file to {}'.format(output_filename))
 
-    with open(config_file, 'r') as f:
-        config_data = yaml.safe_load(f)
-
-    config_data['flip_classifier'] = output_filename
-    with open(config_file, 'w') as f:
-        yaml.dump(config_data, f, Dumper=yaml.RoundTripDumper)
+    try:
+        with open(config_file, 'r') as f:
+            config_data = yaml.safe_load(f)
+        f.close()
+        config_data['flip_classifier'] = output_filename
+        with open(config_file, 'w') as f:
+            yaml.safe_dump(config_data, f)
+        f.close()
+    except:
+        return 'Could not update configuration file flip classifier path'
 
     return 'Successfully updated configuration file with adult c57 mouse flip classifier.'
 
@@ -503,9 +626,27 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
 
     return True
 
-def find_roi_command(input_file, output_dir, config_file):
+def find_roi_command(input_dir, config_file):
     # set up the output directory
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+
+    files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
+    for i, sess in enumerate(files):
+        print(f'[{str(i+1)}] {sess}')
+    input_file_index = -1
+    while(int(input_file_index) < 0):
+        try:
+            input_file_index = int(input("Input session index to find rois: ").strip())
+            if int(input_file_index) > len(files):
+                print('invalid index try again.')
+                input_file_index = -1
+        except:
+            print('invalid input, only input integers.')
+
+
+    output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'proc')
+    input_file = files[input_file_index-1]
+
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
@@ -559,11 +700,30 @@ def find_roi_command(input_file, output_dir, config_file):
             im = Image.open(os.path.join(output_dir, infile))
             im.save(os.path.join(output_dir, outfile), "PNG", quality=100)
 
-    return 'ROIs were successfully computed.'
+    print(f'ROIs were successfully computed in {output_dir}')
+    return output_dir
 
 
-def sample_extract_command(input_file, output_dir, config_file, nframes):
+def sample_extract_command(input_dir, config_file, nframes):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+
+    files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
+    for i, sess in enumerate(files):
+        print(f'[{str(i + 1)}] {sess}')
+    input_file_index = -1
+    while (int(input_file_index) < 0):
+        try:
+            input_file_index = int(input("Input session index to extract sample: ").strip())
+            if int(input_file_index) > len(files):
+                print('invalid index try again.')
+                input_file_index = -1
+        except:
+            print('invalid input, only input integers.')
+
+    output_dir = os.path.join(os.path.dirname(files[input_file_index - 1]), 'sample_proc')
+    input_file = files[input_file_index - 1]
+
+
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
@@ -661,7 +821,7 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
             raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
     # get the background and roi, which will be used across all batches
 
@@ -870,9 +1030,10 @@ def sample_extract_command(input_file, output_dir, config_file, nframes):
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
-    return 'Sample extraction of '+str(nframes)+' frames completed successfully.'
+    print(f'Sample extraction of {str(nframes)} frames completed successfully in {output_dir}.')
+    return output_dir
 
 def extract_command(input_file, output_dir, config_file):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -971,10 +1132,11 @@ def extract_command(input_file, output_dir, config_file):
     if os.path.exists(status_filename):
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
         if overwrite != '':
-            raise RuntimeError("Already found a status file in {}, delete and try again".format(status_filename))
+            print('Cancelling extract')
+            return
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
     # get the background and roi, which will be used across all batches
 
@@ -1175,6 +1337,6 @@ def extract_command(input_file, output_dir, config_file):
     status_dict['complete'] = True
 
     with open(status_filename, 'w') as f:
-        yaml.dump(status_dict, f, Dumper=yaml.RoundTripDumper)
+        yaml.safe_dump(status_dict, f)
 
     return 'Extraction completed.'

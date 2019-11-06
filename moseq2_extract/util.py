@@ -26,7 +26,7 @@ def command_with_config(config_file_param_name):
 
             if config_file is not None:
                 with open(config_file) as f:
-                    config_data = dict(yaml.load(f, yaml.RoundTripLoader))
+                    config_data = dict(yaml.safe_load(f))
                 # modified to only use keys that are actually defined in options
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
                                for k, v in config_data.items() if k in param_defaults.keys()}
@@ -52,9 +52,9 @@ def command_with_config(config_file_param_name):
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     """Generate a sequence with overlap
     """
-    seq = range(offset, offset+nframes)
-    for i in range(offset, len(seq)-overlap+nframes, chunk_size-overlap):
-        yield seq[i:i+chunk_size]
+    seq = range(offset, nframes)
+    for i in range(offset, len(seq) - overlap, chunk_size - overlap):
+        yield seq[i:i + chunk_size]
 
 
 def load_timestamps(timestamp_file, col=0):

@@ -280,7 +280,10 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
             disp_img[disp_img > 1] = 1
             disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
             if frame_range is not None:
-                cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
+                try:
+                    cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
+                except:
+                    pass
             pipe.stdin.write(disp_img.astype('uint8').tostring())
     except:
         for i in tqdm.tqdm(range(frames.shape[0]), desc="Writing frames"):
