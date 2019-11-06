@@ -28,6 +28,18 @@ from moseq2_model.cli import learn_model, count_frames
 from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
 
 
+def update_progress(progress_file, varK, varV):
+    with open(progress_file, 'r') as f:
+        progress = yaml.safe_load(f)
+    f.close()
+
+    progress[varK] = varV
+    with open(progress_file, 'w') as f:
+        yaml.safe_dump(progress, f)
+
+    print(f'Successfully updated progress file with {varK} -> {varV}')
+
+
 def generate_config_command(output_file):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     objs = extract.params
