@@ -39,6 +39,74 @@ def update_progress(progress_file, varK, varV):
 
     print(f'Successfully updated progress file with {varK} -> {varV}')
 
+def restore_progress_vars(progress_file):
+    with open(progress_file, 'r') as f:
+        vars = yaml.safe_load(f)
+    f.close()
+
+    return vars['config_file'], vars['index_file'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
+
+def check_progress(base_dir, progress_filepath):
+    if os.path.exists(progress_filepath):
+        with open(progress_filepath, 'r') as f:
+            progress_vars = yaml.safe_load(f)
+        f.close()
+
+        print('Progress file found, listing initialized variables...\n')
+
+        for k, v in progress_vars.items():
+            if v != 'TBD':
+                print(f'{k}: {v}')
+
+        restore = input('Would you like to restore the above listed notebook variables? [Y -> restore variables, N -> overwrite progress file]')
+
+        if restore == "Y":
+
+            print('Updating notebook variables...')
+
+            config_filepath, index_filepath, pca_dirname, \
+            scores_filename, model_path, scores_file, \
+            crowd_dir, plot_path = restore_progress_vars(progress_filepath)
+
+            return config_filepath, index_filepath, pca_dirname, \
+            scores_filename, model_path, scores_file, \
+            crowd_dir, plot_path
+        elif restore == "N":
+
+            print('Overwriting progress file.')
+
+            progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'pca_dirname': 'TBD',
+                             'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD',
+                             'plot_path': 'TBD'}
+
+            with open(progress_filepath, 'w') as f:
+                yaml.safe_dump(progress_vars, f)
+            f.close()
+
+            print('\nProgress file created, listing initialized variables...')
+            for k, v in progress_vars.items():
+                if v != 'TBD':
+                    print(k, v)
+            return progress_vars['config_file'], progress_vars['index_file'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
+                   progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
+
+
+    else:
+        print('Progress file not found, creating new one.')
+        progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'pca_dirname': 'TBD',
+                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD'}
+
+        with open(progress_filepath, 'w') as f:
+            yaml.safe_dump(progress_vars, f)
+        f.close()
+
+        print('\nProgress file created, listing initialized variables...')
+        for k, v in progress_vars.items():
+            if v != 'TBD':
+                print(k, v)
+
+        return progress_vars['config_file'], progress_vars['index_file'], progress_vars['pca_dirname'], progress_vars['scores_filename'],\
+               progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
 
 def generate_config_command(output_file):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -54,7 +122,9 @@ def generate_config_command(output_file):
         if obj.name not in params.keys():
             params[obj.name] = obj.default
 
+    input_dir = os.path.dirname(output_file)
     params['nworkers'] = 1
+    params['input_dir'] = input_dir
 
     if os.path.exists(output_file):
         print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
