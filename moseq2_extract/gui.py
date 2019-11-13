@@ -94,7 +94,7 @@ def check_progress(base_dir, progress_filepath):
     else:
         print('Progress file not found, creating new one.')
         progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'pca_dirname': 'TBD',
-                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD'}
+                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
 
         with open(progress_filepath, 'w') as f:
             yaml.safe_dump(progress_vars, f)
