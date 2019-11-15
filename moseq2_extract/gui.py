@@ -46,7 +46,11 @@ def restore_progress_vars(progress_file):
 
     return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
 
-def check_progress(base_dir, progress_filepath):
+def check_progress(base_dir, progress_filepath, output_directory=None):
+
+    if output_directory is not None:
+        progress_filepath = os.path.join(output_directory, progress_filepath.split('/')[-1])
+
     if os.path.exists(progress_filepath):
         with open(progress_filepath, 'r') as f:
             progress_vars = yaml.safe_load(f)
@@ -142,7 +146,7 @@ def generate_config_command(output_file):
     return 'Configuration file has been successfully generated.'
 
 
-def extract_found_sessions(input_dir, config_file, filename):
+def extract_found_sessions(input_dir, config_file, filename, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
@@ -270,8 +274,12 @@ def extract_found_sessions(input_dir, config_file, filename):
                 with open(roi_config_store, 'w') as f:
                     yaml.safe_dump(roi_config, f)
 
-                base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
-                    .format(roi_config_store, roi, ext)
+                if output_directory is None:
+                    base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
+                        .format(roi_config_store, roi, ext)
+                else:
+                    base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
+                        .format(output_directory, roi_config_store, roi, ext)
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
 
             base_command += '"'
@@ -299,8 +307,12 @@ def extract_found_sessions(input_dir, config_file, filename):
                 with open(roi_config_store, 'w') as f:
                     yaml.safe_dump(roi_config, f)
 
-                base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
-                    .format(roi_config_store, roi, ext)
+                if output_directory is None:
+                    base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; '\
+                        .format(roi_config_store, roi, ext)
+                else:
+                    base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
+                        .format(output_directory, roi_config_store, roi, ext)
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
 
             #commands.append(base_command)
@@ -309,7 +321,7 @@ def extract_found_sessions(input_dir, config_file, filename):
         raise NotImplementedError('Other cluster types not supported')
 
     print('Extractions Complete.')
-    return commands
+    #return commands
 
 
 def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
@@ -381,11 +393,14 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     return os.path.join(input_dir, output_file)
 
 
-def aggregate_extract_results_command(input_dir, format, output_dir):
+def aggregate_extract_results_command(input_dir, format, output_dir, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     mouse_threshold = 0
     snake_case = True
-    output_dir = os.path.join(input_dir, output_dir)
+    if output_directory is None:
+        output_dir = os.path.join(input_dir, output_dir)
+    else:
+        output_dir = os.path.join(output_directory, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -517,7 +532,10 @@ def aggregate_extract_results_command(input_dir, format, output_dir):
 
     print('Results successfully aggregated in', output_dir)
 
-    indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
+    if output_directory is None:
+        indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
+    else:
+        indexpath = generate_index_command(output_directory, '', 'moseq2-index.yaml', (), False)
 
     print(f'Index file path: {indexpath}')
     return indexpath
@@ -696,7 +714,7 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
 
     return True
 
-def find_roi_command(input_dir, config_file):
+def find_roi_command(input_dir, config_file, output_directory=None):
     # set up the output directory
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
 
@@ -713,8 +731,11 @@ def find_roi_command(input_dir, config_file):
         except:
             print('invalid input, only input integers.')
 
+    if output_directory is None:
+        output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'proc')
+    else:
+        output_dir = os.path.join(output_directory, 'proc')
 
-    output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'proc')
     input_file = files[input_file_index-1]
 
     with open(config_file, 'r') as f:
@@ -774,7 +795,7 @@ def find_roi_command(input_dir, config_file):
     return output_dir
 
 
-def sample_extract_command(input_dir, config_file, nframes):
+def sample_extract_command(input_dir, config_file, nframes, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
 
     files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
@@ -790,9 +811,12 @@ def sample_extract_command(input_dir, config_file, nframes):
         except:
             print('invalid input, only input integers.')
 
-    output_dir = os.path.join(os.path.dirname(files[input_file_index - 1]), 'sample_proc')
-    input_file = files[input_file_index - 1]
+    if output_directory is None:
+        output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'sample_proc')
+    else:
+        output_dir = os.path.join(output_directory, 'sample_proc')
 
+    input_file = files[input_file_index - 1]
 
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
