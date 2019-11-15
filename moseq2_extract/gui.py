@@ -44,7 +44,7 @@ def restore_progress_vars(progress_file):
         vars = yaml.safe_load(f)
     f.close()
 
-    return vars['config_file'], vars['index_file'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
+    return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
 
 def check_progress(base_dir, progress_filepath):
     if os.path.exists(progress_filepath):
@@ -64,20 +64,20 @@ def check_progress(base_dir, progress_filepath):
 
             print('Updating notebook variables...')
 
-            config_filepath, index_filepath, pca_dirname, \
+            config_filepath, index_filepath, train_data_dir, pca_dirname, \
             scores_filename, model_path, scores_file, \
             crowd_dir, plot_path = restore_progress_vars(progress_filepath)
 
-            return config_filepath, index_filepath, pca_dirname, \
+            return config_filepath, index_filepath, train_data_dir, pca_dirname, \
             scores_filename, model_path, scores_file, \
             crowd_dir, plot_path
         elif restore == "N":
 
             print('Overwriting progress file.')
 
-            progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'pca_dirname': 'TBD',
-                             'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD',
-                             'plot_path': 'TBD'}
+            progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
+                             'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
+                             'crowd_dir': 'TBD', 'plot_path': 'TBD'}
 
             with open(progress_filepath, 'w') as f:
                 yaml.safe_dump(progress_vars, f)
@@ -87,13 +87,13 @@ def check_progress(base_dir, progress_filepath):
             for k, v in progress_vars.items():
                 if v != 'TBD':
                     print(k, v)
-            return progress_vars['config_file'], progress_vars['index_file'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
+            return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
                    progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
 
 
     else:
         print('Progress file not found, creating new one.')
-        progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'pca_dirname': 'TBD',
+        progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD', 'pca_dirname': 'TBD',
                          'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
 
         with open(progress_filepath, 'w') as f:
@@ -105,7 +105,7 @@ def check_progress(base_dir, progress_filepath):
             if v != 'TBD':
                 print(k, v)
 
-        return progress_vars['config_file'], progress_vars['index_file'], progress_vars['pca_dirname'], progress_vars['scores_filename'],\
+        return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'],\
                progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
 
 def generate_config_command(output_file):
