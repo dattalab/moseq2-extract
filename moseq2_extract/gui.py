@@ -280,7 +280,11 @@ def extract_found_sessions(input_dir, config_file, filename, output_directory=No
                 else:
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
-                extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                try:
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                except:
+                    print('could not extract', to_extract[i])
+
 
             base_command += '"'
 
@@ -313,7 +317,10 @@ def extract_found_sessions(input_dir, config_file, filename, output_directory=No
                 else:
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
-                extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                try:
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                except:
+                    print('could not extract', to_extract[i])
 
             #commands.append(base_command)
 
