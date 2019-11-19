@@ -146,7 +146,7 @@ def generate_config_command(output_file):
     return 'Configuration file has been successfully generated.'
 
 
-def extract_found_sessions(input_dir, config_file, filename, output_directory=None):
+def extract_found_sessions(input_dir, config_file, filename, skip=True, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
@@ -281,7 +281,7 @@ def extract_found_sessions(input_dir, config_file, filename, output_directory=No
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
                 try:
-                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip)
                 except:
                     print('could not extract', to_extract[i])
 
@@ -318,7 +318,7 @@ def extract_found_sessions(input_dir, config_file, filename, output_directory=No
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
                 try:
-                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store)
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip)
                 except:
                     print('could not extract', to_extract[i])
 
@@ -1136,7 +1136,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     print(f'Sample extraction of {str(nframes)} frames completed successfully in {output_dir}.')
     return output_dir
 
-def extract_command(input_file, output_dir, config_file):
+def extract_command(input_file, output_dir, config_file, skip=True):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
@@ -1230,7 +1230,7 @@ def extract_command(input_file, output_dir, config_file):
     output_filename = 'results_{:02d}'.format(config_data['bg_roi_index'])
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
-    if os.path.exists(status_filename):
+    if os.path.exists(status_filename) and not skip:
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
         if overwrite != '':
             print('Cancelling extract')
