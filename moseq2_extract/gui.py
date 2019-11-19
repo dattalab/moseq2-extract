@@ -1235,6 +1235,8 @@ def extract_command(input_file, output_dir, config_file, skip=True):
         if overwrite != '':
             print('Cancelling extract')
             return
+    elif skip:
+        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
