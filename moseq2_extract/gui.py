@@ -1136,7 +1136,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     print(f'Sample extraction of {str(nframes)} frames completed successfully in {output_dir}.')
     return output_dir
 
-def extract_command(input_file, output_dir, config_file, skip=True):
+def extract_command(input_file, output_dir, config_file, skip=False):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
@@ -1230,13 +1230,13 @@ def extract_command(input_file, output_dir, config_file, skip=True):
     output_filename = 'results_{:02d}'.format(config_data['bg_roi_index'])
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
-    if os.path.exists(status_filename) and not skip:
+    if os.path.exists(status_filename):
+        if skip == True:
+            return
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
         if overwrite != '':
             print('Cancelling extract')
             return
-    elif skip:
-        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
