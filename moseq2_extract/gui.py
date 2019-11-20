@@ -146,7 +146,7 @@ def generate_config_command(output_file):
     return 'Configuration file has been successfully generated.'
 
 
-def extract_found_sessions(input_dir, config_file, filename, skip=True, output_directory=None):
+def extract_found_sessions(input_dir, config_file, filename, skip=False, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
