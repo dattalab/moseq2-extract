@@ -791,15 +791,19 @@ def find_roi_command(input_dir, config_file, output_directory=None):
         write_image(os.path.join(output_dir, roi_filename),
                     rois[idx], scale=True, dtype='uint8')
 
+    images = []
+    filenames = []
     for infile in os.listdir(output_dir):
         if infile[-4:] == "tiff":
-            # print "is tif or bmp"
-            outfile = infile[:-4] + "png"
-            im = Image.open(os.path.join(output_dir, infile))
-            im.save(os.path.join(output_dir, outfile), "PNG", quality=100)
+            im = read_image(os.path.join(output_dir, infile))
+            if len(im.shape) == 2:
+                images.append(im)
+            elif len(im.shape) == 3:
+                images.append(im[0])
+            filenames.append(infile)
 
     print(f'ROIs were successfully computed in {output_dir}')
-    return output_dir
+    return images, filenames
 
 
 def sample_extract_command(input_dir, config_file, nframes, output_directory=None):
