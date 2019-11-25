@@ -146,7 +146,7 @@ def generate_config_command(output_file):
     return 'Configuration file has been successfully generated.'
 
 
-def extract_found_sessions(input_dir, config_file, filename, skip=False, output_directory=None):
+def extract_found_sessions(input_dir, config_file, filename, extract_all=True, skip_extracted=False, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
@@ -162,7 +162,7 @@ def extract_found_sessions(input_dir, config_file, filename, skip=False, output_
 
     to_extract = temp
 
-    if len(to_extract) > 1:
+    if len(to_extract) > 1 and not extract_all:
         for i, sess in enumerate(to_extract):
             print(f'[{str(i + 1)}] {sess}')
 
@@ -281,7 +281,7 @@ def extract_found_sessions(input_dir, config_file, filename, skip=False, output_
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
                 try:
-                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip)
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
                 except:
                     print('could not extract', to_extract[i])
 
@@ -318,7 +318,7 @@ def extract_found_sessions(input_dir, config_file, filename, skip=False, output_
                     base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                         .format(output_directory, roi_config_store, roi, ext)
                 try:
-                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip)
+                    extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
                 except:
                     print('could not extract', to_extract[i])
 
