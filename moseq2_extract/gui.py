@@ -371,25 +371,19 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
                     'group': 'default'
                 })
                 index_uuids.append(file_tup[2]['uuid'])
+
+                output_dict['files'][i]['metadata'] = {}
+
+                for k, v in file_tup[2]['metadata'].items():
+                    for filt in filter:
+                        if k == filt[0]:
+                            tmp = re.match(filt[1], v)
+                            if tmp is not None:
+                                v = tmp[0]
+
+                    output_dict['files'][i]['metadata'][k] = v
             except:
-                output_dict['files'].append({
-                    'path': (file_tup[0], file_tup[1]),
-                    'uuid': 'uuid_'+str(i),
-                    'group': 'default'
-                })
-                index_uuids.append('uuid_'+str(i))
                 pass
-
-            output_dict['files'][i]['metadata'] = {}
-
-            for k, v in file_tup[2]['metadata'].items():
-                for filt in filter:
-                    if k == filt[0]:
-                        tmp = re.match(filt[1], v)
-                        if tmp is not None:
-                            v = tmp[0]
-
-                output_dict['files'][i]['metadata'][k] = v
 
     # write out index yaml
 
