@@ -127,8 +127,8 @@ def generate_config_command(output_file):
             params[obj.name] = obj.default
 
     input_dir = os.path.dirname(output_file)
-    params['nworkers'] = 1
     params['input_dir'] = input_dir
+    params['cores'] = 1
 
     if os.path.exists(output_file):
         print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
@@ -541,20 +541,20 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     print(f'Index file path: {indexpath}')
     return indexpath
 
-def get_found_sessions(data_dir=""):
+def get_found_sessions(data_dir="", ext='.dat'):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
 
     found_sessions = 0
     sessions = []
     if len(data_dir) == 0:
         data_dir = os.getcwd()
-        files = sorted(glob('*/*.dat'))
+        files = sorted(glob('*/*'+ext))
         found_sessions = len(files)
         sessions = files
     else:
         data_dir = data_dir.strip()
         if os.path.isdir(data_dir):
-            files = sorted(glob(os.path.join(data_dir,'*/*.dat')))
+            files = sorted(glob(os.path.join(data_dir,'*/*'+ext)))
             found_sessions = len(files)
             sessions = files
         else:
@@ -715,7 +715,7 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
 
     return True
 
-def find_roi_command(input_dir, config_file, output_directory=None):
+def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
     # set up the output directory
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
 
@@ -773,7 +773,7 @@ def find_roi_command(input_dir, config_file, output_directory=None):
                                   gradient_filter=config_data['bg_roi_gradient_filter'],
                                   gradient_threshold=config_data['bg_roi_gradient_threshold'],
                                   gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                  fill_holes=config_data['bg_roi_fill_holes'])
+                                  fill_holes=config_data['bg_roi_fill_holes'], gui=True)
 
     if config_data['bg_sort_roi_by_position']:
         rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
