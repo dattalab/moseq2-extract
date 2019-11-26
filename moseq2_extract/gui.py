@@ -128,7 +128,6 @@ def generate_config_command(output_file):
 
     input_dir = os.path.dirname(output_file)
     params['input_dir'] = input_dir
-    params['cores'] = 1
 
     if os.path.exists(output_file):
         print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
