@@ -338,7 +338,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
     if not os.path.exists(pca_file) or all_uuids:
         warnings.warn('Will include all files')
-        pca_uuids = [dct['uuid'] for dct in dicts]
+        pca_uuids = [dct['uuid'] for dct in  dicts]
     else:
         with h5py.File(pca_file, 'r') as f:
             pca_uuids = list(f['scores'].keys())
@@ -969,14 +969,6 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         roi = rois[config_data['bg_roi_index']]
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
-
-    # convert tiffs to pngs
-    for infile in os.listdir(output_dir):
-        if infile[-4:] == "tiff":
-            # print "is tif or bmp"
-            outfile = infile[:-4] + "png"
-            im = Image.open(os.path.join(output_dir, infile))
-            im.save(os.path.join(output_dir, outfile), "PNG", quality=100)
 
     true_depth = np.median(bground_im[roi > 0])
     print('Detected true depth: {}'.format(true_depth))
