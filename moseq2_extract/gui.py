@@ -12,6 +12,7 @@ import datetime
 from pathlib import Path
 from PIL import Image
 from glob import glob
+import json
 from cytoolz import keymap, partial, valmap, assoc
 from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.extract.extract import extract_chunk
@@ -338,7 +339,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
     if not os.path.exists(pca_file) or all_uuids:
         warnings.warn('Will include all files')
-        pca_uuids = [dct['uuid'] for dct in  dicts]
+        pca_uuids = [dct['uuid'] for dct in dicts]
     else:
         with h5py.File(pca_file, 'r') as f:
             pca_uuids = list(f['scores'].keys())
@@ -535,7 +536,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     if output_directory is None:
         indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
     else:
-        indexpath = generate_index_command(output_directory, '', 'moseq2-index.yaml', (), False)
+        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False)
 
     print(f'Index file path: {indexpath}')
     return indexpath
@@ -559,6 +560,20 @@ def get_found_sessions(data_dir="", ext='.dat'):
         else:
             print('directory not found, try again.')
             return data_dir, 0
+
+    # generate sample metadata json for each session that is missing one
+
+    sample_meta = {'SubjectName': 'default', 'SessionName':'default',
+                   'NidaqChannels': 0, 'NidaqSamplingRate':0.0, 'DepthResolution': [512, 424],
+                   'ColorDataType':"Byte[]", "StartTime":""}
+    for sess in sessions:
+        sess_dir = '/'.join(sess.split('/')[:-1])
+        sess_name = sess.split('/')[-2]
+        if 'metadata.json' not in os.listdir(sess_dir):
+            sample_meta['SessionName'] = sess_name
+            with open(os.path.join(sess_dir, 'metadata.json'), 'w') as fp:
+                json.dump(sample_meta, fp)
+
 
     for i, sess in enumerate(sessions):
         print(f'[{str(i+1)}] {sess}')
@@ -825,6 +840,14 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
+    with open(config_file, 'w') as g:
+        yaml.safe_dump(config_data, g)
+    g.close()
+
+    if config_data['spatial_filter_size'] % 2 == 0 and config_data['spatial_filter_size'] > 0:
+        config_data['spatial_filter_size'] += 1
+    if config_data['temporal_filter_size'] % 2 == 0 and config_data['temporal_filter_size'] > 0:
+        config_data['temporal_filter_size'] += 1
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -1130,6 +1153,10 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
+    if config_data['spatial_filter_size'] % 2 == 0 and config_data['spatial_filter_size'] > 0:
+        config_data['spatial_filter_size'] += 1
+    if config_data['temporal_filter_size'] % 2 == 0 and config_data['temporal_filter_size'] > 0:
+        config_data['temporal_filter_size'] += 1
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
