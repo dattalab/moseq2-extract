@@ -283,6 +283,7 @@ def extract_found_sessions(input_dir, config_file, filename, extract_all=True, s
                 try:
                     extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
                 except:
+                    print('Unexpected error:', sys.exc_info()[0])
                     print('could not extract', to_extract[i])
 
 
@@ -320,6 +321,7 @@ def extract_found_sessions(input_dir, config_file, filename, extract_all=True, s
                 try:
                     extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
                 except:
+                    print('Unexpected error:', sys.exc_info()[0])
                     print('could not extract', to_extract[i])
 
             #commands.append(base_command)
@@ -629,6 +631,7 @@ def download_flip_command(output_dir, config_file=""):
             yaml.safe_dump(config_data, f)
         f.close()
     except:
+        print('Unexpected error:', sys.exc_info()[0])
         return 'Could not update configuration file flip classifier path'
 
     return 'Successfully updated configuration file with adult c57 mouse flip classifier.'
@@ -844,10 +847,10 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         yaml.safe_dump(config_data, g)
     g.close()
 
-    if config_data['spatial_filter_size'] % 2 == 0 and config_data['spatial_filter_size'] > 0:
-        config_data['spatial_filter_size'] += 1
-    if config_data['temporal_filter_size'] % 2 == 0 and config_data['temporal_filter_size'] > 0:
-        config_data['temporal_filter_size'] += 1
+    if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        config_data['spatial_filter_size'][0] += 1
+    if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
+        config_data['temporal_filter_size'][0] += 1
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -1153,10 +1156,10 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    if config_data['spatial_filter_size'] % 2 == 0 and config_data['spatial_filter_size'] > 0:
-        config_data['spatial_filter_size'] += 1
-    if config_data['temporal_filter_size'] % 2 == 0 and config_data['temporal_filter_size'] > 0:
-        config_data['temporal_filter_size'] += 1
+    if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        config_data['spatial_filter_size'][0] += 1
+    if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
+        config_data['temporal_filter_size'][0] += 1
 
     print('Processing: {}'.format(input_file))
     # get the basic metadata
@@ -1246,13 +1249,8 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     output_filename = 'results_{:02d}'.format(config_data['bg_roi_index'])
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
-    if os.path.exists(status_filename):
-        if skip == True:
-            return
-        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
-        if overwrite != '':
-            print('Cancelling extract')
-            return
+    if skip == True:
+        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
