@@ -102,11 +102,17 @@ def get_video_info(filename):
     if(err):
         print(err)
     out = out.decode().split('\n')
-
-    return {'file': filename,
+    try:
+        return {'file': filename,
             'dims': (int(out[0]), int(out[1])),
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
             'nframes': int(out[3])}
+    except:
+        return {'file': filename,
+            'dims': (int(out[0]), int(out[1])),
+            'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
+            'nframes': int(float(out[3]))}
+
 
 
 # simple command to pipe frames to an ffv1 file
