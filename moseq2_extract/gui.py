@@ -115,6 +115,9 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
 
 def generate_config_command(output_file):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
     objs = extract.params
     objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
     objsM, objsF = learn_model.params, count_frames.params
@@ -145,9 +148,49 @@ def generate_config_command(output_file):
 
     return 'Configuration file has been successfully generated.'
 
+def view_extraction(extractions):
+
+    if len(extractions) > 1:
+        for i, sess in enumerate(extractions):
+            print(f'[{str(i + 1)}] {sess}')
+    else:
+        print('no sessions to view')
+
+    while (True):
+        try:
+            input_file_indices = input(
+                "Input extracted session indices to view separated by commas, or empty string for all sessions.\n").strip()
+            if ',' in input_file_indices:
+                input_file_indices = input_file_indices.split(',')
+                for i in input_file_indices:
+                    i = int(i.strip())
+                    if i > len(extractions):
+                        print('invalid index try again.')
+                        input_file_index = []
+                        break
+
+                tmp = []
+                for index in input_file_indices:
+                    index = int(index.strip())
+                    tmp.append(extractions[index - 1])
+                extractions = tmp
+                break
+            elif len(input_file_indices.strip()) == 1:
+                index = int(input_file_indices.strip())
+                extractions = [extractions[index - 1]]
+                break
+            elif input_file_indices == '':
+                break
+        except:
+            print('unexpected error:', sys.exc_info()[0])
+
+    return extractions
 
 def extract_found_sessions(input_dir, config_file, filename, extract_all=True, skip_extracted=False, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
     skip_checks = True
@@ -321,7 +364,7 @@ def extract_found_sessions(input_dir, config_file, filename, extract_all=True, s
                 try:
                     extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
                 except:
-                    print('Unexpected error:', sys.exc_info()[0])
+                    print('Unexpected error:', sys.exc_info())
                     print('could not extract', to_extract[i])
 
             #commands.append(base_command)
@@ -335,6 +378,9 @@ def extract_found_sessions(input_dir, config_file, filename, extract_all=True, s
 
 def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
     # gather than h5s and the pca scores file
     # uuids should match keys in the scores file
 
@@ -398,6 +444,9 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
 
 def aggregate_extract_results_command(input_dir, format, output_dir, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
     mouse_threshold = 0
     snake_case = True
     if output_directory is None:
@@ -545,6 +594,8 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
 
 def get_found_sessions(data_dir="", ext='.dat'):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
 
     found_sessions = 0
     sessions = []
@@ -585,6 +636,8 @@ def get_found_sessions(data_dir="", ext='.dat'):
 
 def download_flip_command(output_dir, config_file=""):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
     selected_flip = 1
 
 
@@ -735,6 +788,8 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
 def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
     # set up the output directory
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
     for i, sess in enumerate(files):
@@ -819,6 +874,8 @@ def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
 
 def sample_extract_command(input_dir, config_file, nframes, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
     for i, sess in enumerate(files):
@@ -1153,6 +1210,9 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 
 def extract_command(input_file, output_dir, config_file, skip=False):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 

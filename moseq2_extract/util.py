@@ -207,18 +207,21 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
 
     for key, item in dic.items():
         dest = root + key
-        if isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
-            h5[dest] = item
-        elif isinstance(item, (tuple, list)):
-            h5[dest] = np.asarray(item)
-        elif isinstance(item, (int, float)):
-            h5[dest] = np.asarray([item])[0]
-        elif item is None:
-            h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
-        elif isinstance(item, dict):
-            save_dict_contents_to_h5(h5, item, dest)
-        else:
-            raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
+        try:
+            if isinstance(item, (np.ndarray, np.int64, np.float64, str, bytes)):
+                h5[dest] = item
+            elif isinstance(item, (tuple, list)):
+                h5[dest] = np.asarray(item)
+            elif isinstance(item, (int, float)):
+                h5[dest] = np.asarray([item])[0]
+            elif item is None:
+                h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
+            elif isinstance(item, dict):
+                save_dict_contents_to_h5(h5, item, dest)
+            else:
+                raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
+        except:
+            print('h5py could not encode key:', key)
 
         if key in annotations:
             if annotations[key] is None:
