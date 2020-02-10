@@ -88,6 +88,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
             finfo = moseq2_extract.io.video.get_raw_info(frames_file)
         elif frames_file.endswith('avi'):
             finfo = moseq2_extract.io.video.get_video_info(frames_file)
+        elif frames_file.endswith('mkv'):
+            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
     except AttributeError as e:
         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
@@ -99,6 +101,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
             if frames_file.endswith('dat'):
                 frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
             elif frames_file.endswith('avi'):
+                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+            elif frames_file.endswith('mkv'):
                 frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
         except AttributeError as e:
             frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
@@ -123,6 +127,7 @@ def get_bbox(roi):
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
+            dilate_iters=1,
             strel_erode=None,
             noise_tolerance=30,
             weights=(1, .1, 1),
@@ -193,7 +198,7 @@ def get_roi(depth_image,
         roi[region_properties[shape].coords[:, 0],
             region_properties[shape].coords[:, 1]] = 1
         if strel_dilate is not None:
-            roi = cv2.dilate(roi, strel_dilate, iterations=1)
+            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters)
         if strel_erode is not None:
             roi = cv2.erode(roi, strel_erode, iterations=1)
         if fill_holes:

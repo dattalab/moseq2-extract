@@ -1,7 +1,8 @@
 from .cli import *
 import ruamel.yaml as yaml
 from moseq2_extract.io.video import (get_movie_info, load_movie_data,
-                                     write_frames_preview, write_frames)
+                                     write_frames_preview, write_frames,
+                                     convert_mkv_to_avi)
 import urllib
 import h5py
 import tqdm
@@ -63,37 +64,40 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
             if v != 'TBD':
                 print(f'{k}: {v}')
 
-        restore = input('Would you like to restore the above listed notebook variables? [Y -> restore variables, N -> overwrite progress file]')
+        restore = ''
+        while(restore != 'Y' or restore != 'N' or restore != 'q'):
+            restore = input('Would you like to restore the above listed notebook variables? [Y -> restore variables, N -> overwrite progress file, q -> quit]')
+            if restore == "Y":
 
-        if restore == "Y":
+                print('Updating notebook variables...')
 
-            print('Updating notebook variables...')
+                config_filepath, index_filepath, train_data_dir, pca_dirname, \
+                scores_filename, model_path, scores_file, \
+                crowd_dir, plot_path = restore_progress_vars(progress_filepath)
 
-            config_filepath, index_filepath, train_data_dir, pca_dirname, \
-            scores_filename, model_path, scores_file, \
-            crowd_dir, plot_path = restore_progress_vars(progress_filepath)
+                return config_filepath, index_filepath, train_data_dir, pca_dirname, \
+                scores_filename, model_path, scores_file, \
+                crowd_dir, plot_path
+            elif restore == "N":
 
-            return config_filepath, index_filepath, train_data_dir, pca_dirname, \
-            scores_filename, model_path, scores_file, \
-            crowd_dir, plot_path
-        elif restore == "N":
+                print('Overwriting progress file.')
 
-            print('Overwriting progress file.')
+                progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
+                                 'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
+                                 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
 
-            progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
-                             'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
-                             'crowd_dir': 'TBD', 'plot_path': 'TBD'}
+                with open(progress_filepath, 'w') as f:
+                    yaml.safe_dump(progress_vars, f)
+                f.close()
 
-            with open(progress_filepath, 'w') as f:
-                yaml.safe_dump(progress_vars, f)
-            f.close()
-
-            print('\nProgress file created, listing initialized variables...')
-            for k, v in progress_vars.items():
-                if v != 'TBD':
-                    print(k, v)
-            return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
-                   progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
+                print('\nProgress file created, listing initialized variables...')
+                for k, v in progress_vars.items():
+                    if v != 'TBD':
+                        print(k, v)
+                return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
+                       progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
+            elif restore == 'q':
+                return
 
 
     else:
@@ -592,27 +596,28 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     print(f'Index file path: {indexpath}')
     return indexpath
 
-def get_found_sessions(data_dir="", ext='.dat'):
+def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     found_sessions = 0
     sessions = []
-    if len(data_dir) == 0:
-        data_dir = os.getcwd()
-        files = sorted(glob('*/*'+ext))
-        found_sessions = len(files)
-        sessions = files
-    else:
-        data_dir = data_dir.strip()
-        if os.path.isdir(data_dir):
-            files = sorted(glob(os.path.join(data_dir,'*/*'+ext)))
-            found_sessions = len(files)
-            sessions = files
+    for ext in exts:
+        if len(data_dir) == 0:
+            data_dir = os.getcwd()
+            files = sorted(glob('*/*.'+ext))
+            found_sessions += len(files)
+            sessions += files
         else:
-            print('directory not found, try again.')
-            return data_dir, 0
+            data_dir = data_dir.strip()
+            if os.path.isdir(data_dir):
+                files = sorted(glob(os.path.join(data_dir,'*/*.'+ext)))
+                found_sessions += len(files)
+                sessions += files
+            else:
+                print('directory not found, try again.')
+                #return data_dir, 0
 
     # generate sample metadata json for each session that is missing one
 
@@ -634,7 +639,7 @@ def get_found_sessions(data_dir="", ext='.dat'):
     return data_dir, found_sessions
 
 
-def download_flip_command(output_dir, config_file=""):
+def download_flip_command(output_dir, config_file="", selection=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -652,8 +657,6 @@ def download_flip_command(output_dir, config_file=""):
 
     key_list = list(flip_files.keys())
 
-    selection = None
-
     if selected_flip is not None:
         selection = selected_flip
 
@@ -670,7 +673,10 @@ def download_flip_command(output_dir, config_file=""):
             urllib.request.urlretrieve(selection, output_filename)
             print('Successfully downloaded flip file to {}'.format(output_filename))
         else:
-            return 'Retained older flip file version: {}'.format(output_filename)
+            with open(config_file, 'r') as f:
+                config_data = yaml.safe_load(f)
+            f.close()
+            return 'Retained older flip file version: {}'.format(config_data['flip_classifier'])
     else:
         urllib.request.urlretrieve(selection, output_filename)
         print('Successfully downloaded flip file to {}'.format(output_filename))
@@ -785,13 +791,15 @@ def copy_slice_command(input_file, output_file, copy_slice, chunk_size, fps, del
 
     return True
 
-def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
+def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
     # set up the output directory
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
+    files = []
+    for ext in exts:
+        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext)))
 
-    files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
     for i, sess in enumerate(files):
         print(f'[{str(i+1)}] {sess}')
     input_file_index = -1
@@ -823,6 +831,12 @@ def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    if input_file.endswith('.mkv'):
+        # create a depth.avi file to represent PCs
+        temp = convert_mkv_to_avi(input_file)
+        if isinstance(temp, str):
+            input_file = temp
+
     if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
         print('Loading background...')
         bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
@@ -836,10 +850,11 @@ def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
                 scale_factor=config_data['bg_roi_depth_range'])
 
     print('Getting roi...')
-    strel_dilate = select_strel((config_data['bg_roi_shape'], config_data['bg_roi_dilate']))
+    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
 
     rois, _, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
+                                  dilate_iters=config_data['dilate_iterations'],
                                   weights=config_data['bg_roi_weights'],
                                   depth_range=config_data['bg_roi_depth_range'],
                                   gradient_filter=config_data['bg_roi_gradient_filter'],
@@ -872,12 +887,15 @@ def find_roi_command(input_dir, config_file, ext='.dat', output_directory=None):
     return images, filenames
 
 
-def sample_extract_command(input_dir, config_file, nframes, output_directory=None):
+def sample_extract_command(input_dir, config_file, nframes, output_directory=None, exts=['dat', 'mkv', 'avi']):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-    files = sorted(glob(os.path.join(input_dir, '*/*.dat')))
+    files = []
+    for ext in exts:
+        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext)))
+    files = sorted(files)
     for i, sess in enumerate(files):
         print(f'[{str(i + 1)}] {sess}')
     input_file_index = -1
@@ -987,8 +1005,6 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 
     if output_dir is None:
         output_dir = os.path.join(dirname, 'proc')
-    else:
-        output_dir = os.path.join(dirname, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -1004,14 +1020,17 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    # get the background and roi, which will be used across all batches
+    if input_file.endswith('.mkv'):
+        # create a depth.avi file to represent PCs
+        bg_roi_file = convert_mkv_to_avi(input_file)
 
+    # get the background and roi, which will be used across all batches
     if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
         print('Loading background...')
         bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
     else:
         print('Getting background...')
-        bground_im = get_bground_im_file(input_file, tar_object=tar)
+        bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
         if not config_data['use_plane_bground']:
             write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
@@ -1021,9 +1040,9 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 
     roi_filename = 'roi_{:02d}.tiff'.format(config_data['bg_roi_index'])
 
-    strel_dilate = select_strel((config_data['bg_roi_shape'], config_data['bg_roi_dilate']))
-    strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
-    strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
+    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
+    strel_tail = select_strel(config_data['tail_filter_shape'], tuple(config_data['tail_filter_size']))
+    strel_min = select_strel(config_data['cable_filter_shape'], tuple(config_data['cable_filter_size']))
 
     if os.path.exists(os.path.join(output_dir, roi_filename)):
         print('Loading ROI...')
@@ -1032,6 +1051,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         print('Getting roi...')
         rois, plane, _, _, _, _ = get_roi(bground_im,
                                           strel_dilate=strel_dilate,
+                                          dilate_iters=config_data['dilate_iterations'],
                                           weights=config_data['bg_roi_weights'],
                                           depth_range=config_data['bg_roi_depth_range'],
                                           gradient_filter=config_data['bg_roi_gradient_filter'],
@@ -1039,6 +1059,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
                                           gradient_kernel=config_data['bg_roi_gradient_kernel'],
                                           fill_holes=config_data['bg_roi_fill_holes'],
                                           gui=True)
+
 
         if config_data['use_plane_bground']:
             print('Using plane fit for background...')
@@ -1053,7 +1074,11 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
-    true_depth = np.median(bground_im[roi > 0])
+    if input_file.endswith('mkv'):
+        new_bg = np.ma.masked_not_equal(roi, 0)
+        true_depth = np.median(bground_im[roi > 0])
+        bground_im = np.where(new_bg == True, new_bg, true_depth)
+
     print('Detected true depth: {}'.format(true_depth))
 
     # farm out the batches and write to an hdf5 file

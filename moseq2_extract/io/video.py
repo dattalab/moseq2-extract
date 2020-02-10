@@ -22,11 +22,18 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
 
     if type(filename) is str:
+        vid = cv2.VideoCapture(filename)
+        h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
+                        vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
+                        vid.get(cv2.CAP_PROP_FRAME_COUNT)
+
+        bytes_per_frame = (int(w) * int(h) * bit_depth) / 8
+
         file_info = {
             'bytes': os.stat(filename).st_size,
-            'nframes': int(os.stat(filename).st_size / bytes_per_frame),
-            'dims': frame_dims,
-            'bytes_per_frame': bytes_per_frame
+            'nframes': int(nframes),
+            'dims': (int(w), int(h)),
+            'bytes_per_frame': int(bytes_per_frame)
         }
     elif type(filename) is tarfile.TarInfo:
         file_info = {
@@ -62,6 +69,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
     seek_point = np.maximum(0, frames[0]*vid_info['bytes_per_frame'])
     read_points = len(frames)*frame_dims[0]*frame_dims[1]
+
     dims = (len(frames), frame_dims[1], frame_dims[0])
 
     if type(tar_object) is tarfile.TarFile:
@@ -111,8 +119,21 @@ def get_video_info(filename):
         return {'file': filename,
             'dims': (int(out[0]), int(out[1])),
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'nframes': int(float(out[3]))}
+            'nframes': out[3]}
 
+def convert_mkv_to_avi(filename):
+
+    outpath = os.path.join(os.path.dirname(filename),'proc/depth.avi')
+    command = ['ffmpeg',
+               '-i', filename,
+               '-map', '0:0',
+               '-vsync', '0',
+               outpath]
+
+    pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = pipe.communicate()
+
+    return outpath
 
 
 # simple command to pipe frames to an ffv1 file
@@ -187,7 +208,15 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         3d numpy array:  frames x h x w
     """
 
-    finfo = get_video_info(filename)
+    if not filename.endswith('.mkv'):
+        try:
+            finfo = get_video_info(filename)
+        except:
+            finfo = get_raw_info(filename)
+    else:
+        finfo = get_raw_info(filename)
+        tmp = get_video_info(filename)
+        frame_size = tmp['dims']
 
     if frames is None or len(frames) == 0:
         finfo = get_video_info(filename)
@@ -196,21 +225,40 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     if not frame_size:
         frame_size = finfo['dims']
 
-    command = [
-        'ffmpeg',
-        '-loglevel', 'fatal',
-        '-ss', str(datetime.timedelta(seconds=frames[0]/fps)),
-        '-i', filename,
-        '-vframes', str(len(frames)),
-        '-f', 'image2pipe',
-        '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
-        '-pix_fmt', pixel_format,
-        '-threads', str(threads),
-        '-slices', str(slices),
-        '-slicecrc', str(slicecrc),
-        '-vcodec', 'rawvideo',
-        '-'
-    ]
+    if not filename.endswith('.mkv'):
+        command = [
+            'ffmpeg',
+            '-loglevel', 'fatal',
+            '-ss', str(datetime.timedelta(seconds=frames[0]/fps)),
+            '-i', filename,
+            '-vframes', str(len(frames)),
+            '-f', 'image2pipe',
+            '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
+            '-pix_fmt', pixel_format,
+            '-threads', str(threads),
+            '-slices', str(slices),
+            '-slicecrc', str(slicecrc),
+            '-vcodec', 'rawvideo',
+            '-'
+        ]
+    else:
+        command = [
+            'ffmpeg',
+            '-loglevel', 'fatal',
+            '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
+            '-i', filename,
+            '-map', '0:0',
+            '-vframes', str(len(frames)),
+            '-f', 'image2pipe',
+            '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
+            '-pix_fmt', pixel_format,
+            '-threads', str(threads),
+            '-slices', str(slices),
+            '-slicecrc', str(slicecrc),
+            '-vsync', '0',
+            '-vcodec', 'rawvideo',
+            '-'
+        ]
 
     if get_cmd:
         return command
@@ -361,6 +409,10 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
                 frames = [frames]
             frame_data = read_frames(filename,
                                      frames)
+        elif filename.lower().endswith('.mkv'):
+            if type(frames) is int:
+                frames = [frames]
+            frame_data = read_frames(filename, frames)
 
     except AttributeError as e:
         frame_data = read_frames_raw(filename,
@@ -380,6 +432,8 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
             metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
             metadata = get_video_info(filename)
+        elif filename.lower().endswith('.mkv'):
+            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
     except AttributeError as e:
         metadata = get_raw_info(filename)
 
