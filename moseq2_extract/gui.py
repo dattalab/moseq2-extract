@@ -1020,6 +1020,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
+    bg_roi_file = input_file
     if input_file.endswith('.mkv'):
         # create a depth.avi file to represent PCs
         bg_roi_file = convert_mkv_to_avi(input_file)
@@ -1074,9 +1075,9 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
+    true_depth = np.median(bground_im[roi > 0])
     if input_file.endswith('mkv'):
         new_bg = np.ma.masked_not_equal(roi, 0)
-        true_depth = np.median(bground_im[roi > 0])
         bground_im = np.where(new_bg == True, new_bg, true_depth)
 
     print('Detected true depth: {}'.format(true_depth))
@@ -1340,14 +1341,18 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    # get the background and roi, which will be used across all batches
+    bg_roi_file = input_file
+    if input_file.endswith('.mkv'):
+        # create a depth.avi file to represent PCs
+        bg_roi_file = convert_mkv_to_avi(input_file)
 
+    # get the background and roi, which will be used across all batches
     if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
         print('Loading background...')
         bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
     else:
         print('Getting background...')
-        bground_im = get_bground_im_file(input_file, tar_object=tar)
+        bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
         if not config_data['use_plane_bground']:
             write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
@@ -1368,6 +1373,7 @@ def extract_command(input_file, output_dir, config_file, skip=False):
         print('Getting roi...')
         rois, plane, _, _, _, _ = get_roi(bground_im,
                                           strel_dilate=strel_dilate,
+                                          dilate_iters=config_data['dilate_iterations'],
                                           weights=config_data['bg_roi_weights'],
                                           depth_range=config_data['bg_roi_depth_range'],
                                           gradient_filter=config_data['bg_roi_gradient_filter'],
@@ -1389,6 +1395,10 @@ def extract_command(input_file, output_dir, config_file, skip=False):
                     roi, scale=True, dtype='uint8')
 
     true_depth = np.median(bground_im[roi > 0])
+    if input_file.endswith('mkv'):
+        new_bg = np.ma.masked_not_equal(roi, 0)
+        bground_im = np.where(new_bg == True, new_bg, true_depth)
+
     print('Detected true depth: {}'.format(true_depth))
 
     # farm out the batches and write to an hdf5 file
