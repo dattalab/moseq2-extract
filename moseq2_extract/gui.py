@@ -837,13 +837,9 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
         if isinstance(temp, str):
             input_file = temp
 
-    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
-        print('Loading background...')
-        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
-    else:
-        print('Getting background...')
-        bground_im = get_bground_im_file(input_file)
-        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+    print('Getting background...')
+    bground_im = get_bground_im_file(input_file)
+    write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -1026,14 +1022,10 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         bg_roi_file = convert_mkv_to_avi(input_file)
 
     # get the background and roi, which will be used across all batches
-    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
-        print('Loading background...')
-        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
-    else:
-        print('Getting background...')
-        bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
-        if not config_data['use_plane_bground']:
-            write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+    print('Getting background...')
+    bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
+    if not config_data['use_plane_bground']:
+        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0, tar_object=tar)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -1045,35 +1037,32 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     strel_tail = select_strel(config_data['tail_filter_shape'], tuple(config_data['tail_filter_size']))
     strel_min = select_strel(config_data['cable_filter_shape'], tuple(config_data['cable_filter_size']))
 
-    if os.path.exists(os.path.join(output_dir, roi_filename)):
-        print('Loading ROI...')
-        roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
-    else:
-        print('Getting roi...')
-        rois, plane, _, _, _, _ = get_roi(bground_im,
-                                          strel_dilate=strel_dilate,
-                                          dilate_iters=config_data['dilate_iterations'],
-                                          weights=config_data['bg_roi_weights'],
-                                          depth_range=config_data['bg_roi_depth_range'],
-                                          gradient_filter=config_data['bg_roi_gradient_filter'],
-                                          gradient_threshold=config_data['bg_roi_gradient_threshold'],
-                                          gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                          fill_holes=config_data['bg_roi_fill_holes'],
-                                          gui=True)
+
+    print('Getting roi...')
+    rois, plane, _, _, _, _ = get_roi(bground_im,
+                                      strel_dilate=strel_dilate,
+                                      dilate_iters=config_data['dilate_iterations'],
+                                      weights=config_data['bg_roi_weights'],
+                                      depth_range=config_data['bg_roi_depth_range'],
+                                      gradient_filter=config_data['bg_roi_gradient_filter'],
+                                      gradient_threshold=config_data['bg_roi_gradient_threshold'],
+                                      gradient_kernel=config_data['bg_roi_gradient_kernel'],
+                                      fill_holes=config_data['bg_roi_fill_holes'],
+                                      gui=True)
 
 
-        if config_data['use_plane_bground']:
-            print('Using plane fit for background...')
-            xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
-            coords = np.vstack((xx.ravel(), yy.ravel()))
-            plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
-            plane_im = plane_im.reshape(bground_im.shape)
-            write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
-            bground_im = plane_im
+    if config_data['use_plane_bground']:
+        print('Using plane fit for background...')
+        xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
+        coords = np.vstack((xx.ravel(), yy.ravel()))
+        plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
+        plane_im = plane_im.reshape(bground_im.shape)
+        write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+        bground_im = plane_im
 
-        roi = rois[config_data['bg_roi_index']]
-        write_image(os.path.join(output_dir, roi_filename),
-                    roi, scale=True, dtype='uint8')
+    roi = rois[config_data['bg_roi_index']]
+    write_image(os.path.join(output_dir, roi_filename),
+                roi, scale=True, dtype='uint8')
 
     true_depth = np.median(bground_im[roi > 0])
     if input_file.endswith('mkv'):
@@ -1144,7 +1133,11 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < config_data['min_height']] = 0
-            raw_frames[raw_frames > config_data['max_height']] = config_data['max_height']
+            if config_data['dilate_iterations'] == 1:
+                raw_frames[raw_frames > config_data['max_height']] = config_data['max_height']
+            else:
+                raw_frames[raw_frames > config_data['max_height']] = 0
+
             raw_frames = raw_frames.astype(config_data['frame_dtype'])
             raw_frames = apply_roi(raw_frames, roi)
 
@@ -1463,7 +1456,10 @@ def extract_command(input_file, output_dir, config_file, skip=False):
             raw_frames = bground_im-raw_frames
             # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
             raw_frames[raw_frames < config_data['min_height']] = 0
-            raw_frames[raw_frames > config_data['max_height']] = config_data['max_height']
+            if config_data['dilate_iterations'] == 1:
+                raw_frames[raw_frames > config_data['max_height']] = config_data['max_height']
+            else:
+                raw_frames[raw_frames > config_data['max_height']] = 0
             raw_frames = raw_frames.astype(config_data['frame_dtype'])
             raw_frames = apply_roi(raw_frames, roi)
 
