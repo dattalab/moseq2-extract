@@ -136,7 +136,7 @@ def generate_config_command(output_file):
 
     input_dir = os.path.dirname(output_file)
     params['input_dir'] = input_dir
-
+    params['detected_true_depth'] = 'auto'
     if os.path.exists(output_file):
         print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
         ow = input()
@@ -1064,7 +1064,10 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     write_image(os.path.join(output_dir, roi_filename),
                 roi, scale=True, dtype='uint8')
 
-    true_depth = np.median(bground_im[roi > 0])
+    if config_data['detected_true_depth'] == 'auto':
+        true_depth = np.median(bground_im[roi > 0])
+    else:
+        true_depth = config_data['detected_true_depth']
     if input_file.endswith('mkv'):
         new_bg = np.ma.masked_not_equal(roi, 0)
         bground_im = np.where(new_bg == True, new_bg, true_depth)
@@ -1387,7 +1390,10 @@ def extract_command(input_file, output_dir, config_file, skip=False):
         write_image(os.path.join(output_dir, roi_filename),
                     roi, scale=True, dtype='uint8')
 
-    true_depth = np.median(bground_im[roi > 0])
+    if config_data['detected_true_depth'] == 'auto':
+        true_depth = np.median(bground_im[roi > 0])
+    else:
+        true_depth = config_data['detected_true_depth']
     if input_file.endswith('mkv'):
         new_bg = np.ma.masked_not_equal(roi, 0)
         bground_im = np.where(new_bg == True, new_bg, true_depth)
