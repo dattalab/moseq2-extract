@@ -56,7 +56,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     # (for tracking in presence of occluders)
 
     if use_em_tracker:
-        # print('Computing EM parameters...')
         parameters = em_tracking(
             filtered_frames, chunk, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
@@ -70,8 +69,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         parameters = None
 
     # now get the centroid and orientation of the mouse
-
-    # print('Getting centroid and orientation...')
     features, mask = get_frame_features(filtered_frames,
                                         frame_threshold=min_height, mask=ll,
                                         mask_threshold=mask_threshold,
@@ -94,8 +91,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                   clips=model_smoothing_clips)
 
     # crop and rotate the frames
-
-    # print('Cropping frames...')
     cropped_frames = crop_and_rotate_frames(
         chunk, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
     cropped_filtered_frames = crop_and_rotate_frames(
@@ -110,15 +105,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         mask = crop_and_rotate_frames(
             mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
-    #
-    # if use_em_tracker:
-    #     cropped_ll = crop_and_rotate_frames(
-    #             ll, features, crop_size=crop_size, progress_bar=progress_bar)
-    # else:
-    #     cropped_ll = None
-
     if flip_classifier:
-        # print('Fixing flips...')
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
         for flip in np.where(flips)[0]:
             cropped_frames[flip, ...] = np.rot90(cropped_frames[flip, ...], k=2)
@@ -126,8 +113,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             mask[flip, ...] = np.rot90(mask[flip, ...], k=2)
         features['orientation'][flips] += np.pi
 
-        # if use_em_tracker:
-        #     cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
     else:
         flips = None
 
@@ -144,7 +129,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         'mask_frames': mask,
         'scalars': scalars,
         'flips': flips,
-        # 'cropped_ll': cropped_ll
         'parameters': parameters
     }
 
