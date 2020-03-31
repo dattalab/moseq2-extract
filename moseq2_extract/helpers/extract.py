@@ -6,97 +6,10 @@ import numpy as np
 from pathlib import Path
 from copy import deepcopy
 import ruamel.yaml as yaml
-from moseq2_extract.util import select_strel
-from moseq2_extract.gui import extract_command
+
 from moseq2_extract.extract.proc import apply_roi
 from moseq2_extract.extract.extract import extract_chunk
-from moseq2_extract.io.image import write_image, read_image
-from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
-
-
-def extract_roi_helper(input_file, output_dir, config_data, bg_roi_file, tar):
-    # get the background and roi, which will be used across all batches
-    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
-        print('Loading background...')
-        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
-    else:
-        print('Getting background...')
-        bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
-        if not config_data['use_plane_bground']:
-            write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
-
-    first_frame = load_movie_data(input_file, 0, tar_object=tar)
-    write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
-                scale_factor=config_data['bg_roi_depth_range'])
-
-    roi_filename = 'roi_{:02d}.tiff'.format(config_data['bg_roi_index'])
-
-    strel_dilate = select_strel((config_data['bg_roi_shape'], config_data['bg_roi_dilate']))
-
-    if os.path.exists(os.path.join(output_dir, roi_filename)):
-        print('Loading ROI...')
-        roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
-    else:
-        print('Getting roi...')
-        rois, plane, _, _, _, _ = get_roi(bground_im,
-                                          strel_dilate=strel_dilate,
-                                          dilate_iters=config_data['dilate_iterations'],
-                                          weights=config_data['bg_roi_weights'],
-                                          depth_range=config_data['bg_roi_depth_range'],
-                                          gradient_filter=config_data['bg_roi_gradient_filter'],
-                                          gradient_threshold=config_data['bg_roi_gradient_threshold'],
-                                          gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                          fill_holes=config_data['bg_roi_fill_holes'])
-
-        if config_data['use_plane_bground']:
-            print('Using plane fit for background...')
-            xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
-            coords = np.vstack((xx.ravel(), yy.ravel()))
-            plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
-            plane_im = plane_im.reshape(bground_im.shape)
-            write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
-            bground_im = plane_im
-
-        roi = rois[config_data['bg_roi_index']]
-        write_image(os.path.join(output_dir, roi_filename),
-                    roi, scale=True, dtype='uint8')
-
-    return roi, bground_im, first_frame
-
-def get_roi_helper(input_file, bg_roi_index, config_data, output_dir):
-
-    print('Getting background...')
-    bground_im = get_bground_im_file(input_file)
-    write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
-
-    first_frame = load_movie_data(input_file, 0)
-    write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
-                scale_factor=config_data['bg_roi_depth_range'])
-
-    print('Getting roi...')
-    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
-
-    rois, _, _, _, _, _ = get_roi(bground_im,
-                                  strel_dilate=strel_dilate,
-                                  dilate_iters=config_data['dilate_iterations'],
-                                  weights=config_data['bg_roi_weights'],
-                                  depth_range=config_data['bg_roi_depth_range'],
-                                  gradient_filter=config_data['bg_roi_gradient_filter'],
-                                  gradient_threshold=config_data['bg_roi_gradient_threshold'],
-                                  gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                  fill_holes=config_data['bg_roi_fill_holes'], gui=True)
-
-    if config_data['bg_sort_roi_by_position']:
-        rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
-        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
-
-    bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
-    for idx in bg_roi_index:
-        roi_filename = 'roi_{:02d}.tiff'.format(idx)
-        write_image(os.path.join(output_dir, roi_filename),
-                    rois[idx], scale=True, dtype='uint8')
-
 
 def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars, frame_batches, first_frame_idx,
                             true_depth, tar, strel_tail, strel_min, output_dir, output_filename):
@@ -185,6 +98,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 
     return video_pipe
 
+
 def run_local_extract(to_extract, params, prefix, skip_extracted, output_directory):
     # make the temporary directory if it doesn't already exist
     temp_storage = Path('/tmp/')
@@ -222,6 +136,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
                 base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                     .format(output_directory, roi_config_store, roi, ext)
             try:
+                from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
             except:
                 print('Unexpected error:', sys.exc_info())
@@ -266,6 +181,7 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
                 base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
                     .format(output_directory, roi_config_store, roi, ext)
             try:
+                from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
             except:
                 print('Unexpected error:', sys.exc_info()[0])

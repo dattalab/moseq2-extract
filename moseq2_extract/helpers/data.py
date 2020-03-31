@@ -7,8 +7,6 @@ import numpy as np
 from cytoolz import keymap
 import ruamel.yaml as yaml
 from pkg_resources import get_distribution
-from moseq2_extract.cli import extract
-
 from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
     load_textdata, build_path, save_dict_contents_to_h5, click_param_annot
 
@@ -200,8 +198,6 @@ def copy_manifest_results(manifest, output_dir):
             yaml.safe_dump(v['yaml_dict'], f)
 
 
-
-
 def handle_extract_metadata(input_file, dirname, config_data, nframes):
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
         print('Scanning tarball {} (this will take a minute)'.format(input_file))
@@ -248,7 +244,8 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
 
 
 # extract h5 helper function
-def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes, true_depth, roi, bground_im, first_frame, timestamps):
+def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
+                      nframes, true_depth, roi, bground_im, first_frame, timestamps, extract=None):
     f.create_dataset('metadata/uuid', data=status_dict['uuid'])
     for scalar in scalars:
         f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
