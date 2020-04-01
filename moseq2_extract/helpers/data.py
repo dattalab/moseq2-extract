@@ -110,7 +110,7 @@ def load_h5s(to_load, snake_case=True):
     return loaded
 
 # aggregate results helper
-def build_manifest(loaded, snake_case=True):
+def build_manifest(loaded, format, snake_case=True):
     manifest = {}
     fallback = 'session_{:03d}'
     fallback_count = 0
@@ -288,7 +288,10 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
     f.create_dataset('metadata/extraction/extract_version', data=extract_version)
     f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
-    save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+    if extract is not None:
+        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+    else:
+        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
 
     for key, value in acquisition_metadata.items():
         if type(value) is list and len(value) > 0 and type(value[0]) is str:

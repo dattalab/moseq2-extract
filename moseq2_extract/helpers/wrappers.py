@@ -218,7 +218,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if output_dir is None:
         output_dir = os.path.join(dirname, 'proc')
     else:
-        output_dir = os.path.join(dirname, output_dir)
+        if os.path.dirname(output_dir) != dirname:
+            output_dir = os.path.join(dirname, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -300,7 +301,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(os.path.join(output_dir, 'done.txt'), 'w') as f:
         f.write('done')
 
-    print(f'Sample extraction of {str(nframes)} frames completed successfully in {output_dir}.')
     if gui:
         return output_dir
 

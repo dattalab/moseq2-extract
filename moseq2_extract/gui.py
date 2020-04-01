@@ -175,7 +175,7 @@ def view_extraction(extractions):
 
     return extractions
 
-def extract_found_sessions(input_dir, config_file, filename, extract_all=True, skip_extracted=False, output_directory=None):
+def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False, output_directory=None):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -186,7 +186,8 @@ def extract_found_sessions(input_dir, config_file, filename, extract_all=True, s
     config_file = Path(config_file)
 
     prefix = ''
-    to_extract = recursive_find_unextracted_dirs(input_dir, filename=filename, skip_checks=skip_checks)
+    to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=skip_checks)
+    to_extract = [e for e in to_extract if e.endswith(ext)]
     temp = []
     for dir in to_extract:
         if '/tmp/' not in dir:
@@ -261,7 +262,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
 
     loaded = load_h5s(to_load)
 
-    manifest = build_manifest(loaded)
+    manifest = build_manifest(loaded, format=format)
 
     copy_manifest_results(manifest, output_dir)
 
@@ -317,7 +318,7 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
 
 def download_flip_command(output_dir, config_file="", selection=1):
 
-    flip_file_wrapper(config_file, output_dir, selection=selection, gui=True)
+    flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
 
 
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
