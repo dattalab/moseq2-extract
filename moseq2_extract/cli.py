@@ -47,25 +47,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
              bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
              output_dir, use_plane_bground, config_file):
 
-    # set up the output directory
-
-    cli_data = {
-        'bg_roi_index': bg_roi_index,
-        'bg_roi_dilate': bg_roi_dilate,
-        'bg_roi_shape': bg_roi_shape,
-        'bg_roi_weights': bg_roi_weights,
-        'bg_roi_depth_range': bg_roi_depth_range,
-        'bg_roi_gradient_filter':bg_roi_gradient_filter,
-        'bg_roi_gradient_kernel':bg_roi_gradient_kernel,
-        'bg_roi_gradient_threshold':bg_roi_gradient_threshold,
-        'bg_roi_fill_holes':bg_roi_fill_holes,
-        'bg_sort_roi_by_position':bg_sort_roi_by_position,
-        'bg_sort_roi_by_position_max_rois': bg_sort_roi_by_position_max_rois,
-        'use_plane_bground':use_plane_bground,
-        'dilate_iterations':dilate_iterations,
-        'config_file':config_file
-    }
-
+    click_data = click.get_current_context().params
+    cli_data = {k: v for k, v in click_data.items()}
     get_roi_wrapper(input_file, cli_data, output_dir)
 
 @cli.command(name="extract", cls=command_with_config('config_file'))

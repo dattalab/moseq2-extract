@@ -1,10 +1,12 @@
 import os
+import re
 import sys
 import uuid
 import h5py
 import urllib
 import warnings
 import numpy as np
+from cytoolz import pluck
 from copy import deepcopy
 import ruamel.yaml as yaml
 from moseq2_extract.io.image import write_image
@@ -13,7 +15,80 @@ from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5
 from moseq2_extract.io.video import load_movie_data, convert_mkv_to_avi, get_movie_info
 from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, \
-                            load_timestamps, convert_raw_to_avi_function, scalar_attributes
+                            load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s
+from moseq2_viz.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
+
+def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
+    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=UserWarning)
+
+    # gather than h5s and the pca scores file
+    # uuids should match keys in the scores file
+
+    h5s, dicts, yamls = recursive_find_h5s(input_dir)
+    if not os.path.exists(pca_file) or all_uuids:
+        warnings.warn('Will include all files')
+        pca_uuids = [dct['uuid'] for dct in dicts]
+    else:
+        if not os.path.exists(pca_file) or all_uuids:
+            warnings.warn('Will include all files')
+            pca_uuids = pluck('uuid', dicts)
+        else:
+            with h5py.File(pca_file, 'r') as f:
+                pca_uuids = list(f['scores'])
+    try:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+    except:
+        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                           zip(h5s, yamls, dicts)]
+    try:
+        if 'metadata' not in file_with_uuids[0][2]:
+            #raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
+            for h5 in h5s:
+                copy_h5_metadata_to_yaml_wrapper(input_dir, h5)
+            file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
+                               zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+    except:
+        print('Metadata not found, creating minimal Index file.')
+
+    output_dict = {
+        'files': [],
+        'pca_path': pca_file
+    }
+
+    index_uuids = []
+    for i, file_tup in enumerate(file_with_uuids):
+        if file_tup[2]['uuid'] not in index_uuids:
+            try:
+                output_dict['files'].append({
+                    'path': (file_tup[0], file_tup[1]),
+                    'uuid': file_tup[2]['uuid'],
+                    'group': 'default'
+                })
+                index_uuids.append(file_tup[2]['uuid'])
+
+                output_dict['files'][i]['metadata'] = {}
+
+                for k, v in file_tup[2]['metadata'].items():
+                    for filt in filter:
+                        if k == filt[0]:
+                            tmp = re.match(filt[1], v)
+                            if tmp is not None:
+                                v = tmp[0]
+
+                    output_dict['files'][i]['metadata'][k] = v
+            except:
+                pass
+
+    # write out index yaml
+    with open(output_file, 'w') as f:
+        yaml.safe_dump(output_dict, f)
+
+    return output_file
+
+
 
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
 
