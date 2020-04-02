@@ -1,15 +1,18 @@
-from skimage.external import tifffile
-import numpy as np
 import json
-import os
-import ast
+import numpy as np
 from pathlib import Path
+from ast import literal_eval
+from skimage.external import tifffile
 
 
-def write_image(filename, image, scale=True,
+def write_image(filename: str, image, scale: bool = True,
                 scale_factor=None, dtype='uint16',
                 metadata={}, compress=0):
-    """Save image data, possibly with scale factor for easy display
+    """Save image data, with optional scale factor for display
+    Args:
+        filename: the file path and name for the image file to save
+        image (np.ndarray): the (unscaled) 2-D image to save
+        scale: flag to scale the image between the bounds of `dtype`
     """
     file = Path(filename)
 
@@ -53,13 +56,13 @@ def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
         try:
             scale_factor = int(image_desc[scale_key])
         except ValueError:
-            scale_factor = ast.literal_eval(image_desc[scale_key])
+            scale_factor = literal_eval(image_desc[scale_key])
 
         if type(scale_factor) is int:
-            image = image/scale_factor
+            image = image / scale_factor
         elif type(scale_factor) is tuple:
             iinfo = np.iinfo(image.dtype)
-            image = image.astype('float32')/iinfo.max
-            image = image*(scale_factor[1]-scale_factor[0])+scale_factor[0]
+            image = image.astype('float32') / iinfo.max
+            image = image * (scale_factor[1] - scale_factor[0]) + scale_factor[0]
 
     return image
