@@ -193,7 +193,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if num_frames == None:
         nframes = int(video_metadata['nframes'])
     else:
-        nframes = num_frames
+        if num_frames > int(video_metadata['nframes']):
+            print('Requested more frames than video includes, extracting whole recording...')
+            nframes = int(video_metadata['nframes'])
+        else:
+            nframes = num_frames
 
     metadata_path, timestamp_path, alternate_correct, tar, \
     nframes, first_frame_idx, last_frame_idx = handle_extract_metadata(input_file, dirname, config_data, nframes)

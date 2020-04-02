@@ -322,7 +322,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
 
 
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
-    # set up the output directory
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -334,6 +334,10 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     for i, sess in enumerate(files):
         print(f'[{str(i+1)}] {sess}')
 
+    if len(files) == 0:
+        print('No recordings found')
+        return
+
     input_file_index = -1
     while(int(input_file_index) < 0):
         try:
@@ -342,7 +346,9 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
                 print('invalid index try again.')
                 input_file_index = -1
         except:
-            print('invalid input, only input integers.')
+            print('invalid input, only input integers. Input Q to exit.')
+            if 'q' in str(input_file_index).lower():
+                return
 
     input_file = files[input_file_index - 1]
 
@@ -372,9 +378,13 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 
     files = []
     for ext in exts:
-        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext)))
+        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext.replace('.',''))))
 
     files = sorted(files)
+
+    if len(files) == 0:
+        print('No recordings found')
+        return
 
     for i, sess in enumerate(files):
         print(f'[{str(i + 1)}] {sess}')
@@ -402,6 +412,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     return output_dir
 
 def extract_command(input_file, output_dir, config_file, num_frames=None, skip=False):
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
