@@ -461,7 +461,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                                         delete=False, # to be changed when we're ready!
                                         threads=compress_threads)
     except AttributeError as e:
-        pass
+        print('Error converting raw video to avi format, continuing anyway...')
+        print(e)
 
     status_dict['complete'] = True
 
