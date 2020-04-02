@@ -99,7 +99,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 
     bg_roi_index = [idx for idx in bg_roi_index if idx in range(len(rois))]
     for idx in bg_roi_index:
-        roi_filename = 'roi_{:02d}.tiff'.format(idx)
+        roi_filename = f'roi_{idx:02d}.tiff'
         write_image(os.path.join(output_dir, roi_filename),
                     rois[idx], scale=True, dtype='uint8')
 
@@ -162,7 +162,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
 
-    print('Processing: {}'.format(input_file))
+    print('Processing:', input_file)
     # get the basic metadata
 
     status_dict = {
@@ -179,7 +179,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     dirname = os.path.dirname(input_file)
 
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
-        print('Scanning tarball {} (this will take a minute)'.format(input_file))
+        print(f'Scanning tarball {input_file} (this will take a minute)')
         #compute NEW psuedo-dirname now, `input_file` gets overwritten below with depth.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
 
@@ -251,8 +251,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    output_filename = 'results_{:02d}'.format(bg_roi_index)
-    status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
+    output_filename = f'results_{bg_roi_index:02d}'
+    status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
     if os.path.exists(status_filename):
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
@@ -277,7 +277,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=bg_roi_depth_range)
 
-    roi_filename = 'roi_{:02d}.tiff'.format(bg_roi_index)
+    roi_filename = f'roi_{bg_roi_index:02d}.tiff'
 
     strel_dilate = select_strel(bg_roi_shape, bg_roi_dilate)
     strel_tail = select_strel(tail_filter_shape, tail_filter_size)
@@ -312,15 +312,15 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                     roi, scale=True, dtype='uint8')
 
     true_depth = np.median(bground_im[roi > 0])
-    print('Detected true depth: {}'.format(true_depth))
+    print('Detected true depth:', true_depth)
 
     # farm out the batches and write to an hdf5 file
 
-    with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
+    with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:
         f.create_dataset('metadata/uuid', data=status_dict['uuid'])
         for scalar in scalars:
-            f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
-            f['scalars/{}'.format(scalar)].attrs['description'] = scalars_attrs[scalar]
+            f.create_dataset(f'scalars/{scalar}', (nframes,), 'float32', compression='gzip')
+            f[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
         if timestamps is not None:
             f.create_dataset('timestamps', compression='gzip', data=timestamps)
@@ -367,9 +367,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
                 value = [n.encode('utf8') for n in value]
 
             if value is not None:
-                f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
+                f.create_dataset(f'metadata/acquisition/{key}', data=value)
             else:
-                f.create_dataset('metadata/acquisition/{}'.format(key), dtype="f")
+                f.create_dataset(f'metadata/acquisition/{key}', dtype="f")
 
         video_pipe = None
         tracking_init_mean = None
@@ -428,7 +428,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             frame_range = frame_range[offset:]
 
             for scalar in scalars:
-                f['scalars/{}'.format(scalar)][frame_range] = results['scalars'][scalar][offset:, ...]
+                f[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:, ...]
 
             f['frames'][frame_range] = results['depth_frames'][offset:, ...]
             f['frames_mask'][frame_range] = results['mask_frames'][offset:, ...]
@@ -442,7 +442,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             output_movie[:, crop_size[0]:, crop_size[1]:] = raw_frames[offset:, ...]
 
             video_pipe = write_frames_preview(
-                os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
+                os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
                 pipe=video_pipe, close_pipe=False, fps=fps,
                 frame_range=[f + first_frame_idx for f in frame_range],
                 depth_max=max_height, depth_min=min_height)
@@ -488,7 +488,7 @@ def download_flip_file(config_file, output_dir):
 
     key_list = list(flip_files.keys())
     for idx, (k, v) in enumerate(flip_files.items()):
-        print('[{}] {} ---> {}'.format(idx, k, v))
+        print(f'[{idx}] {k} ---> {v}')
 
     selection = None
 
@@ -504,7 +504,7 @@ def download_flip_file(config_file, output_dir):
 
     output_filename = os.path.join(output_dir, os.path.basename(selection))
     urllib.request.urlretrieve(selection, output_filename)
-    print('Successfully downloaded flip file to {}'.format(output_filename))
+    print('Successfully downloaded flip file to', output_filename)
     try:
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
@@ -542,7 +542,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
         output_file = os.path.join(os.path.dirname(input_file),
-                                   '{}.avi'.format(base_filename))
+                                   f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
@@ -566,12 +566,12 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 
@@ -588,7 +588,7 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
         avi_encode = True
-        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
     else:
         output_filename, ext = os.path.splitext(os.path.basename(output_file))
         if ext == '.avi':
@@ -631,12 +631,12 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 
