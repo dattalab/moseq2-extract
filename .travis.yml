@@ -7,7 +7,7 @@ python:
 # - 3.7 enable once supported by travis
 # get the dependencies
 install:
-  - pip install .
+  - pip install -e .
 # install what we need for testing
 # ffmpeg from https://gist.github.com/kevinGodell/bd52cd74c8c2d66fb69f108ef223c356
 # maybe os x support, seems super flaky though, https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-195620855
@@ -20,6 +20,6 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
 # script for tests
 script:
-  - pytest
+  - pytest --cov=./moseq2_extract
 after_success:
-  - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0
+  - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0 # hide this
