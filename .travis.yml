@@ -4,10 +4,10 @@ os: linux
 dist: trusty
 python: 
   - 3.6
-# - 3.7 enable once supported by travis
+  - 3.7 # enable once supported by travis
 # get the dependencies
 install:
-  - pip install -e .
+  - pip install .
 # install what we need for testing
 # ffmpeg from https://gist.github.com/kevinGodell/bd52cd74c8c2d66fb69f108ef223c356
 # maybe os x support, seems super flaky though, https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-195620855

@@ -26,7 +26,7 @@ setup(
     name='moseq2-extract',
     author='Jeff Markowitz',
     description='To boldly go where no mouse has gone before',
-    version='0.4.1',
+    version='0.4.2',
     platforms=['mac', 'unix'],
     packages=find_packages(),
     install_requires=['h5py', 'matplotlib', 'scipy',
@@ -34,9 +34,10 @@ setup(
                       'tqdm', 'statsmodels', 'numpy',
                       'joblib', 'scikit-learn',
                       'click', 'ruamel.yaml',
-                      'moseq2-pca @ git+https://github.com/dattalab/moseq2-pca.git@code_refactor',
-                      'moseq2-model @ git+https://github.com/dattalab/moseq2-model.git@code_refactor',
-                      'moseq2-viz @ git+https://github.com/dattalab/moseq2-viz.git@code_refactor'],
+                      #'moseq2-pca @ git+https://github.com/dattalab/moseq2-pca.git@code_refactor',
+                      #'moseq2-model @ git+https://github.com/dattalab/moseq2-model.git@code_refactor',
+                      #'moseq2-viz @ git+https://github.com/dattalab/moseq2-viz.git@code_refactor'
+                      ],
     python_requires='>=3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )
