@@ -82,8 +82,7 @@ class CLITests(TestCase):
                                    catch_exceptions=False)
 
             assert(result.exit_code == 0)
-            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))
-
+            assert ('done.txt' in os.listdir(os.path.dirname(data_path)))
 
     def test_find_roi(self):
 
