@@ -57,18 +57,30 @@ class CLITests(TestCase):
         with TemporaryDirectory() as tmp:
             data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
-            write_fake_movie(data_path.name)
-            assert os.path.exists(data_path.name)
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
+                                     data_path.name.split('/')[-1])
+            if not os.path.exists(os.path.dirname(data_path)):
+                os.makedirs(os.path.dirname(data_path))
+            else:
+                for f in os.listdir(os.path.dirname(data_path)):
+                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
+                        os.remove(os.path.join(os.path.dirname(data_path), f))
+                    elif os.path.isdir(f):
+                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
+
+            write_fake_movie(data_path)
+            assert os.path.exists(data_path)
 
             runner = CliRunner()
-            result = runner.invoke(extract, [data_path.name,
-                                             '--output-dir', tmp,
+            result = runner.invoke(extract, [data_path,
+                                             '--output-dir', os.path.dirname(data_path),
                                              #'--angle-hampel-span', 5, # add auto fix for incorrect param inputs
                                              #'--centroid-hampel-span', 5
                                              ],
                                    catch_exceptions=False)
 
-            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(tmp), 'proc')))
+            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))
             assert(result.exit_code == 0)
 
 
