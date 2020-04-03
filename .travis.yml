@@ -4,7 +4,7 @@ os: linux
 dist: trusty
 python: 
   - 3.6
-  - 3.7 # enable once supported by travis
+  #- 3.7 # enable once supported by travis
 
 # get the dependencies
 # install what we need for testing

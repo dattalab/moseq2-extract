@@ -4,8 +4,9 @@ import tqdm
 import shutil
 import tarfile
 import numpy as np
-from cytoolz import keymap
 import ruamel.yaml as yaml
+from cytoolz import keymap
+from cytoolz.curried import valmap
 from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
     load_textdata, build_path, save_dict_contents_to_h5, click_param_annot
@@ -301,3 +302,49 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
             f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
         else:
             f.create_dataset('metadata/acquisition/{}'.format(key), dtype="f")
+
+# Viz functions -- to refactor
+def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
+    ans = {}
+    if isinstance(file[path], h5py.Dataset):
+        # only use the final path key to add to `ans`
+        ans[path.split('/')[-1]] = file[path][()]
+    else:
+        for key, item in file[path].items():
+            if isinstance(item, h5py.Dataset):
+                ans[key] = item[()]
+            elif isinstance(item, h5py.Group):
+                ans[key] = _load_h5_to_dict(file, '/'.join([path, key]))
+    return ans
+
+def h5_to_dict(h5file, path: str = '/') -> dict:
+    '''
+    Args:
+        h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
+        path: path to the base dataset within the h5 file. Default: /
+    Returns:
+        a dict with h5 file contents with the same path structure
+    '''
+    if isinstance(h5file, str):
+        with h5py.File(h5file, 'r') as f:
+            out = _load_h5_to_dict(f, path)
+    elif isinstance(h5file, (h5py.File, h5py.Group)):
+        out = _load_h5_to_dict(h5file, path)
+    else:
+        raise Exception('file input not understood - need h5 file path or file object')
+    return out
+
+def clean_dict(dct):
+
+    def clean_entry(e):
+        if isinstance(e, dict):
+            out = clean_dict(e)
+        elif isinstance(e, np.ndarray):
+            out = e.tolist()
+        elif isinstance(e, np.generic):
+            out = np.asscalar(e)
+        else:
+            out = e
+        return out
+
+    return valmap(clean_entry, dct)

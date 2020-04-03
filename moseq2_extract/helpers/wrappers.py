@@ -3,7 +3,9 @@ import re
 import sys
 import uuid
 import h5py
+import tqdm
 import urllib
+import shutil
 import warnings
 import numpy as np
 from cytoolz import pluck
@@ -12,11 +14,33 @@ import ruamel.yaml as yaml
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5
+from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, clean_dict, h5_to_dict
 from moseq2_extract.io.video import load_movie_data, convert_mkv_to_avi, get_movie_info
 from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, \
                             load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s
-from moseq2_viz.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
+
+
+def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
+    h5s, dicts, yamls = recursive_find_h5s(input_dir)
+    to_load = [(tmp, yml, file) for tmp, yml, file in zip(
+        dicts, yamls, h5s) if tmp['complete'] and not tmp['skip']]
+
+    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
+    # then stage the copy
+
+    for i, tup in tqdm.tqdm(enumerate(to_load), total=len(to_load), desc='Copying data to yamls'):
+        with h5py.File(tup[2], 'r') as f:
+            tmp = clean_dict(h5_to_dict(f, h5_metadata_path))
+            tup[0]['metadata'] = dict(tmp)
+
+        try:
+            new_file = '{}_update.yaml'.format(os.path.basename(tup[1]))
+            with open(new_file, 'w+') as f:
+                yaml.safe_dump(tup[0], f)
+            shutil.move(new_file, tup[1])
+        except Exception:
+            raise Exception
+
 
 def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -87,7 +111,6 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
         yaml.safe_dump(output_dict, f)
 
     return output_file
-
 
 
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
