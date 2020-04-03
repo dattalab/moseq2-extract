@@ -20,6 +20,7 @@ matplotlib = '*'
 statsmodels = "*"
 scikit-image = "*"
 scikit-learn = "*"
+ruamel_yaml = '*'
 
 [requires]
 python_version = "3.6"
