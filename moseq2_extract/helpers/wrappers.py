@@ -244,6 +244,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     if output_dir is None:
         output_dir = os.path.join(dirname, 'proc')
+        print(output_dir)
     else:
         if os.path.dirname(output_dir) != dirname:
             output_dir = os.path.join(dirname, output_dir)

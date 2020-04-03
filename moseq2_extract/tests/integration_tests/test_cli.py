@@ -60,6 +60,7 @@ class CLITests(TestCase):
             input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
             data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
                                      data_path.name.split('/')[-1])
+
             if not os.path.exists(os.path.dirname(data_path)):
                 os.makedirs(os.path.dirname(data_path))
             else:
@@ -80,8 +81,8 @@ class CLITests(TestCase):
                                              ],
                                    catch_exceptions=False)
 
-            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))
             assert(result.exit_code == 0)
+            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))
 
 
     def test_find_roi(self):
