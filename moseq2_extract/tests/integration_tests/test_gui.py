@@ -72,7 +72,11 @@ class GUITests(TestCase):
         # test file does not exist case
         with TemporaryDirectory() as tmp:
             progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            outfile = progress_path.name.split('/')[-1]
+            outfile = progress_path.name
+
+            # case: file does not exist
+            if os.path.exists(outfile):
+                os.remove(outfile)
 
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(os.path.dirname(progress_path.name), outfile)
@@ -117,7 +121,10 @@ class GUITests(TestCase):
     def test_generate_config_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            outfile = config_path.name.split('/')[-1]
+            outfile = config_path.name
+
+            if os.path.exists(outfile):
+                os.remove(outfile)
 
             # file does not exist yet
             ret = generate_config_command(outfile)
@@ -164,42 +171,55 @@ class GUITests(TestCase):
 
     def test_generate_index_command(self):
         with TemporaryDirectory() as tmp:
-            index_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            outfile = index_path.name.split('/')[-1]
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            outfile = os.path.join(input_dir, 'moseq2-index.yaml')
 
             # minimal test case - more use cases to come
-            generate_index_command(tmp, '', outfile, [], [])
-
-            assert os.path.exists(index_path.name)
+            generate_index_command(input_dir, '', outfile, [], [])
+            assert os.path.exists(outfile)
 
     def test_get_found_sessions(self):
         with TemporaryDirectory() as tmp:
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+
             f1 = NamedTemporaryFile(prefix=tmp, suffix=".dat")
             f2 = NamedTemporaryFile(prefix=tmp, suffix=".mkv")
             f3 = NamedTemporaryFile(prefix=tmp, suffix=".avi")
 
-            with open(f1.name, 'w') as f:
+            f1 = os.path.join(input_dir, os.path.dirname(f1.name), 'temp1', 'temp2',
+                                     f1.name.split('/')[-1])
+            f2 = os.path.join(input_dir, os.path.dirname(f2.name), 'temp1', 'temp2',
+                              f2.name.split('/')[-1])
+            f3 = os.path.join(input_dir, os.path.dirname(f3.name), 'temp1', 'temp2',
+                              f3.name.split('/')[-1])
+
+            if not os.path.exists(os.path.dirname(f1)):
+                os.makedirs(os.path.dirname(f1))
+            else:
+                for f in os.listdir(os.path.dirname(f1)):
+                    if os.path.isfile(os.path.join(os.path.dirname(f1), f)):
+                        os.remove(os.path.join(os.path.dirname(f1), f))
+                    elif os.path.isdir(f):
+                        os.removedirs(os.path.join(os.path.dirname(f1), f))
+
+            with open(f1, 'w') as f:
                 f.write('Y')
             f.close()
 
-            with open(f2.name, 'w') as f:
+            with open(f2, 'w') as f:
                 f.write('Y')
             f.close()
 
-            with open(f3.name, 'w') as f:
+            with open(f3, 'w') as f:
                 f.write('Y')
             f.close()
 
-            assert(f1.name.split('/')[-1] in os.listdir(os.path.dirname(f1.name)))
-            assert (f2.name.split('/')[-1] in os.listdir(os.path.dirname(f2.name)))
-            assert (f3.name.split('/')[-1] in os.listdir(os.path.dirname(f3.name)))
+            assert os.path.exists(f1)
+            assert os.path.exists(f2)
+            assert os.path.exists(f3)
 
-            data_dir, found_sessions = get_found_sessions(os.path.dirname(f1.name))
-            assert(found_sessions == 1)
-            data_dir, found_sessions = get_found_sessions(os.path.dirname(f2.name))
-            assert (found_sessions == 1)
-            data_dir, found_sessions = get_found_sessions(os.path.dirname(f3.name))
-            assert (found_sessions == 1)
+            data_dir, found_sessions = get_found_sessions(input_dir)
+            assert(found_sessions == 3)
 
 
     def test_download_flip_file_command(self):
@@ -210,11 +230,15 @@ class GUITests(TestCase):
     def test_find_roi_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name.split('/')[-1]
+            configfile = config_path.name
+
+            if os.path.exists(configfile):
+                os.remove(configfile)
 
             generate_config_command(configfile)
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+
             # retain old version
             with open(stdin.name, 'w') as f:
                 f.write('Q')
@@ -227,9 +251,19 @@ class GUITests(TestCase):
 
             # writing a file to test following pipeline
             data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            write_fake_movie(data_path.name)
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
+                                     data_path.name.split('/')[-1])
+            if not os.path.exists(os.path.dirname(data_path)):
+                os.makedirs(os.path.dirname(data_path))
+            else:
+                for f in os.listdir(os.path.dirname(data_path)):
+                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
+                        os.remove(os.path.join(os.path.dirname(data_path), f))
+                    elif os.path.isdir(f):
+                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
+            write_fake_movie(data_path)
 
-            input_dir = '/'.join(os.path.dirname(tmp).split('/')[:-1])
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             # select test file
@@ -242,18 +276,34 @@ class GUITests(TestCase):
             assert (len(filenames) == 3)
             assert (len(images) == 3)
 
+
     def test_sample_extract_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name.split('/')[-1]
+            configfile = config_path.name
+
+            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            # select test file
+            with open(stdin.name, 'w') as f:
+                f.write('Y')
+            f.close()
+            sys.stdin = open(stdin.name)
 
             generate_config_command(configfile)
 
             # writing a file to test following pipeline
             data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
-            input_dir = '/'.join(os.path.dirname(tmp).split('/')[:-1])
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), data_path.name.split('/')[-1])
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2', data_path.name.split('/')[-1])
+            if not os.path.exists(os.path.dirname(data_path)):
+                os.makedirs(os.path.dirname(data_path))
+            else:
+                for f in os.listdir(os.path.dirname(data_path)):
+                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
+                        os.remove(os.path.join(os.path.dirname(data_path), f))
+                    elif os.path.isdir(f):
+                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
             write_fake_movie(data_path)
 
             assert(os.path.exists(data_path))
@@ -271,19 +321,31 @@ class GUITests(TestCase):
     def test_extract_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name.split('/')[-1]
+            configfile = config_path.name
+
+            if os.path.exists(configfile):
+                os.remove(configfile)
 
             generate_config_command(configfile)
 
             # writing a file to test following pipeline
             data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
-            input_dir = '/'.join(os.path.dirname(tmp).split('/')[:-1])
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), data_path.name.split('/')[-1])
+            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
+                                     data_path.name.split('/')[-1])
+            if not os.path.exists(os.path.dirname(data_path)):
+                os.makedirs(os.path.dirname(data_path))
+            else:
+                for f in os.listdir(os.path.dirname(data_path)):
+                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
+                        os.remove(os.path.join(os.path.dirname(data_path), f))
+                    elif os.path.isdir(f):
+                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
+
             write_fake_movie(data_path)
 
             assert(os.path.exists(data_path))
-
             ret = extract_command(data_path, None, configfile, skip=True)
             assert('proc' in os.listdir(os.path.dirname(data_path)))
             assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))

@@ -68,7 +68,7 @@ class CLITests(TestCase):
                                              ],
                                    catch_exceptions=False)
 
-            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path.name), 'proc')))
+            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(tmp), 'proc')))
             assert(result.exit_code == 0)
 
 
