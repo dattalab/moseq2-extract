@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
     select_strel, scalar_attributes, save_dict_contents_to_h5, click_param_annot
 
-
 class testExtractUtils(TestCase):
     def test_gen_batch_sequence(self):
 

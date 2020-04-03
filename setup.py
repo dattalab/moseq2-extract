@@ -29,15 +29,7 @@ setup(
     version='0.4.2',
     platforms=['mac', 'unix'],
     packages=find_packages(),
-    install_requires=['h5py', 'matplotlib', 'scipy',
-                      'scikit-image', 'cytoolz',
-                      'tqdm', 'statsmodels', 'numpy',
-                      'joblib', 'scikit-learn',
-                      'click', 'ruamel.yaml',
-                      #'moseq2-pca @ git+https://github.com/dattalab/moseq2-pca.git@code_refactor',
-                      #'moseq2-model @ git+https://github.com/dattalab/moseq2-model.git@code_refactor',
-                      #'moseq2-viz @ git+https://github.com/dattalab/moseq2-viz.git@code_refactor'
-                      ],
+    install_requires=['ruamel.yaml'],
     python_requires='>=3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )

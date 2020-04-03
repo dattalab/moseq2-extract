@@ -11,9 +11,10 @@ from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, fl
 from moseq2_extract.io.image import read_image
 from moseq2_extract.util import (recursive_find_h5s, escape_path,
                                  mouse_threshold_filter, recursive_find_unextracted_dirs)
-from moseq2_pca.cli import train_pca, apply_pca, compute_changepoints
-from moseq2_model.cli import learn_model, count_frames
-from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
+
+#from moseq2_pca.cli import train_pca, apply_pca, compute_changepoints
+#from moseq2_model.cli import learn_model, count_frames
+#from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
 
 def update_progress(progress_file, varK, varV):
     with open(progress_file, 'r') as f:
@@ -108,16 +109,16 @@ def generate_config_command(output_file):
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     objs = extract.params
-    objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
-    objsM, objsF = learn_model.params, count_frames.params
-    objsV1, objsV2 = make_crowd_movies.params, plot_transition_graph.params
+    #objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
+    #objsM, objsF = learn_model.params, count_frames.params
+    #objsV1, objsV2 = make_crowd_movies.params, plot_transition_graph.params
 
-    objsT = objs2+objs3+objs4+objs5+objsM+objsF+objsV1+objsV2
+    #objsT = objs2+objs3+objs4+objs5+objsM+objsF+objsV1+objsV2
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    for obj in objsT:
-        if obj.name not in params.keys():
-            params[obj.name] = obj.default
+    #for obj in objs:
+    #    if obj.name not in params.keys():
+    #        params[obj.name] = obj.default
 
     input_dir = os.path.dirname(output_file)
     params['input_dir'] = input_dir
