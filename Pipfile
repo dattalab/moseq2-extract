@@ -8,7 +8,6 @@ pytest = "*"
 pytest-cov = "*"
 
 [packages]
-opencv-python = '*'
 h5py = '*'
 tqdm = "*"
 scipy = "*"
@@ -18,9 +17,10 @@ joblib = "*"
 cytoolz = "*"
 matplotlib = '*'
 statsmodels = "*"
+ruamel_yaml = '*'
 scikit-image = "*"
 scikit-learn = "*"
-ruamel_yaml = '*'
+opencv-python = '*'
 
 [requires]
 python_version = "3.6"

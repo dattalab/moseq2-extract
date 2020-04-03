@@ -1,12 +1,11 @@
-# import moseq2_extract.extract.proc
-import numpy as np
-import tqdm
-import subprocess
-import matplotlib.pyplot as plt
 import os
-import datetime
 import cv2
 import tarfile
+import datetime
+import subprocess
+import numpy as np
+from tqdm.auto import tqdm
+import matplotlib.pyplot as plt
 
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
@@ -189,7 +188,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     disable = False
     if verbose == 0:
         disable = True
-    for i in tqdm.tqdm(range(frames.shape[0]), disable=disable):
+    for i in tqdm(range(frames.shape[0]), disable=disable):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 
     if close_pipe:
@@ -337,29 +336,19 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     # scale frames d00d
 
     use_cmap = plt.get_cmap(cmap)
-    try:
-        for i in tqdm.tqdm_notebook(range(frames.shape[0]), disable=True, desc="Writing frames"):
-            disp_img = frames[i, ...].copy().astype('float32')
-            disp_img = (disp_img-depth_min)/(depth_max-depth_min)
-            disp_img[disp_img < 0] = 0
-            disp_img[disp_img > 1] = 1
-            disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
-            if frame_range is not None:
-                try:
-                    cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-                except:
-                    pass
-            pipe.stdin.write(disp_img.astype('uint8').tostring())
-    except:
-        for i in tqdm.tqdm(range(frames.shape[0]), desc="Writing frames"):
-            disp_img = frames[i, ...].copy().astype('float32')
-            disp_img = (disp_img-depth_min)/(depth_max-depth_min)
-            disp_img[disp_img < 0] = 0
-            disp_img[disp_img > 1] = 1
-            disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
-            if frame_range is not None:
+
+    for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
+        disp_img = frames[i, ...].copy().astype('float32')
+        disp_img = (disp_img-depth_min)/(depth_max-depth_min)
+        disp_img[disp_img < 0] = 0
+        disp_img[disp_img > 1] = 1
+        disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
+        if frame_range is not None:
+            try:
                 cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-            pipe.stdin.write(disp_img.astype('uint8').tostring())
+            except:
+                pass
+        pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:
         pipe.stdin.close()

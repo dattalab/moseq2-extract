@@ -1,9 +1,9 @@
-from skimage.external import tifffile
-import numpy as np
-import json
 import os
 import ast
+import json
+import numpy as np
 from pathlib import Path
+from skimage.external import tifffile
 
 
 def write_image(filename, image, scale=True,

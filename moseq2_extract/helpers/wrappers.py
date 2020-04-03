@@ -3,8 +3,8 @@ import re
 import sys
 import uuid
 import h5py
-import tqdm
-import urllib
+from tqdm.auto import tqdm
+import urllib.request
 import shutil
 import warnings
 import numpy as np
@@ -28,7 +28,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
     # then stage the copy
 
-    for i, tup in tqdm.tqdm(enumerate(to_load), total=len(to_load), desc='Copying data to yamls'):
+    for i, tup in tqdm(enumerate(to_load), total=len(to_load), desc='Copying data to yamls'):
         with h5py.File(tup[2], 'r') as f:
             tmp = clean_dict(h5_to_dict(f, h5_metadata_path))
             tup[0]['metadata'] = dict(tmp)

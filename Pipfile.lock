@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "50d13325f6014b7c7e643f02a86ecf4fb6b073db2fe58891d984180c9e0f3f13"
+            "sha256": "c1d145150dac83f5248acdc495ee57afff8edad679a6c3524dbf0e9d18fe1632"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -135,6 +135,9 @@
             ],
             "index": "pypi",
             "version": "==3.2.1"
+        },
+        "moseq2-extract": {
+            "path": "."
         },
         "networkx": {
             "hashes": [

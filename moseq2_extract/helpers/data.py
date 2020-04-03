@@ -1,6 +1,6 @@
 import os
 import h5py
-import tqdm
+from tqdm.auto import tqdm
 import shutil
 import tarfile
 import numpy as np
@@ -82,7 +82,7 @@ def get_selected_sessions(to_extract, extract_all):
 # aggregate results helper
 def load_h5s(to_load, snake_case=True):
     loaded = []
-    for _dict, _h5f in tqdm.tqdm_notebook(to_load, desc='Scanning data'):
+    for _dict, _h5f in tqdm(to_load, desc='Scanning data'):
         try:
             # v0.1.3 introduced a change - acq. metadata now here
             tmp = h5_to_dict(_h5f, '/metadata/acquisition')
@@ -166,7 +166,7 @@ def build_manifest(loaded, format, snake_case=True):
 
 def copy_manifest_results(manifest, output_dir):
     # now the key is the source h5 file and the value is the path to copy to
-    for k, v in tqdm.tqdm_notebook(manifest.items(), desc='Copying files'):
+    for k, v in tqdm(manifest.items(), desc='Copying files'):
 
         if os.path.exists(os.path.join(output_dir, '{}.h5'.format(v['copy_path']))):
             continue

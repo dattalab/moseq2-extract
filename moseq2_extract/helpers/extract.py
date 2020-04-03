@@ -1,6 +1,6 @@
 import os
 import sys
-import tqdm
+from tqdm.auto import tqdm
 import datetime
 import numpy as np
 from pathlib import Path
@@ -17,7 +17,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     tracking_init_mean = None
     tracking_init_cov = None
 
-    for i, frame_range in enumerate(tqdm.tqdm_notebook(frame_batches, desc='Processing batches')):
+    for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
         raw_frames = bground_im - raw_frames
         # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
