@@ -8,17 +8,18 @@ pytest = "*"
 pytest-cov = "*"
 
 [packages]
+opencv-python = '*'
 h5py = '*'
-matplotlib = '*'
+tqdm = "*"
 scipy = "*"
+numpy = "*"
+click = "*"
+joblib = "*"
+cytoolz = "*"
+matplotlib = '*'
+statsmodels = "*"
 scikit-image = "*"
 scikit-learn = "*"
-cytoolz = "*"
-tqdm = "*"
-statsmodels = "*"
-numpy = "*"
-joblib = "*"
-click = "*"
 
 [requires]
 python_version = "3.6"
