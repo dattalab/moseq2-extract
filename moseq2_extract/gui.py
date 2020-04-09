@@ -12,11 +12,19 @@ from moseq2_extract.io.image import read_image
 from moseq2_extract.util import (recursive_find_h5s, escape_path,
                                  mouse_threshold_filter, recursive_find_unextracted_dirs)
 
-#from moseq2_pca.cli import train_pca, apply_pca, compute_changepoints
-#from moseq2_model.cli import learn_model, count_frames
-#from moseq2_viz.cli import make_crowd_movies, plot_transition_graph
-
 def update_progress(progress_file, varK, varV):
+    '''
+    Updates progress file with new notebook variable
+    Parameters
+    ----------
+    progress_file (str): path to progress file
+    varK (str): key in progress file to update
+    varV (str): updated value to write
+
+    Returns
+    -------
+    None
+    '''
     with open(progress_file, 'r') as f:
         progress = yaml.safe_load(f)
     f.close()
@@ -28,6 +36,16 @@ def update_progress(progress_file, varK, varV):
     print(f'Successfully updated progress file with {varK} -> {varV}')
 
 def restore_progress_vars(progress_file):
+    '''
+    Restore all saved progress variables to Jupyter Notebook.
+    Parameters
+    ----------
+    progress_file (str): path to progress file
+
+    Returns
+    -------
+    All progress file variables
+    '''
     with open(progress_file, 'r') as f:
         vars = yaml.safe_load(f)
     f.close()
@@ -35,7 +53,18 @@ def restore_progress_vars(progress_file):
     return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
 
 def check_progress(base_dir, progress_filepath, output_directory=None):
+    '''
+    Checks whether progress file exists and prompts user input on whether to overwrite, load old, or generate a new one.
+    Parameters
+    ----------
+    base_dir (str): path to directory to create/find progress file
+    progress_filepath (str): path to progress filename
+    output_directory (str): optional alternative output directory path.
 
+    Returns
+    -------
+    All restored variables or None.
+    '''
     if output_directory is not None:
         progress_filepath = os.path.join(output_directory, progress_filepath.split('/')[-1])
 
@@ -84,8 +113,6 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
                        progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
             elif restore == 'q':
                 return
-
-
     else:
         print('Progress file not found, creating new one.')
         progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD', 'pca_dirname': 'TBD',
@@ -104,21 +131,24 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
                progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
 
 def generate_config_command(output_file):
+    '''
+    Generates configuration file to use throughout pipeline.
+    Parameters
+    ----------
+    output_file (str): path to saved config file.
+
+    Returns
+    -------
+    (str): status message.
+    '''
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     objs = extract.params
-    #objs2, objs3, objs4, objs5 = find_roi.params, train_pca.params, apply_pca.params, compute_changepoints.params
-    #objsM, objsF = learn_model.params, count_frames.params
-    #objsV1, objsV2 = make_crowd_movies.params, plot_transition_graph.params
-
-    #objsT = objs2+objs3+objs4+objs5+objsM+objsF+objsV1+objsV2
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    #for obj in objs:
-    #    if obj.name not in params.keys():
-    #        params[obj.name] = obj.default
 
     input_dir = os.path.dirname(output_file)
     params['input_dir'] = input_dir
@@ -139,7 +169,16 @@ def generate_config_command(output_file):
     return 'Configuration file has been successfully generated.'
 
 def view_extraction(extractions):
+    '''
+    Prompts user to select which extracted video(s) to preview.
+    Parameters
+    ----------
+    extractions (list): list of paths to all extracted avi videos.
 
+    Returns
+    -------
+    extractions (list): list of selected extractions.
+    '''
     if len(extractions) > 1:
         for i, sess in enumerate(extractions):
             print(f'[{str(i + 1)}] {sess}')
@@ -177,6 +216,22 @@ def view_extraction(extractions):
     return extractions
 
 def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False, output_directory=None):
+    '''
+    Searches for all depth files within input_directory with selected extension
+    Parameters
+    ----------
+    input_dir (str): path to directory containing all session folders
+    config_file (str): path to config file
+    ext (str): file extension to search for
+    extract_all (bool): if True, auto searches for all sessions, else, prompts user to select sessions individually.
+    skip_extracted (bool): indicates whether to skip already extracted session.
+    output_directory (str): optional alternative output_directory.
+
+    Returns
+    -------
+    None
+    '''
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -224,12 +279,42 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     print('Extractions Complete.')
 
 def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
+    '''
+    Generates Index File based on aggregated sessions
+    Parameters
+    ----------
+    input_dir (str): path to aggregated_results/ dir
+    pca_file (str): path to pca file
+    output_file (str): index file name
+    filter (list): keys to filter through
+    all_uuids (list): all extracted session uuids
+
+    Returns
+    -------
+    output_file (str): path to index file.
+    '''
     output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids)
     print('Index file successfully generated.')
     return output_file
 
 
 def aggregate_extract_results_command(input_dir, format, output_dir, output_directory=None):
+    '''
+    Finds all extracted h5, yaml and avi files and copies them all to a
+    new directory relabeled with their respective session names.
+    Also generates the index file.
+    Parameters
+    ----------
+    input_dir (str): path to base directory to recursively search for h5s
+    format (str): filename format for info to include in filenames
+    output_dir (str): path to directory to save all aggregated results
+    output_directory (str): alternate path to save results
+
+    Returns
+    -------
+    indexpath (str): path to newly generated index file.
+    '''
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -278,6 +363,18 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     return indexpath
 
 def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
+    '''
+    Find all depth recording sessions (with given extensions) to work on given base directory.
+    Parameters
+    ----------
+    data_dir (str): path to directory containing all session folders
+    exts (list): list of depth file extensions to search for
+
+    Returns
+    -------
+    data_dir (str): path to base_dir to save in progress file
+    found_sessions (int): number of found sessions with given extensions
+    '''
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -318,11 +415,37 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
 
 
 def download_flip_command(output_dir, config_file="", selection=1):
+    '''
+    Downloads flip classifier and saves its path in the inputted config file
+    Parameters
+    ----------
+    output_dir (str): path to output directory to save flip classifier
+    config_file (str): path to config file
+    selection (int): index of which flip file to download (default is Adult male C57 classifer)
+
+    Returns
+    -------
+    None
+    '''
 
     flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
 
 
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
+    '''
+    Computes ROI files given depth file
+    Parameters
+    ----------
+    input_dir (str): path to directory containing depth file
+    config_file (str): path to config file
+    exts (list): list of supported extensions
+    output_directory (str): alternate output path
+
+    Returns
+    -------
+    images (list of 2d arrays): list of 2d array images to graph in Notebook.
+    filenames (list): list of paths to respective image paths
+    '''
 
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -373,6 +496,21 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     return images, filenames
 
 def sample_extract_command(input_dir, config_file, nframes, output_directory=None, exts=['dat', 'mkv', 'avi']):
+    '''
+    Test extract command to extract a subset of the video.
+    Parameters
+    ----------
+    input_dir (str): path to directory containing depth file to extract
+    config_file (str): path to config file
+    nframes (int): number of frames to extract
+    output_directory (str): path to alternative directory
+    exts (list): list of supported depth file extensions.
+
+    Returns
+    -------
+    output_dir (str): path to directory containing sample extraction results.
+    '''
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -413,6 +551,20 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     return output_dir
 
 def extract_command(input_file, output_dir, config_file, num_frames=None, skip=False):
+    '''
+    Command to extract a full depth file
+    Parameters
+    ----------
+    input_file (str): path to depthfile
+    output_dir (str): path to output directory
+    config_file (str): path to config file
+    num_frames (int): number of frames to extract. All if None.
+    skip (bool): skip already extracted file.
+
+    Returns
+    -------
+    None
+    '''
 
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)

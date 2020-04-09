@@ -3,15 +3,17 @@ from tqdm.auto import tqdm
 
 
 def plane_fit3(points):
-    """Fit a plane to 3 points (min number of points for fitting a plane)
-    Args:
-        points (2d numpy array): each row is a group of points,
-        columns correspond to x,y,z
+    '''
+    Fit a plane to 3 points (min number of points for fitting a plane)
+    Parameters
+    ----------
+    points (2d numpy array): each row is a group of points, columns correspond to x,y,z.
 
-    Returns:
-        plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
+    Returns
+    -------
+    plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
+    '''
 
-    """
     a = points[1, :]-points[0, :]
     b = points[2, :]-points[0, :]
     # cross prod
@@ -33,17 +35,26 @@ def plane_fit3(points):
 def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
                  noise_tolerance=30, in_ratio=.1, progress_bar=True,
                  mask=None, gui=False, verbose=0):
-    """Naive RANSAC implementation for plane fitting
-    Args:
-        depth_image (2d numpy array): hxw, background image to fit plane to
-        depth_range (tuple): min/max depth (mm) to consider pixels for plane
-        iters (int): number of RANSAC iterations
-        noise_tolerance (float): dist. from plane to consider a point an inlier
-        in_ratio (float): frac. of points required to consider a plane fit good
+    '''
+    Naive RANSAC implementation for plane fitting
+    Parameters
+    ----------
+    depth_image (2d numpy array): hxw, background image to fit plane to
+    depth_range (tuple): min/max depth (mm) to consider pixels for plane
+    iters (int): number of RANSAC iterations
+    noise_tolerance (float): dist. from plane to consider a point an inlier
+    in_ratio (float): frac. of points required to consider a plane fit good
+    progress_bar (bool): display progress bar
+    mask (bool 2d np.array): boolean mask to find region to use
+    gui (bool): whether GUI is used.
+    verbose (bool): print all information.
 
-    Returns:
-        best_plane (1d numpy array): plane fit to data
-    """
+    Returns
+    -------
+    best_plane (1d numpy array): plane fit to data
+    dist (1d numpy array): distance of the calculated coordinates and "best plane"
+    '''
+
     use_points = np.logical_and(
         depth_image > depth_range[0], depth_image < depth_range[1])
 

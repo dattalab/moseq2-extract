@@ -9,8 +9,23 @@ from skimage.external import tifffile
 def write_image(filename, image, scale=True,
                 scale_factor=None, dtype='uint16',
                 metadata={}, compress=0):
-    """Save image data, possibly with scale factor for easy display
-    """
+    '''
+    Save image data, possibly with scale factor for easy display.
+    Parameters
+    ----------
+    filename (str): path to file to write to.
+    image (2d numpy array): image to write
+    scale (bool): indicates whether to scale image
+    scale_factor (int): factor by which to scale image
+    dtype (str): array data type
+    metadata (dict): dictionary object that contains scaling info
+    compress (int): image compression level
+
+    Returns
+    -------
+
+    '''
+
     file = Path(filename)
 
     metadata = {}
@@ -38,8 +53,19 @@ def write_image(filename, image, scale=True,
 
 
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
-    """Load image data, possibly with scale factor...
-    """
+    '''
+    Load image data, possibly with scale factor...
+    Parameters
+    ----------
+   filename (str): path to file to write to.
+    image (2d numpy array): image to write
+    scale (bool): indicates whether to scale image
+    scale_key (str): indicates scale factor.
+
+    Returns
+    -------
+    image (2d np array): loaded image
+    '''
 
     with tifffile.TiffFile(filename) as tif:
         tmp = tif

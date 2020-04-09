@@ -30,6 +30,51 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
                   verbose=0):
+    '''
+    This function extracts individual chunks from depth videos.
+    It is called from the moseq2_extract.helpers.extract module.
+    Parameters
+    ----------
+    chunk (3d np.ndarray): chunk to extract
+    use_em_tracker (bool): boolean for whether to extract 2D plane using RANSAC.
+    prefilter_space (tuple): spatial kernel size
+    prefilter_time (tuple): temporal kernel size
+    iters_tail (int): number of filtering iterations on mouse tail
+    iters_min (int): minimum tail filtering filter kernel size
+    strel_tail (cv2::StructuringElement - Ellipse): filtering kernel size to filter out mouse tail.
+    strel_min (cv2::StructuringElement - Rectangle): filtering kernel size to filter mouse body in cable recording cases.
+    min_height (int): minimum (mm) distance of mouse to floor.
+    max_height (int): maximum (mm) distance of mouse to floor.
+    mask_threshold (int):
+    use_cc (bool): boolean to use connected components in cv2 structuring elements
+    bground (np.ndarray): numpy array represented previously computed background
+    roi (np.ndarray): numpy array represented previously computed roi
+    rho_mean (int):
+    rho_cov (int):
+    tracking_ll_threshold (int):
+    tracking_segment (bool): boolean for whether to use EM mouse tracking for cable recording cases.
+    tracking_init_mean (float):
+    tracking_init_cov (float):
+    tracking_init_strel (cv2::StructuringElement - Ellipse):
+    flip_classifier (str): path to pre-selected flip classifier.
+    flip_smoothing (int): amount of smoothing to use for flip classifier.
+    frame_dtype (str):
+    save_path: (str):
+    progress_bar (bool):
+    crop_size (tuple): size of the cropped mouse image.
+    true_depth (float): previously computed detected true depth value.
+    centroid_hampel_span (int):
+    centroid_hampel_sig (int):
+    angle_hampel_span (int):
+    angle_hampel_sig (int):
+    model_smoothing_clips (tuple):
+    tracking_model_init (str):
+    verbose (bool):
+
+    Returns
+    -------
+    results: (np.ndarray) - extracted RGB video chunk to be written to file.
+    '''
 
     # if we pass bground or roi files, be sure to use 'em...
 

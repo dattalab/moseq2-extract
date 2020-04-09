@@ -13,6 +13,17 @@ from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
 
 # extract all helper function
 def get_selected_sessions(to_extract, extract_all):
+    '''
+    Given user input, the function will return either selected sessions to extract, or all the sessions.
+    Parameters
+    ----------
+    to_extract (list): list of paths to sessions to extract
+    extract_all (bool): boolean to include all sessions and skip user-input prompt.
+
+    Returns
+    -------
+    to_extract (list): new list of selected sessions to extract.
+    '''
     if len(to_extract) > 1 and not extract_all:
         for i, sess in enumerate(to_extract):
             print(f'[{str(i + 1)}] {sess}')
@@ -79,8 +90,19 @@ def get_selected_sessions(to_extract, extract_all):
 
     return to_extract
 
-# aggregate results helper
+#
 def load_h5s(to_load, snake_case=True):
+    '''
+    aggregate_results() Helper Function to load h5 files.
+    Parameters
+    ----------
+    to_load (list): list of paths to h5 files.
+    snake_case (bool): whether to save the files using snake_case
+
+    Returns
+    -------
+    loaded (list): list of loaded h5 dicts.
+    '''
     loaded = []
     for _dict, _h5f in tqdm(to_load, desc='Scanning data'):
         try:
@@ -110,8 +132,22 @@ def load_h5s(to_load, snake_case=True):
 
     return loaded
 
-# aggregate results helper
+
 def build_manifest(loaded, format, snake_case=True):
+    '''
+    aggregate_results() Helper Function.
+    Builds a manifest file used to contain extraction result metadata from h5 and yaml files.
+    Parameters
+    ----------
+    loaded (list of dicts): list of dicts containing loaded h5 data.
+    format (str): filename format indicating the new name for the metadata files in the aggregate_results dir.
+    snake_case (bool): whether to save the files using snake_case
+
+    Returns
+    -------
+    manifest (dict): dictionary of extraction metadata.
+    '''
+
     manifest = {}
     fallback = 'session_{:03d}'
     fallback_count = 0
@@ -165,6 +201,18 @@ def build_manifest(loaded, format, snake_case=True):
 
 
 def copy_manifest_results(manifest, output_dir):
+    '''
+    Copies all considated manifest results to their respective output files.
+    Parameters
+    ----------
+    manifest (dict): manifest dictionary containing all extraction h5 metadata to save
+    output_dir (str): path to directory where extraction results will be aggregated.
+
+    Returns
+    -------
+    None
+    '''
+
     # now the key is the source h5 file and the value is the path to copy to
     for k, v in tqdm(manifest.items(), desc='Copying files'):
 
@@ -200,6 +248,26 @@ def copy_manifest_results(manifest, output_dir):
 
 
 def handle_extract_metadata(input_file, dirname, config_data, nframes):
+    '''
+    Extracts metadata from input depth files, either raw or compressed.
+    Parameters
+    ----------
+    input_file (str): path to input file to extract
+    dirname (str): path to directory where extraction files reside.
+    config_data (dict): dictionary object containing all required extraction parameters. (auto generated)
+    nframes (int): number of frames to extract.
+
+    Returns
+    -------
+    metadata_path (str): path to respective metadata.json
+    timestamp_path (str): path to respective depth_ts.txt or similar
+    alternate_correct (bool): indicator for whether an alternate timestamp file was used
+    tar (bool): indicator for whether the file is compressed.
+    nframes (int): number of frames to extract
+    first_frame_idx (int): index number of first frame in extraction.
+    last_frame_idx (int): index number of last frame in extraction
+    '''
+
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
         print('Scanning tarball {} (this will take a minute)'.format(input_file))
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
@@ -247,6 +315,29 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
 # extract h5 helper function
 def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
                       nframes, true_depth, roi, bground_im, first_frame, timestamps, extract=None):
+    '''
+
+    Parameters
+    ----------
+    f (h5py.File object): opened h5 file object to write to.
+    acquisition_metadata (dict): Dictionary containing extracted session acquisition metadata.
+    config_data (dict): dictionary object containing all required extraction parameters. (auto generated)
+    status_dict (dict): dictionary that helps indicate if the session has been extracted fully.
+    scalars (list): list of computed scalar metadata.
+    scalars_attrs (dict): dict of respective computed scalar attributes and descriptions to save.
+    nframes (int): number of frames being recorded
+    true_depth (float): computed detected true depth
+    roi (2d np.ndarray): Computed 2D ROI Image.
+    bground_im (2d np.ndarray): Computed 2D Background Image.
+    first_frame (2d np.ndarray): Computed 2D First Frame Image.
+    timestamps (np.array): Array of session timestamps.
+    extract (moseq2_extract.cli.extract function): Used to preseve CLI state parameters in extraction h5.
+
+    Returns
+    -------
+    None
+    '''
+
     f.create_dataset('metadata/uuid', data=status_dict['uuid'])
     for scalar in scalars:
         f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
@@ -305,6 +396,18 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
 
 # Viz functions -- to refactor
 def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
+    '''
+    Loads h5 file and returns dictionary object representing all contained data.
+    Parameters
+    ----------
+    file (h5py.File): h5 file to return dict from.
+    path (str): str path to data within h5 file. E.g. '/'.
+
+    Returns
+    -------
+    ans (dict): dictionary object containing all requested h5 data.
+    '''
+
     ans = {}
     if isinstance(file[path], h5py.Dataset):
         # only use the final path key to add to `ans`
@@ -319,12 +422,17 @@ def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
 
 def h5_to_dict(h5file, path: str = '/') -> dict:
     '''
-    Args:
-        h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
-        path: path to the base dataset within the h5 file. Default: /
-    Returns:
-        a dict with h5 file contents with the same path structure
+
+    Parameters
+    ----------
+    h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
+    path (str): path to the base dataset within the h5 file. Default: '/'
+
+    Returns
+    -------
+    out (dict): a dict with h5 file contents with the same path structure
     '''
+
     if isinstance(h5file, str):
         with h5py.File(h5file, 'r') as f:
             out = _load_h5_to_dict(f, path)
@@ -335,6 +443,16 @@ def h5_to_dict(h5file, path: str = '/') -> dict:
     return out
 
 def clean_dict(dct):
+    '''
+    Standardizes types of dict value.
+    Parameters
+    ----------
+    dct (dict): dict object with mixed type value objects.
+
+    Returns
+    -------
+    dct (dict): dict object with list value objects.
+    '''
 
     def clean_entry(e):
         if isinstance(e, dict):

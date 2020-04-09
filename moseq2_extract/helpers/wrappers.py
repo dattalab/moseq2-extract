@@ -21,6 +21,18 @@ from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata,
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
+    '''
+    Copy's user specified metadata from h5path to a yaml file.
+    Parameters
+    ----------
+    input_dir (str): path to directory containing h5 files
+    h5_metadata_path (str): path within h5 to desired metadata to copy to yaml.
+
+    Returns
+    -------
+    None
+    '''
+
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
     to_load = [(tmp, yml, file) for tmp, yml, file in zip(
         dicts, yamls, h5s) if tmp['complete'] and not tmp['skip']]
@@ -43,6 +55,21 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 
 
 def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
+    '''
+    Generates index file containing a summary of all extracted sessions.
+    Parameters
+    ----------
+    input_dir (str): directory to search for extracted sessions.
+    pca_file (str): path to pca_scores file.
+    output_file (str): preferred name of the index file.
+    filter (list): list of metadata keys to conditionally filter.
+    all_uuids (list): list of all session uuids.
+
+    Returns
+    -------
+    output_file (str): path to index file.
+    '''
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -114,7 +141,26 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
 
 
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
+    '''
+    Wrapper function to compute ROI given depth file.
+    Parameters
+    ----------
+    input_file (str): path to depth file.
+    config_data (dict): dictionary of ROI extraction parameters.
+    output_dir (str): path to desired directory to save results in.
+    output_directory (str): GUI optional secondary external save directory path
+    gui (bool): indicate whether GUI is running.
+    extract_helper (bool): indicate whether this is being run independently or by extract function
 
+    Returns
+    -------
+    if gui:
+        output_dir (str): path to saved ROI results
+    elif extract_helper:
+        roi (2d array): ROI image to plot in GUI
+        bground_im (2d array): Background image to plot in GUI
+        first_frame (2d array): First frame image to plot in GUI
+    '''
     if gui:
         if output_directory is not None:
             output_dir = os.path.join(output_directory, 'proc')
@@ -189,7 +235,22 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
         return roi, bground_im, first_frame # HELPER
 
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, extract=None, gui=False):
-    # get the background and roi, which will be used across all batches
+    '''
+    Wrapper function to run extract function for both GUI and CLI
+    Parameters
+    ----------
+    input_file (str): path to depth file
+    output_dir (str): path to directory to save results in.
+    config_data (dict): dictionary containing extraction parameters.
+    num_frames (int): number of frames to extract. All if None.
+    skip (bool): indicates whether to skip file if already extracted
+    extract (function): extraction function state (Only passed by CLI)
+    gui (bool): indicates if GUI is running.
+
+    Returns
+    -------
+    output_dir (str): path to directory containing extraction (only if gui==True)
+    '''
 
     ## NEW FUNCTIONALITY S
     if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
@@ -332,6 +393,19 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         return output_dir
 
 def flip_file_wrapper(config_file, output_dir, selected_flip=1, gui=False):
+    '''
+    Wrapper function to download and save flip classifiers.
+    Parameters
+    ----------
+    config_file (str): path to config file
+    output_dir (str): path to directory to save classifier in.
+    selected_flip (int): index of desired flip classifier.
+    gui (bool): indicates if the GUI is running.
+
+    Returns
+    -------
+    None
+    '''
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
