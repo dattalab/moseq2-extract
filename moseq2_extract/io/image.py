@@ -11,6 +11,7 @@ def write_image(filename, image, scale=True,
                 metadata={}, compress=0):
     '''
     Save image data, possibly with scale factor for easy display.
+
     Parameters
     ----------
     filename (str): path to file to write to.
@@ -55,6 +56,7 @@ def write_image(filename, image, scale=True,
 def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
     '''
     Load image data, possibly with scale factor...
+
     Parameters
     ----------
    filename (str): path to file to write to.

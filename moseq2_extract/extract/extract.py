@@ -33,6 +33,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     '''
     This function extracts individual chunks from depth videos.
     It is called from the moseq2_extract.helpers.extract module.
+
     Parameters
     ----------
     chunk (3d np.ndarray): chunk to extract

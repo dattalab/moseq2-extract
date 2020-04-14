@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     '''
-    Gets info from a raw data file with specified frame dimensions and bit depth
+    Gets info from a raw data file with specified frame dimensions and bit depth.
+
     Parameters
     ----------
     filename (string): name of raw data file
@@ -62,6 +63,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
 def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
     '''
     Reads in data from raw binary file.
+
     Parameters
     ----------
     filename (string): name of raw data file
@@ -105,7 +107,8 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
 def get_video_info(filename):
     '''
-    Get dimensions of data compressed using ffv1, along with duration via ffmpeg
+    Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
+
     Parameters
     ----------
     filename (string): name of file
@@ -144,6 +147,7 @@ def get_video_info(filename):
 def convert_mkv_to_avi(filename):
     '''
     Converts Azure MKV video file format to AVI.
+
     Parameters
     ----------
     filename (str) path to mkv file to convert
@@ -172,6 +176,7 @@ def write_frames(filename, frames, threads=6, fps=30,
                  pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False, verbose=0):
     '''
     Write frames to avi file using the ffv1 lossless encoder
+
     Parameters
     ----------
     filename (str): path to file to write to.
@@ -242,6 +247,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
                 slices=24, slicecrc=1, get_cmd=False):
     '''
     Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
+
     Parameters
     ----------
     filename (str): filename to get frames from
@@ -332,7 +338,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          get_cmd=False, cmap='jet',
                          pipe=None, close_pipe=True, frame_range=None):
     '''
-    Writes out a false-colored mp4 video
+    Writes out a false-colored mp4 video.
+
     Parameters
     ----------
     filename (str): path to file to write to.
@@ -489,7 +496,8 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
 def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     '''
-    Gets movie info
+    Returns dict of movie metadata.
+
     Parameters
     ----------
     filename (str): path to video file

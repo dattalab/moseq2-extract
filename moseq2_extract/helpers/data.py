@@ -15,6 +15,7 @@ from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
 def get_selected_sessions(to_extract, extract_all):
     '''
     Given user input, the function will return either selected sessions to extract, or all the sessions.
+
     Parameters
     ----------
     to_extract (list): list of paths to sessions to extract
@@ -94,6 +95,7 @@ def get_selected_sessions(to_extract, extract_all):
 def load_h5s(to_load, snake_case=True):
     '''
     aggregate_results() Helper Function to load h5 files.
+
     Parameters
     ----------
     to_load (list): list of paths to h5 files.
@@ -137,6 +139,7 @@ def build_manifest(loaded, format, snake_case=True):
     '''
     aggregate_results() Helper Function.
     Builds a manifest file used to contain extraction result metadata from h5 and yaml files.
+
     Parameters
     ----------
     loaded (list of dicts): list of dicts containing loaded h5 data.
@@ -203,6 +206,7 @@ def build_manifest(loaded, format, snake_case=True):
 def copy_manifest_results(manifest, output_dir):
     '''
     Copies all considated manifest results to their respective output files.
+
     Parameters
     ----------
     manifest (dict): manifest dictionary containing all extraction h5 metadata to save
@@ -250,6 +254,7 @@ def copy_manifest_results(manifest, output_dir):
 def handle_extract_metadata(input_file, dirname, config_data, nframes):
     '''
     Extracts metadata from input depth files, either raw or compressed.
+
     Parameters
     ----------
     input_file (str): path to input file to extract
@@ -316,6 +321,7 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
 def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
                       nframes, true_depth, roi, bground_im, first_frame, timestamps, extract=None):
     '''
+    Creates h5 file that holds all extracted frames and other metadata (such as scalars).
 
     Parameters
     ----------
@@ -398,6 +404,7 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
 def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
     '''
     Loads h5 file and returns dictionary object representing all contained data.
+
     Parameters
     ----------
     file (h5py.File): h5 file to return dict from.
@@ -422,6 +429,8 @@ def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
 
 def h5_to_dict(h5file, path: str = '/') -> dict:
     '''
+    Loads h5 file and returns dictionary object representing all contained data,
+    given a path within the h5 file.
 
     Parameters
     ----------
@@ -445,6 +454,7 @@ def h5_to_dict(h5file, path: str = '/') -> dict:
 def clean_dict(dct):
     '''
     Standardizes types of dict value.
+
     Parameters
     ----------
     dct (dict): dict object with mixed type value objects.

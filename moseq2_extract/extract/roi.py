@@ -5,6 +5,7 @@ from tqdm.auto import tqdm
 def plane_fit3(points):
     '''
     Fit a plane to 3 points (min number of points for fitting a plane)
+
     Parameters
     ----------
     points (2d numpy array): each row is a group of points, columns correspond to x,y,z.
@@ -37,6 +38,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
                  mask=None, gui=False, verbose=0):
     '''
     Naive RANSAC implementation for plane fitting
+
     Parameters
     ----------
     depth_image (2d numpy array): hxw, background image to fit plane to

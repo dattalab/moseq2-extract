@@ -15,6 +15,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
                             true_depth, tar, strel_tail, strel_min, output_dir, output_filename):
     '''
     Compute extracted frames and save them to h5 files and avi files.
+
     Parameters
     ----------
     f (h5py.File): opened h5 file to write extracted batches to
@@ -125,7 +126,8 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 
 def run_local_extract(to_extract, params, prefix, skip_extracted, output_directory):
     '''
-    Runs the extract command on given list of sessions to extract on local platform
+    Runs the extract command on given list of sessions to extract on local platform.
+
     Parameters
     ----------
     to_extract (list): list of paths to files to extract
@@ -183,7 +185,8 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
 
 def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory):
     '''
-    Runs the extract command on given list of sessions to extract on SLURM platform
+    Runs the extract command on given list of sessions to extract on SLURM platform.
+
     Parameters
     ----------
     to_extract (list): list of paths to files to extract

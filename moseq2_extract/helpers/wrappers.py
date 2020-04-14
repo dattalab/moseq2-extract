@@ -23,6 +23,7 @@ from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata,
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
     Copy's user specified metadata from h5path to a yaml file.
+
     Parameters
     ----------
     input_dir (str): path to directory containing h5 files
@@ -57,6 +58,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
     '''
     Generates index file containing a summary of all extracted sessions.
+
     Parameters
     ----------
     input_dir (str): directory to search for extracted sessions.
@@ -143,6 +145,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
     '''
     Wrapper function to compute ROI given depth file.
+
     Parameters
     ----------
     input_file (str): path to depth file.
@@ -236,7 +239,8 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
 
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, extract=None, gui=False):
     '''
-    Wrapper function to run extract function for both GUI and CLI
+    Wrapper function to run extract function for both GUI and CLI.
+
     Parameters
     ----------
     input_file (str): path to depth file
@@ -395,6 +399,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 def flip_file_wrapper(config_file, output_dir, selected_flip=1, gui=False):
     '''
     Wrapper function to download and save flip classifiers.
+
     Parameters
     ----------
     config_file (str): path to config file

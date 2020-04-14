@@ -15,6 +15,7 @@ from moseq2_extract.util import (recursive_find_h5s, escape_path,
 def update_progress(progress_file, varK, varV):
     '''
     Updates progress file with new notebook variable
+
     Parameters
     ----------
     progress_file (str): path to progress file
@@ -38,6 +39,7 @@ def update_progress(progress_file, varK, varV):
 def restore_progress_vars(progress_file):
     '''
     Restore all saved progress variables to Jupyter Notebook.
+
     Parameters
     ----------
     progress_file (str): path to progress file
@@ -55,6 +57,7 @@ def restore_progress_vars(progress_file):
 def check_progress(base_dir, progress_filepath, output_directory=None):
     '''
     Checks whether progress file exists and prompts user input on whether to overwrite, load old, or generate a new one.
+
     Parameters
     ----------
     base_dir (str): path to directory to create/find progress file
@@ -133,6 +136,7 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
 def generate_config_command(output_file):
     '''
     Generates configuration file to use throughout pipeline.
+
     Parameters
     ----------
     output_file (str): path to saved config file.
@@ -171,6 +175,7 @@ def generate_config_command(output_file):
 def view_extraction(extractions):
     '''
     Prompts user to select which extracted video(s) to preview.
+
     Parameters
     ----------
     extractions (list): list of paths to all extracted avi videos.
@@ -218,6 +223,7 @@ def view_extraction(extractions):
 def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False, output_directory=None):
     '''
     Searches for all depth files within input_directory with selected extension
+
     Parameters
     ----------
     input_dir (str): path to directory containing all session folders
@@ -281,6 +287,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     '''
     Generates Index File based on aggregated sessions
+
     Parameters
     ----------
     input_dir (str): path to aggregated_results/ dir
@@ -303,6 +310,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
     Also generates the index file.
+
     Parameters
     ----------
     input_dir (str): path to base directory to recursively search for h5s
@@ -365,6 +373,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
 def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     '''
     Find all depth recording sessions (with given extensions) to work on given base directory.
+
     Parameters
     ----------
     data_dir (str): path to directory containing all session folders
@@ -417,6 +426,7 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
 def download_flip_command(output_dir, config_file="", selection=1):
     '''
     Downloads flip classifier and saves its path in the inputted config file
+
     Parameters
     ----------
     output_dir (str): path to output directory to save flip classifier
@@ -434,6 +444,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
     '''
     Computes ROI files given depth file
+
     Parameters
     ----------
     input_dir (str): path to directory containing depth file
@@ -498,6 +509,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
 def sample_extract_command(input_dir, config_file, nframes, output_directory=None, exts=['dat', 'mkv', 'avi']):
     '''
     Test extract command to extract a subset of the video.
+
     Parameters
     ----------
     input_dir (str): path to directory containing depth file to extract
@@ -553,6 +565,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 def extract_command(input_file, output_dir, config_file, num_frames=None, skip=False):
     '''
     Command to extract a full depth file
+
     Parameters
     ----------
     input_file (str): path to depthfile

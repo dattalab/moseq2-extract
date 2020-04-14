@@ -51,7 +51,8 @@ def command_with_config(config_file_param_name):
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
-    Generates batches used to chunk videos prior to extraction
+    Generates batches used to chunk videos prior to extraction.
+
     Parameters
     ----------
     nframes (int): total number of frames
@@ -71,6 +72,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
 def load_timestamps(timestamp_file, col=0):
     '''
     Read timestamps from space delimited text file.
+
     Parameters
     ----------
     timestamp_file (str): path to timestamp file
@@ -103,6 +105,7 @@ def load_timestamps(timestamp_file, col=0):
 def load_metadata(metadata_file):
     '''
     Loads metadata.
+
     Parameters
     ----------
     metadata_file (str): path to metadata file
@@ -126,7 +129,8 @@ def load_metadata(metadata_file):
 
 def select_strel(string='e', size=(10, 10)):
     '''
-    Returns structuring element of specified shape
+    Returns structuring element of specified shape.
+
     Parameters
     ----------
     string (str): indicates whether to use ellipse or rectangle
@@ -146,12 +150,13 @@ def select_strel(string='e', size=(10, 10)):
     return strel
 
 
-# http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
-# http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
-# http://smeenk.com/kinect-field-of-view-comparison/
 def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), true_depth=673.1):
     '''
     Converts x, y coordinates in pixel space to mm.
+    # http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
+    # http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
+    # http://smeenk.com/kinect-field-of-view-comparison/
+
     Parameters
     ----------
     coords (list): list of x,y pixel coordinates
@@ -182,6 +187,7 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
 def scalar_attributes():
     '''
     Gets scalar attributes
+
     Returns
     -------
     attributes (dict): collection of metadata keys and descriptions.
@@ -212,6 +218,7 @@ def scalar_attributes():
 def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
     '''
     Converts depth file to avi file.
+
     Parameters
     ----------
     input_file (str): path to depth file
@@ -250,9 +257,22 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     os.system(base_command)
 
 
-# from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
-# dang this is fast!
+
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
+    '''
+    # from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
+    # dang this is fast!
+
+    Parameters
+    ----------
+    a (np.ndarray) - array to get subarrarys from.
+    L (int) - Window Length
+    S (int) - Stride size
+
+    Returns
+    -------
+    (np.ndarray) - array of subarrays at stride S.
+    '''
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
     return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S*n, n))
@@ -262,6 +282,7 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
     '''
     Save an dict to an h5 file, mounting at root.
     Keys are mapped to group names recursively.
+
     Parameters
     ----------
     h5 (h5py.File instance): h5py.file object to operate on
@@ -310,6 +331,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
                        yaml_string='{}.yaml'):
     '''
     Recursively find h5 files, along with yaml files with the same basename
+
     Parameters
     ----------
     root_dir (str): path to base directory to begin recursive search in.
@@ -348,6 +370,7 @@ def escape_path(path):
     '''
     Given current path, will return a path to return to original base directory.
     (Used in recursive h5 search, etc.)
+
     Parameters
     ----------
     path (str): path to current working dir
@@ -361,6 +384,7 @@ def escape_path(path):
 def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     '''
     Removes invalid characters for a file name from a string.
+
     Parameters
     ----------
     file_str (str): filename substring to replace
@@ -377,6 +401,7 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
 def load_textdata(data_file, dtype=np.float32):
     '''
     Loads timestamp from txt/csv file
+
     Parameters
     ----------
     data_file (str): path to timestamp file
@@ -406,6 +431,7 @@ def time_str_for_filename(time_str: str) -> str:
     '''
     Process the time string supplied by moseq to be used in a filename. This
     removes colons, milliseconds, and timezones.
+
     Parameters
     ----------
     time_str (str): time str to format
@@ -448,6 +474,7 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
 def read_yaml(yaml_file):
     '''
     Reads yaml file into dict object
+
     Parameters
     ----------
     yaml_file (str): path to yaml file
@@ -469,6 +496,7 @@ def read_yaml(yaml_file):
 def mouse_threshold_filter(h5file, thresh=0):
     '''
     Filters frames in h5 files by threshold value
+
     Parameters
     ----------
     h5file (str): path to h5 file
@@ -487,6 +515,7 @@ def mouse_threshold_filter(h5file, thresh=0):
 def _load_h5_to_dict(file: h5py.File, path) -> dict:
     '''
     Loads h5 contents to dictionary object.
+
     Parameters
     ----------
     h5file (h5py.File): file path to the given h5 file or the h5 file handle
@@ -509,6 +538,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 def h5_to_dict(h5file, path) -> dict:
     '''
     Loads h5 contents to dictionary object.
+
     Parameters
     ----------
     h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
@@ -535,6 +565,7 @@ _underscorer2 = re.compile('([a-z0-9])([A-Z])')
 def camel_to_snake(s):
     '''
     Converts CamelCase to snake_case
+
     Parameters
     ----------
     s (str): CamelCase string to convert to snake_case.
@@ -556,6 +587,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     skip_checks=True):
     '''
     Recursively find unextracted (or incompletely extracted) directories
+
     Parameters
     ----------
     root_dir (os Path-like): path to base directory to start recursive search from.
@@ -597,6 +629,7 @@ def click_param_annot(click_cmd):
     '''
     Given a click.Command instance, return a dict that maps option names to help strings.
     Currently skips click.Arguments, as they do not have help strings.
+
     Parameters
     ----------
     click_cmd (click.Command): command to introspect
