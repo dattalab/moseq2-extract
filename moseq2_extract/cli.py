@@ -154,8 +154,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
-        output_file = os.path.join(os.path.dirname(input_file),
-                                   '{}.avi'.format(base_filename))
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
@@ -179,12 +178,12 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 
@@ -201,7 +200,7 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
         avi_encode = True
-        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
     else:
         output_filename, ext = os.path.splitext(os.path.basename(output_file))
         if ext == '.avi':
@@ -244,12 +243,12 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 

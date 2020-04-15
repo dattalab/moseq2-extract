@@ -1,4 +1,3 @@
-import os
 import ast
 import json
 import numpy as np
@@ -15,16 +14,16 @@ def write_image(filename, image, scale=True,
     Parameters
     ----------
     filename (str): path to file to write to.
-    image (2d numpy array): image to write
-    scale (bool): indicates whether to scale image
+    image (2d numpy array): the (unscaled) 2-D image to save
+    scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
     dtype (str): array data type
-    metadata (dict): dictionary object that contains scaling info
+    metadata (dict): [UNUSED] dictionary object that contains scaling info
     compress (int): image compression level
 
     Returns
     -------
-
+    None
     '''
 
     file = Path(filename)
@@ -84,10 +83,10 @@ def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
             scale_factor = ast.literal_eval(image_desc[scale_key])
 
         if type(scale_factor) is int:
-            image = image/scale_factor
+            image = image / scale_factor
         elif type(scale_factor) is tuple:
             iinfo = np.iinfo(image.dtype)
             image = image.astype('float32')/iinfo.max
-            image = image*(scale_factor[1]-scale_factor[0])+scale_factor[0]
+            image = image * (scale_factor[1] - scale_factor[0]) + scale_factor[0]
 
     return image

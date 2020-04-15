@@ -100,7 +100,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
         frame_range = frame_range[offset:]
 
         for scalar in scalars:
-            f['scalars/{}'.format(scalar)][frame_range] = results['scalars'][scalar][offset:, ...]
+            f[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:, ...]
 
         f['frames'][frame_range] = results['depth_frames'][offset:, ...]
         f['frames_mask'][frame_range] = results['mask_frames'][offset:, ...]
@@ -116,7 +116,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
         output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = raw_frames[offset:, ...]
 
         video_pipe = write_frames_preview(
-            os.path.join(output_dir, '{}.mp4'.format(output_filename)), output_movie,
+            os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
             pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
             frame_range=[f + first_frame_idx for f in frame_range],
             depth_max=config_data['max_height'], depth_min=config_data['min_height'])

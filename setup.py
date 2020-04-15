@@ -26,7 +26,7 @@ setup(
     name='moseq2-extract',
     author='Jeff Markowitz',
     description='To boldly go where no mouse has gone before',
-    version='0.4.2',
+    version='0.4.3',
     platforms=['mac', 'unix'],
     packages=find_packages(),
     install_requires=['ruamel.yaml'],

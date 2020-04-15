@@ -274,7 +274,7 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
     '''
 
     if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
-        print('Scanning tarball {} (this will take a minute)'.format(input_file))
+        print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
 
@@ -346,8 +346,8 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
 
     f.create_dataset('metadata/uuid', data=status_dict['uuid'])
     for scalar in scalars:
-        f.create_dataset('scalars/{}'.format(scalar), (nframes,), 'float32', compression='gzip')
-        f['scalars/{}'.format(scalar)].attrs['description'] = scalars_attrs[scalar]
+        f.create_dataset(f'scalars/{scalar}', (nframes,), 'float32', compression='gzip')
+        f[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
     if timestamps is not None:
         f.create_dataset('timestamps', compression='gzip', data=timestamps)
@@ -396,9 +396,9 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
             value = [n.encode('utf8') for n in value]
 
         if value is not None:
-            f.create_dataset('metadata/acquisition/{}'.format(key), data=value)
+            f.create_dataset(f'metadata/acquisition/{key}', data=value)
         else:
-            f.create_dataset('metadata/acquisition/{}'.format(key), dtype="f")
+            f.create_dataset(f'metadata/acquisition/{key}', dtype="f")
 
 # Viz functions -- to refactor
 def _load_h5_to_dict(file: h5py.File, path: str) -> dict:

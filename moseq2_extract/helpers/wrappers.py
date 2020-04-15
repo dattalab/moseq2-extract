@@ -228,7 +228,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
     roi = rois[bg_roi_index[0]]
 
     for idx in bg_roi_index:
-        roi_filename = 'roi_{:02d}.tiff'.format(idx)
+        roi_filename = f'roi_{idx:02d}.tiff'
         write_image(os.path.join(output_dir, roi_filename),
                     rois[idx], scale=True, dtype='uint8')
 
@@ -256,14 +256,13 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     output_dir (str): path to directory containing extraction (only if gui==True)
     '''
 
-    ## NEW FUNCTIONALITY S
+
     if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
         config_data['spatial_filter_size'][0] += 1
     if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
         config_data['temporal_filter_size'][0] += 1
-    # NEW FUNCTIONALITY E
 
-    print('Processing: {}'.format(input_file))
+    print('Processing:', input_file)
     # get the basic metadata
 
     status_dict = {
@@ -316,8 +315,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    output_filename = 'results_{:02d}'.format(config_data['bg_roi_index'])
-    status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
+    output_filename = f'results_{config_data["bg_roi_index"]:02d}'
+    status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
     if not gui:
         # CLI FUNCTIONALITY
@@ -358,10 +357,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         new_bg = np.ma.masked_not_equal(roi, 0)
         bground_im = np.where(new_bg == True, new_bg, true_depth)
 
-    print('Detected true depth: {}'.format(true_depth))
+    print('Detected true depth:', true_depth)
 
     # farm out the batches and write to an hdf5 file
-    with h5py.File(os.path.join(output_dir, '{}.h5'.format(output_filename)), 'w') as f:
+    with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:
 
         create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
                           true_depth, roi, bground_im, first_frame, timestamps, extract=extract)
@@ -383,6 +382,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                                         delete=False, # to be changed when we're ready!
                                         threads=config_data['compress_threads'])
     except AttributeError as e:
+        print('Error converting raw video to avi format, continuing anyway...')
+        print(e)
         pass
 
     status_dict['complete'] = True
@@ -430,8 +431,8 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=1, gui=False):
     if gui:
         selection = selected_flip
     else:
-        for i, f in enumerate(flip_files):
-            print(f'[{i}] {f}')
+        for idx, (k, v) in enumerate(flip_files.items()):
+            print(f'[{idx}] {k} ---> {v}')
 
         while selection is None:
             selection = int(input('Enter a selection '))
@@ -450,18 +451,18 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=1, gui=False):
             ow = input()
             if ow == 'Y':
                 urllib.request.urlretrieve(selection, output_filename)
-                print('Successfully downloaded flip file to {}'.format(output_filename))
+                print('Successfully downloaded flip file to', output_filename)
             else:
                 with open(config_file, 'r') as f:
                     config_data = yaml.safe_load(f)
                 f.close()
-                return 'Retained older flip file version: {}'.format(config_data['flip_classifier'])
+                return f'Retained older flip file version: {config_data["flip_classifier"]}'
         else:
             urllib.request.urlretrieve(selection, output_filename)
-            print('Successfully downloaded flip file to {}'.format(output_filename))
+            print('Successfully downloaded flip file to', output_filename)
     else:
         urllib.request.urlretrieve(selection, output_filename)
-        print('Successfully downloaded flip file to {}'.format(output_filename))
+        print('Successfully downloaded flip file to', output_filename)
 
     try:
         with open(config_file, 'r') as f:

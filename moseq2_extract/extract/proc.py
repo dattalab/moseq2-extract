@@ -424,16 +424,16 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         mask = np.zeros((frames.shape), 'uint8')
 
     features = {
-        'centroid': np.empty((nframes, 2)),
-        'orientation': np.empty((nframes,)),
-        'axis_length': np.empty((nframes, 2))
+        'centroid': np.full((nframes, 2), np.nan),
+        'orientation': np.full((nframes,), np.nan),
+        'axis_length': np.full((nframes, 2), np.nan)
     }
 
     for k, v in features.items():
         features[k][:] = np.nan
 
     if verbose == 0:
-            progress_bar = False
+        progress_bar = False
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
         frame_mask = frames[i, ...] > frame_threshold
