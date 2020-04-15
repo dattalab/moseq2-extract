@@ -6,7 +6,6 @@ Subpackages
 
 .. toctree::
 
-   readme
    moseq2-extract.moseq2_extract
 
 Module contents

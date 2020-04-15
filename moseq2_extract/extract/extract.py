@@ -46,31 +46,31 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     strel_min (cv2::StructuringElement - Rectangle): filtering kernel size to filter mouse body in cable recording cases.
     min_height (int): minimum (mm) distance of mouse to floor.
     max_height (int): maximum (mm) distance of mouse to floor.
-    mask_threshold (int):
+    mask_threshold (int): Threshold on log-likelihood to include pixels for centroid and angle calculation
     use_cc (bool): boolean to use connected components in cv2 structuring elements
     bground (np.ndarray): numpy array represented previously computed background
     roi (np.ndarray): numpy array represented previously computed roi
-    rho_mean (int):
-    rho_cov (int):
+    rho_mean (int): smoothing parameter for the mean
+    rho_cov (int): smoothing parameter for the covariance
     tracking_ll_threshold (int):
     tracking_segment (bool): boolean for whether to use EM mouse tracking for cable recording cases.
-    tracking_init_mean (float):
-    tracking_init_cov (float):
+    tracking_init_mean (float): Initialized mean value for EM Tracking
+    tracking_init_cov (float): Initialized covariance value for EM Tracking
     tracking_init_strel (cv2::StructuringElement - Ellipse):
     flip_classifier (str): path to pre-selected flip classifier.
     flip_smoothing (int): amount of smoothing to use for flip classifier.
-    frame_dtype (str):
-    save_path: (str):
-    progress_bar (bool):
+    frame_dtype (str): Data type for processed frames
+    save_path: (str): Path to save extracted results
+    progress_bar (bool): Display progress bar
     crop_size (tuple): size of the cropped mouse image.
     true_depth (float): previously computed detected true depth value.
-    centroid_hampel_span (int):
-    centroid_hampel_sig (int):
-    angle_hampel_span (int):
-    angle_hampel_sig (int):
-    model_smoothing_clips (tuple):
-    tracking_model_init (str):
-    verbose (bool):
+    centroid_hampel_span (int): Hampel filter span kernel size
+    centroid_hampel_sig (int):  Hampel filter standard deviation
+    angle_hampel_span (int): Angle filter span kernel size
+    angle_hampel_sig (int): Angle filter standard deviation
+    model_smoothing_clips (tuple): Model smoothing clips
+    tracking_model_init (str): Method for tracking model initialization
+    verbose (bool): Level of verbosity during extraction process. [0-2]
 
     Returns
     -------

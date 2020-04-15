@@ -31,7 +31,8 @@ extensions = [
 'sphinx.ext.napoleon',
 'sphinx.ext.autodoc',
 'sphinx.ext.autosummary',
-'rst2pdf.pdfbuilder'
+'rst2pdf.pdfbuilder',
+'sphinx_click.ext'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
