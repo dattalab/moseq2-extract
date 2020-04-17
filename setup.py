@@ -29,7 +29,10 @@ setup(
     version='0.4.3',
     platforms=['mac', 'unix'],
     packages=find_packages(),
-    install_requires=['ruamel.yaml'],
+    install_requires=['h5py', 'tqdm', 'scipy', 'numpy', 'click',
+                      'joblib', 'cytoolz', 'matplotlib', 'statsmodels',
+                      'scikit-image', 'scikit-learn', 'opencv-python',
+                      'ruamel.yaml'],
     python_requires='>=3.6',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )
