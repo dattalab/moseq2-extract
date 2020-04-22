@@ -831,11 +831,11 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    if input_file.endswith('.mkv'):
+    #if input_file.endswith('.mkv'):
         # create a depth.avi file to represent PCs
-        temp = convert_mkv_to_avi(input_file)
-        if isinstance(temp, str):
-            input_file = temp
+    #    temp = convert_mkv_to_avi(input_file)
+    #    if isinstance(temp, str):
+    #        input_file = temp
 
     print('Getting background...')
     bground_im = get_bground_im_file(input_file)
@@ -846,12 +846,14 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
                 scale_factor=config_data['bg_roi_depth_range'])
 
     print('Getting roi...')
+
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
 
     rois, _, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
-                                  dilate_iters=config_data['dilate_iterations'],
+                                  dilate_iters=config_data.get('dilate_iterations', 1),
                                   weights=config_data['bg_roi_weights'],
+                                  noise_tolerance=config_data.get('noise_tolerance', 30),
                                   depth_range=config_data['bg_roi_depth_range'],
                                   gradient_filter=config_data['bg_roi_gradient_filter'],
                                   gradient_threshold=config_data['bg_roi_gradient_threshold'],
@@ -1017,9 +1019,9 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         yaml.safe_dump(status_dict, f)
 
     bg_roi_file = input_file
-    if input_file.endswith('.mkv'):
-        # create a depth.avi file to represent PCs
-        bg_roi_file = convert_mkv_to_avi(input_file)
+    #if input_file.endswith('.mkv'):
+    #    # create a depth.avi file to represent PCs
+    #    bg_roi_file = convert_mkv_to_avi(input_file)
 
     # get the background and roi, which will be used across all batches
     print('Getting background...')
@@ -1037,15 +1039,15 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     strel_tail = select_strel(config_data['tail_filter_shape'], tuple(config_data['tail_filter_size']))
     strel_min = select_strel(config_data['cable_filter_shape'], tuple(config_data['cable_filter_size']))
 
-
     print('Getting roi...')
     rois, plane, _, _, _, _ = get_roi(bground_im,
                                       strel_dilate=strel_dilate,
-                                      dilate_iters=config_data['dilate_iterations'],
+                                      dilate_iters=config_data.get('dilate_iterations', 1),
                                       weights=config_data['bg_roi_weights'],
                                       depth_range=config_data['bg_roi_depth_range'],
                                       gradient_filter=config_data['bg_roi_gradient_filter'],
                                       gradient_threshold=config_data['bg_roi_gradient_threshold'],
+                                      noise_tolerance=config_data.get('noise_tolerance', 30),
                                       gradient_kernel=config_data['bg_roi_gradient_kernel'],
                                       fill_holes=config_data['bg_roi_fill_holes'],
                                       gui=True)
@@ -1068,9 +1070,32 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         true_depth = np.median(bground_im[roi > 0])
     else:
         true_depth = config_data['detected_true_depth']
-    if input_file.endswith('mkv'):
-        new_bg = np.ma.masked_not_equal(roi, 0)
-        bground_im = np.where(new_bg == True, new_bg, true_depth)
+
+    if config_data['dilate_iterations'] > 1:
+        print('Dilating background')
+        import cv2
+
+        # store old and new backgrounds
+        old_bg = deepcopy(bground_im)
+
+        # dilate background size to match ROI size and attribute wall noise to cancel out
+        bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data['dilate_iterations'])
+
+        # get region difference between dilated ROI and original background
+        tmp = old_bg-bground_im
+
+        # get diff boundaries
+        kernel = np.ones((3, 3), np.uint8)
+        gradient = cv2.morphologyEx(tmp, cv2.MORPH_GRADIENT, kernel)
+
+        mask = np.ma.masked_greater_equal(gradient, old_bg)
+        bground_im = np.where(mask == True, old_bg, gradient)
+        write_image(os.path.join(output_dir, 'gradient_mask.tiff'), gradient, scale=True)
+
+        # cover wall noise within bground
+        bground_im = cv2.morphologyEx(bground_im, cv2.MORPH_CLOSE, strel_dilate, iterations=config_data['dilate_iterations'])
+        #bground_im = cv2.dilate(bground_im, strel_dilate, iterations=2)
+        write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
 
     print('Detected true depth: {}'.format(true_depth))
 
@@ -1148,6 +1173,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
                                     use_em_tracker=config_data['use_tracking_model'],
                                     strel_tail=strel_tail,
                                     strel_min=strel_min,
+                                    use_cc=config_data.get('use_cc', False),
                                     iters_tail=config_data['tail_filter_iters'],
                                     iters_min=config_data['cable_filter_iters'],
                                     prefilter_space=config_data['spatial_filter_size'],
@@ -1338,19 +1364,19 @@ def extract_command(input_file, output_dir, config_file, skip=False):
         yaml.safe_dump(status_dict, f)
 
     bg_roi_file = input_file
-    if input_file.endswith('.mkv'):
-        # create a depth.avi file to represent PCs
-        bg_roi_file = convert_mkv_to_avi(input_file)
+    #if input_file.endswith('.mkv'):
+    #    # create a depth.avi file to represent PCs
+    #    bg_roi_file = convert_mkv_to_avi(input_file)
 
     # get the background and roi, which will be used across all batches
-    if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
-        print('Loading background...')
-        bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
-    else:
-        print('Getting background...')
-        bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
-        if not config_data['use_plane_bground']:
-            write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+    #if os.path.exists(os.path.join(output_dir, 'bground.tiff')):
+    #    print('Loading background...')
+    #    bground_im = read_image(os.path.join(output_dir, 'bground.tiff'), scale=True)
+    #else:
+    print('Getting background...')
+    bground_im = get_bground_im_file(bg_roi_file, tar_object=tar)
+    if not config_data['use_plane_bground']:
+        write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0, tar_object=tar)
     write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -1362,41 +1388,67 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
     strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
 
-    if os.path.exists(os.path.join(output_dir, roi_filename)):
-        print('Loading ROI...')
-        roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
-    else:
-        print('Getting roi...')
-        rois, plane, _, _, _, _ = get_roi(bground_im,
-                                          strel_dilate=strel_dilate,
-                                          dilate_iters=config_data['dilate_iterations'],
-                                          weights=config_data['bg_roi_weights'],
-                                          depth_range=config_data['bg_roi_depth_range'],
-                                          gradient_filter=config_data['bg_roi_gradient_filter'],
-                                          gradient_threshold=config_data['bg_roi_gradient_threshold'],
-                                          gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                          fill_holes=config_data['bg_roi_fill_holes'])
+    #if os.path.exists(os.path.join(output_dir, roi_filename)):
+    #    print('Loading ROI...')
+    #    roi = read_image(os.path.join(output_dir, roi_filename), scale=True) > 0
+    #else:
+    print('Getting roi...')
+    rois, plane, _, _, _, _ = get_roi(bground_im,
+                                      strel_dilate=strel_dilate,
+                                      dilate_iters=config_data.get('dilate_iterations', 1),
+                                      weights=config_data['bg_roi_weights'],
+                                      noise_tolerance=config_data.get('noise_tolerance', 30),
+                                      depth_range=config_data['bg_roi_depth_range'],
+                                      gradient_filter=config_data['bg_roi_gradient_filter'],
+                                      gradient_threshold=config_data['bg_roi_gradient_threshold'],
+                                      gradient_kernel=config_data['bg_roi_gradient_kernel'],
+                                      fill_holes=config_data['bg_roi_fill_holes'])
 
-        if config_data['use_plane_bground']:
-            print('Using plane fit for background...')
-            xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
-            coords = np.vstack((xx.ravel(), yy.ravel()))
-            plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
-            plane_im = plane_im.reshape(bground_im.shape)
-            write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
-            bground_im = plane_im
+    if config_data['use_plane_bground']:
+        print('Using plane fit for background...')
+        xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
+        coords = np.vstack((xx.ravel(), yy.ravel()))
+        plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
+        plane_im = plane_im.reshape(bground_im.shape)
+        write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+        bground_im = plane_im
 
-        roi = rois[config_data['bg_roi_index']]
-        write_image(os.path.join(output_dir, roi_filename),
-                    roi, scale=True, dtype='uint8')
+    roi = rois[config_data['bg_roi_index']]
+    write_image(os.path.join(output_dir, roi_filename),
+                roi, scale=True, dtype='uint8')
 
     if config_data['detected_true_depth'] == 'auto':
         true_depth = np.median(bground_im[roi > 0])
     else:
         true_depth = config_data['detected_true_depth']
-    if input_file.endswith('mkv'):
-        new_bg = np.ma.masked_not_equal(roi, 0)
-        bground_im = np.where(new_bg == True, new_bg, true_depth)
+
+    if config_data['dilate_iterations'] > 1:
+        print('Dilating background')
+        import cv2
+
+        # store old and new backgrounds
+        old_bg = deepcopy(bground_im)
+
+        # dilate background size to match ROI size and attribute wall noise to cancel out
+        bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data['dilate_iterations'])
+
+        # get region difference between dilated ROI and original background
+        tmp = old_bg - bground_im
+
+        # get diff boundaries
+        kernel = np.ones((3, 3), np.uint8)
+        gradient = cv2.morphologyEx(tmp, cv2.MORPH_GRADIENT, kernel)
+
+        mask = np.ma.masked_greater_equal(gradient, old_bg)
+        bground_im = np.where(mask == True, old_bg, gradient)
+        write_image(os.path.join(output_dir, 'gradient_mask.tiff'), gradient, scale=True)
+
+        # cover wall noise within roi-old_bground
+        bground_im = cv2.morphologyEx(bground_im, cv2.MORPH_CLOSE, strel_dilate,
+                                      iterations=config_data['dilate_iterations'])
+
+        #bground_im = cv2.dilate(bground_im, strel_dilate, iterations=2)
+        write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
 
     print('Detected true depth: {}'.format(true_depth))
 
@@ -1473,6 +1525,7 @@ def extract_command(input_file, output_dir, config_file, skip=False):
                                     use_em_tracker=config_data['use_tracking_model'],
                                     strel_tail=strel_tail,
                                     strel_min=strel_min,
+                                    use_cc=config_data.get('use_cc', False),
                                     iters_tail=config_data['tail_filter_iters'],
                                     iters_min=config_data['cable_filter_iters'],
                                     prefilter_space=config_data['spatial_filter_size'],
