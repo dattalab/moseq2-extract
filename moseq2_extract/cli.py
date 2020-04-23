@@ -114,7 +114,6 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
 
-
     click_data = click.get_current_context().params
     cli_data = {k: v for k, v in click_data.items()}
     extract_wrapper(input_file, output_dir, cli_data, extract=extract)
@@ -133,6 +132,7 @@ def download_flip_file(config_file, output_dir):
 @cli.command(name="generate-config")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
 def generate_config(output_file):
+
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
@@ -147,15 +147,14 @@ def generate_config(output_file):
 @click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')
 @click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')
 @click.option('--fps', type=float, default=30, help='Video FPS')
-@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')
+@click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is successful')
 @click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')
 @click.option('-v', '--verbose', type=int, default=0, help='Verbosity level out batch encoding. [0-1]')
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, verbose):
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
-        output_file = os.path.join(os.path.dirname(input_file),
-                                   '{}.avi'.format(base_filename))
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
@@ -179,12 +178,12 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 
@@ -201,7 +200,7 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
         avi_encode = True
-        output_file = os.path.join(os.path.dirname(input_file), '{}.avi'.format(base_filename))
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
     else:
         output_filename, ext = os.path.splitext(os.path.basename(output_file))
         if ext == '.avi':
@@ -244,12 +243,12 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
         encoded_frames = load_movie_data(output_file, batch)
 
         if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError('Raw frames and encoded frames not equal from {} to {}'.format(batch[0], batch[-1]))
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
 
     print('Encoding successful')
 
     if delete:
-        print('Deleting {}'.format(input_file))
+        print('Deleting', input_file)
         os.remove(input_file)
 
 
