@@ -15,11 +15,13 @@ import joblib
 def get_flips(frames, flip_file=None, smoothing=None):
     '''
     Predicts frames where mouse orientation is flipped to later correct.
+
     Parameters
     ----------
     frames (3d numpy array): frames x r x c, cropped mouse
     flip_file (str): path to joblib dump of scipy random forest classifier
     smoothing (int): kernel size for median filter smoothing of random forest probabilities
+
     Returns
     -------
     flips (bool array):  true for flips
@@ -47,10 +49,12 @@ def get_flips(frames, flip_file=None, smoothing=None):
 def get_largest_cc(frames, progress_bar=False):
     '''
     Returns largest connected component blob in image
+
     Parameters
     ----------
     frames (3d numpy array): frames x r x c, uncropped mouse
     progress_bar (bool): display progress bar
+
     Returns
     -------
     flips (3d bool array):  frames x r x c, true where blob was found
@@ -70,9 +74,11 @@ def get_largest_cc(frames, progress_bar=False):
 def get_bground_im(frames):
     '''
     Returns background
+
     Parameters
     ----------
     frames (3d numpy array): frames x r x c, uncropped mouse
+
     Returns
     -------
     bground (2d numpy array):  r x c, background image
@@ -85,12 +91,14 @@ def get_bground_im(frames):
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     '''
     Returns background from file
+
     Parameters
     ----------
     frames_file (str): path to data with frames
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
     kwargs
+
     Returns
     -------
     bground (2d numpy array):  r x c, background image
@@ -128,9 +136,11 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
 def get_bbox(roi):
     '''
     Given a binary mask, return an array with the x and y boundaries
+
     Parameters
     ----------
     roi (2d np.ndarray): ROI boolean mask to calculate bounding box.
+
     Returns
     -------
     bbox (2d np.ndarray): Bounding Box around ROI
@@ -161,6 +171,7 @@ def get_roi(depth_image,
             **kwargs):
     '''
     Get an ROI using RANSAC plane fitting and simple blob features
+
     Parameters
     ----------
     depth_image (2d np.ndarray): Singular depth image frame.
@@ -177,6 +188,7 @@ def get_roi(depth_image,
     gui (bool): Boolean for whether function is running on GUI.
     verbose (bool): Boolean for whether to display progress
     kwargs
+
     Returns
     -------
     rois (list): list of 2d roi images.
@@ -268,10 +280,12 @@ def get_roi(depth_image,
 def apply_roi(frames, roi):
     '''
     Apply ROI to data, consider adding constraints (e.g. mod32==0).
+
     Parameters
     ----------
     frames (3d np.ndarray): input frames to apply ROI.
     roi (2d np.ndarray): selected ROI to extract from input images.
+
     Returns
     -------
     cropped_frames (3d np.ndarray): Frames cropped around ROI Bounding Box.
@@ -288,9 +302,11 @@ def apply_roi(frames, roi):
 def im_moment_features(IM):
     '''
     Use the method of moments and centralized moments to get image properties.
+
     Parameters
     ----------
     IM (2d numpy array): depth image
+
     Returns
     -------
     features (dict): returns a dictionary with orientation,
@@ -326,6 +342,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  iters_min=None, progress_bar=True, gui=False, verbose=0):
     '''
     Simple filtering, median filter and morphological opening.
+
     Parameters
     ----------
     frames (3d np.ndarray): Frames (nframes x r x c) to filter.
@@ -339,6 +356,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     progress_bar (bool): display progress bar
     gui (bool): indicate GUI is executing function
     verbose (bool): display progress
+
     Returns
     -------
     filtered_frames (3d np array): frame x r x c
@@ -377,6 +395,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
                        mask_threshold=-30, use_cc=False, progress_bar=True, gui=False, verbose=0):
     '''
     Use image moments to compute features of the largest object in the frame
+
     Parameters
     ----------
     frames (3d np.ndarray): input frames
@@ -387,6 +406,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     progress_bar (bool): Display progress bar.
     gui (bool): indicate GUI is executing function
     verbose (bool): display progress
+
     Returns
     -------
     features (dict of lists): dictionary with simple image features
@@ -446,6 +466,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
                            progress_bar=True, gui=False, verbose=0):
     '''
     Crops mouse from image and orients it s.t it is always facing east.
+
     Parameters
     ----------
     frames (3d np.ndarray): frames to crop and rotate
@@ -454,6 +475,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     progress_bar (bool): Display progress bar.
     gui (bool): indicate GUI is executing function
     verbose (bool): display progress
+
     Returns
     -------
     cropped_frames (3d np.ndarray): Crop and rotated frames.
@@ -496,6 +518,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
 def compute_scalars(frames, track_features, min_height=10, max_height=100, true_depth=673.1):
     '''
     Computes scalars.
+
     Parameters
     ----------
     frames (3d np.ndarray): frames x r x c, uncropped mouse
@@ -503,6 +526,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     min_height (float): minimum height of the mouse
     max_height (float): maximum height of the mouse
     true_depth (float): detected true depth
+
     Returns
     -------
     features (dict): dictionary of scalars
@@ -585,6 +609,7 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
                           angle_hampel_span=None, angle_hampel_sig=3):
     '''
     Filters computed extraction features using Hampel Filtering.
+
     Parameters
     ----------
     features (dict): dictionary of video features
@@ -592,6 +617,7 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
     centroid_hampel_sig (int): Centroid Hampel Signal Filtering Kernel Size
     angle_hampel_span (int): Angle Hampel Span Filtering Kernel Size
     angle_hampel_sig (int): Angle Hampel Span Filtering Kernel Size
+
     Returns
     -------
     features (dict): filtered version of input dict.
@@ -627,11 +653,13 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
 def model_smoother(features, ll=None, clips=(-300, -125)):
     '''
     Spatial feature filtering.
+
     Parameters
     ----------
     features (dict): dictionary of extraction scalar features
     ll (np.array): list of loglikelihoods of pixels in frame
     clips (tuple): tuple to ensure video is indexed properly
+
     Returns
     -------
     features (dict) - smoothed version of input features

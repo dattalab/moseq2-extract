@@ -23,10 +23,12 @@ from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata,
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
     Copy's user specified metadata from h5path to a yaml file.
+
     Parameters
     ----------
     input_dir (str): path to directory containing h5 files
     h5_metadata_path (str): path within h5 to desired metadata to copy to yaml.
+
     Returns
     -------
     None
@@ -56,6 +58,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
     '''
     Generates index file containing a summary of all extracted sessions.
+
     Parameters
     ----------
     input_dir (str): directory to search for extracted sessions.
@@ -63,6 +66,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
     output_file (str): preferred name of the index file.
     filter (list): list of metadata keys to conditionally filter.
     all_uuids (list): list of all session uuids.
+
     Returns
     -------
     output_file (str): path to index file.
@@ -141,6 +145,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
     '''
     Wrapper function to compute ROI given depth file.
+
     Parameters
     ----------
     input_file (str): path to depth file.
@@ -149,6 +154,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
     output_directory (str): GUI optional secondary external save directory path
     gui (bool): indicate whether GUI is running.
     extract_helper (bool): indicate whether this is being run independently or by extract function
+
     Returns
     -------
     if gui:
@@ -234,6 +240,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, extract=None, gui=False):
     '''
     Wrapper function to run extract function for both GUI and CLI.
+
     Parameters
     ----------
     input_file (str): path to depth file
@@ -243,6 +250,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     skip (bool): indicates whether to skip file if already extracted
     extract (function): extraction function state (Only passed by CLI)
     gui (bool): indicates if GUI is running.
+
     Returns
     -------
     output_dir (str): path to directory containing extraction (only if gui==True)

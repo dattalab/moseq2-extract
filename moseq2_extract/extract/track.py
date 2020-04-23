@@ -9,6 +9,7 @@ import tqdm
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     '''
     Single iteration of EM tracker
+
     Parameters
     ----------
     data (3d numpy array): nx3, x, y, z coordinates to use
@@ -17,6 +18,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     lambd (float): constant to add to diagonal of covariance matrix
     epsilon (float): tolerance on change in likelihood to terminate iteration
     max_iter (int): maximum number of EM iterations
+
     Returns
     -------
     mean (1d numpy array): updated mean
@@ -53,6 +55,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
     '''
     Initialize EM Mask.
+
     Parameters
     ----------
     depth_frame (2d numpy array): depth frame to initialize mask with.
@@ -60,6 +63,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
     depth_ceiling (float): max depth value.
     init_strel (cv2.structuringElement): structuring Element to compute mask.
     strel_iters (int): number of EM iterations.
+
     Returns
     -------
     mouse_mask (2d numpy array): mask of depth frame.
@@ -88,6 +92,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     '''
     Naive tracker, use EM update rules to follow a 3D Gaussian
        around the room.
+
     Parameters
     ----------
     frames (3d numpy array): filtered frames - nframes x r x c.
@@ -104,6 +109,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     init_frames (int): number of frames to include in the init calulation
     init_method (str): mode in which to process inputs
     init_strel (cv2.structuringElement): structuring Element to compute mask.
+
     Returns
     -------
     model_parameters (dict): mean and covariance estimates for each frame
@@ -270,12 +276,14 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 def em_get_ll(frames, mean, cov, progress_bar=True):
     '''
     Returns likelihoods for each frame given tracker parameters
+
     Parameters
     ----------
     frames (3d numpy array): depth frames
     mean (2d numpy array): frames x d, mean estimates
     cov (3d numpy array): frames x d x d, covariance estimates
     progress_bar (bool): use a progress bar
+
     Returns
     -------
     ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
