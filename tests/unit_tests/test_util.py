@@ -129,6 +129,7 @@ def test_click_param_annot():
         'bg_sort_roi_by_position': 'Sort ROIs by position',
         'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
         'bg_roi_fill_holes': 'Fill holes in ROI',
+        'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
         'output_dir': 'Output directory',
         'use_plane_bground': 'Use plane fit for background',
         'config_file': None
