@@ -15,6 +15,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
                             true_depth, tar, strel_tail, strel_min, output_dir, output_filename):
     '''
     Compute extracted frames and save them to h5 files and avi files.
+
     Parameters
     ----------
     f (h5py.File): opened h5 file to write extracted batches to
@@ -31,6 +32,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     strel_min (int): minimum kernel size
     output_dir (str): path to output directory that contains the extracted data, e.g. (proc/).
     output_filename (str): name of h5 file containing extraction data, e.g. (results_00).
+
     Returns
     -------
     video_pipe (bool): boolean for whether function is done writing to video file.
@@ -125,6 +127,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 def run_local_extract(to_extract, params, prefix, skip_extracted, output_directory):
     '''
     Runs the extract command on given list of sessions to extract on local platform.
+
     Parameters
     ----------
     to_extract (list): list of paths to files to extract
@@ -132,6 +135,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
     prefix (str): prefix to CLI extraction command.
     skip_extracted (bool): Whether to skip already extracted session.
     output_directory (str): path to preferred output directory.
+
     Returns
     -------
     None
@@ -183,6 +187,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
 def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory):
     '''
     Runs the extract command on given list of sessions to extract on SLURM platform.
+
     Parameters
     ----------
     to_extract (list): list of paths to files to extract
@@ -192,6 +197,7 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
     escape_path (function): gets path to return to original base directory
     skip_extracted (bool): Whether to skip already extracted session.
     output_directory (str): path to preferred output directory.
+
     Returns
     -------
     None

@@ -33,6 +33,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     '''
     This function extracts individual chunks from depth videos.
     It is called from the moseq2_extract.helpers.extract module.
+
     Parameters
     ----------
     chunk (3d np.ndarray): chunk to extract
@@ -70,6 +71,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     model_smoothing_clips (tuple): Model smoothing clips
     tracking_model_init (str): Method for tracking model initialization
     verbose (bool): Level of verbosity during extraction process. [0-2]
+
     Returns
     -------
     results: (np.ndarray) - extracted RGB video chunk to be written to file.
