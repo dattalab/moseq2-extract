@@ -14,10 +14,11 @@ import ruamel.yaml as yaml
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, clean_dict, h5_to_dict
+from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5
 from moseq2_extract.io.video import load_movie_data, convert_mkv_to_avi, get_movie_info
 from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, \
-                            load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s
+                            load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s, \
+                            clean_dict, h5_to_dict
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
