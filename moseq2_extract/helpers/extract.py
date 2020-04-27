@@ -55,32 +55,13 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
         raw_frames = apply_roi(raw_frames, roi)
 
         results = extract_chunk(raw_frames,
-                                use_em_tracker=config_data['use_tracking_model'],
-                                strel_tail=strel_tail,
-                                strel_min=strel_min,
-                                iters_tail=config_data['tail_filter_iters'],
-                                iters_min=config_data['cable_filter_iters'],
-                                prefilter_space=config_data['spatial_filter_size'],
-                                prefilter_time=config_data['temporal_filter_size'],
-                                min_height=config_data['min_height'],
-                                max_height=config_data['max_height'],
-                                flip_classifier=config_data['flip_classifier'],
-                                flip_smoothing=config_data['flip_classifier_smoothing'],
-                                crop_size=config_data['crop_size'],
-                                frame_dtype=config_data['frame_dtype'],
-                                mask_threshold=config_data['tracking_model_mask_threshold'],
-                                tracking_ll_threshold=config_data['tracking_model_ll_threshold'],
-                                tracking_segment=config_data['tracking_model_segment'],
+                                **config_data,
                                 tracking_init_mean=tracking_init_mean,
                                 tracking_init_cov=tracking_init_cov,
+                                strel_tail=strel_tail,
+                                strel_min=strel_min,
                                 true_depth=true_depth,
-                                progress_bar=False,
-                                centroid_hampel_span=config_data['centroid_hampel_span'],
-                                centroid_hampel_sig=config_data['centroid_hampel_sig'],
-                                angle_hampel_span=config_data['angle_hampel_span'],
-                                angle_hampel_sig=config_data['angle_hampel_sig'],
-                                model_smoothing_clips=config_data['model_smoothing_clips'],
-                                tracking_model_init=config_data['tracking_model_init'])
+                                progress_bar=False)
 
         # if desired, write out a movie
 
@@ -100,20 +81,19 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
         frame_range = frame_range[offset:]
 
         for scalar in scalars:
-            f[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:, ...]
+            f[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
 
-        f['frames'][frame_range] = results['depth_frames'][offset:, ...]
-        f['frames_mask'][frame_range] = results['mask_frames'][offset:, ...]
+        f['frames'][frame_range] = results['depth_frames'][offset:]
+        f['frames_mask'][frame_range] = results['mask_frames'][offset:]
 
         if config_data['flip_classifier']:
             f['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
-        nframes, rows, cols = raw_frames[offset:, ...].shape
+        nframes, rows, cols = raw_frames[offset:].shape
         output_movie = np.zeros((nframes, rows + config_data['crop_size'][0], cols + config_data['crop_size'][1]),
                                 'uint16')
-        output_movie[:, :config_data['crop_size'][0], :config_data['crop_size'][1]] = results['depth_frames'][offset:,
-                                                                                      ...]
-        output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = raw_frames[offset:, ...]
+        output_movie[:, :config_data['crop_size'][0], :config_data['crop_size'][1]] = results['depth_frames'][offset:]
+        output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = raw_frames[offset:]
 
         video_pipe = write_frames_preview(
             os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
@@ -127,6 +107,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 def run_local_extract(to_extract, params, prefix, skip_extracted, output_directory):
     '''
     Runs the extract command on given list of sessions to extract on local platform.
+    This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
 
     Parameters
     ----------
@@ -179,14 +160,15 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
             try:
                 from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
-            except:
-                print('Unexpected error:', sys.exc_info())
+            except Exception as e:
+                print('Unexpected error:', e)
                 print('could not extract', to_extract[i])
 
 
 def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory):
     '''
     Runs the extract command on given list of sessions to extract on SLURM platform.
+    This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
 
     Parameters
     ----------
@@ -242,8 +224,8 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
             try:
                 from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
-            except:
-                print('Unexpected error:', sys.exc_info()[0])
+            except Exception as e:
+                print('Unexpected error:', e)
                 print('could not extract', to_extract[i])
 
         base_command += '"'

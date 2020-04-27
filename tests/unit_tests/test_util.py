@@ -9,7 +9,7 @@ import h5py
 
 from moseq2_extract.cli import find_roi
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, command_with_config, scalar_attributes, save_dict_contents_to_h5,\
+    select_strel, command_with_config, scalar_attributes, dict_to_h5,\
     click_param_annot
 
 
@@ -99,7 +99,7 @@ def test_save_dict_contents_to_h5(temp_dir):
     root_path = '/myroot'
     fpath = os.path.join(temp_dir, 'test.h5')
     f = h5py.File(fpath, 'w')
-    save_dict_contents_to_h5(f, tmp_dic, root_path)
+    dict_to_h5(f, tmp_dic, root_path)
     f.close()
 
     def h5_to_dict(h5file, path):

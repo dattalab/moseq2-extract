@@ -62,7 +62,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
     depth_floor (float): distance from camera to bucket floor.
     depth_ceiling (float): max depth value.
     init_strel (cv2.structuringElement): structuring Element to compute mask.
-    strel_iters (int): number of EM iterations.
+    strel_iters (int): number of morphological iterations.
 
     Returns
     -------

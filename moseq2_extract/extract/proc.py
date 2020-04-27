@@ -372,15 +372,15 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                        disable=not progress_bar, desc='Cleaning frames'):
 
         if iters_min is not None and iters_min > 0:
-            filtered_frames[i, ...] = cv2.erode(filtered_frames[i, ...], strel_min, iters_min)
+            filtered_frames[i] = cv2.erode(filtered_frames[i], strel_min, iters_min)
 
         if prefilter_space is not None and np.all(np.array(prefilter_space) > 0):
             for j in range(len(prefilter_space)):
-                filtered_frames[i, ...] = cv2.medianBlur(filtered_frames[i, ...], prefilter_space[j])
+                filtered_frames[i] = cv2.medianBlur(filtered_frames[i], prefilter_space[j])
 
         if iters_tail is not None and iters_tail > 0:
-            filtered_frames[i, ...] = cv2.morphologyEx(
-                filtered_frames[i, ...], cv2.MORPH_OPEN, strel_tail, iters_tail)
+            filtered_frames[i] = cv2.morphologyEx(
+                filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
 
 
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
@@ -428,23 +428,20 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         'axis_length': np.full((nframes, 2), np.nan)
     }
 
-    for k, v in features.items():
-        features[k][:] = np.nan
-
     if verbose == 0:
         progress_bar = False
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
-        frame_mask = frames[i, ...] > frame_threshold
+        frame_mask = frames[i] > frame_threshold
 
         if use_cc:
-            cc_mask = get_largest_cc((frames[[i], ...] > mask_threshold).astype('uint8')).squeeze()
+            cc_mask = get_largest_cc((frames[[i]] > mask_threshold).astype('uint8')).squeeze()
             frame_mask = np.logical_and(cc_mask, frame_mask)
 
         if has_mask:
-            frame_mask = np.logical_and(frame_mask, mask[i, ...] > mask_threshold)
+            frame_mask = np.logical_and(frame_mask, mask[i] > mask_threshold)
         else:
-            mask[i, ...] = frame_mask
+            mask[i] = frame_mask
 
         cnts, hierarchy = cv2.findContours(
             frame_mask.astype('uint8'),
@@ -492,8 +489,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
         if np.any(np.isnan(features['centroid'][i, :])):
             continue
 
-        # use_frame = np.pad(frames[i, ...], (crop_size, crop_size), 'constant', constant_values=0)
-        use_frame = cv2.copyMakeBorder(frames[i, ...], *border, cv2.BORDER_CONSTANT, 0)
+        use_frame = cv2.copyMakeBorder(frames[i], *border, cv2.BORDER_CONSTANT, 0)
 
         rr = np.arange(features['centroid'][i, 1]-win[0],
                        features['centroid'][i, 1]+win[1]).astype('int16')
@@ -583,7 +579,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     for i in range(nframes):
         if nmask[i] > 0:
             features['height_ave_mm'][i] = np.mean(
-                frames[i, masked_frames[i, ...]])
+                frames[i, masked_frames[i]])
 
     vel_x = np.diff(np.concatenate((features['centroid_x_px'][:1], features['centroid_x_px'])))
     vel_y = np.diff(np.concatenate((features['centroid_y_px'][:1], features['centroid_y_px'])))

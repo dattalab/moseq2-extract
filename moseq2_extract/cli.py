@@ -48,8 +48,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
              output_dir, use_plane_bground, config_file):
 
     click_data = click.get_current_context().params
-    cli_data = {k: v for k, v in click_data.items()}
-    get_roi_wrapper(input_file, cli_data, output_dir)
+    get_roi_wrapper(input_file, click_data, output_dir)
 
 @cli.command(name="extract", cls=command_with_config('config_file'))
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
@@ -115,8 +114,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
 
     click_data = click.get_current_context().params
-    cli_data = {k: v for k, v in click_data.items()}
-    extract_wrapper(input_file, output_dir, cli_data, extract=extract)
+    extract_wrapper(input_file, output_dir, click_data, extract=extract)
 
 
 
