@@ -29,7 +29,6 @@ def update_progress(progress_file, varK, varV):
 
     with open(progress_file, 'r') as f:
         progress = yaml.safe_load(f)
-    f.close()
 
     progress[varK] = varV
     with open(progress_file, 'w') as f:
@@ -149,7 +148,7 @@ def generate_config_command(output_file):
     (str): status message.
     '''
 
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+    warnings.simplefilter(action='ignore', category=yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
@@ -271,10 +270,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     with config_file.open() as f:
         params = yaml.safe_load(f)
 
-    cluster_type = params.get('cluster_type')
-    if cluster_type == None:
-        cluster_type = 'local'
-    # bg_roi_index = params['bg_roi_index'] ## replaced input parameter with config parameter
+    cluster_type = params.get('cluster_type', default='local')
 
     if type(params['bg_roi_index']) is int:
         params['bg_roi_index'] = [params['bg_roi_index']]
@@ -566,7 +562,7 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     input_file = files[input_file_index - 1]
 
     extract_command(input_file, output_dir, config_file, num_frames=nframes)
-    print(f'Sample extraction of {str(nframes)} frames completed successfully in {output_dir}.')
+    print(f'Sample extraction of {nframes} frames completed successfully in {output_dir}.')
 
     return output_dir
 

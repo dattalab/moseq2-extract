@@ -284,7 +284,7 @@ def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S*n, n))
 
 
-def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
+def dict_to_h5(h5, dic, root='/', annotations=None):
     '''
     Save an dict to an h5 file, mounting at root.
     Keys are mapped to group names recursively.
@@ -319,7 +319,7 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
             elif item is None:
                 h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
             elif isinstance(item, dict):
-                save_dict_contents_to_h5(h5, item, dest)
+                dict_to_h5(h5, item, dest)
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
         except:
@@ -513,7 +513,7 @@ def mouse_threshold_filter(h5file, thresh=0):
 
     Returns
     -------
-    (np boolean array): array of regions to include after threshold filter.
+    (3d-np boolean array): array of regions to include after threshold filter.
     '''
 
     with h5py.File(h5file, 'r') as f:
@@ -567,6 +567,31 @@ def h5_to_dict(h5file, path) -> dict:
         raise Exception('file input not understood - need h5 file path or file object')
     return out
 
+def clean_dict(dct):
+    '''
+    Standardizes types of dict value.
+
+    Parameters
+    ----------
+    dct (dict): dict object with mixed type value objects.
+
+    Returns
+    -------
+    dct (dict): dict object with list value objects.
+    '''
+
+    def clean_entry(e):
+        if isinstance(e, dict):
+            out = clean_dict(e)
+        elif isinstance(e, np.ndarray):
+            out = e.tolist()
+        elif isinstance(e, np.generic):
+            out = np.asscalar(e)
+        else:
+            out = e
+        return out
+
+    return valmap(clean_entry, dct)
 
 _underscorer1: Pattern[str] = re.compile(r'(.)([A-Z][a-z]+)')
 _underscorer2 = re.compile('([a-z0-9])([A-Z])')
@@ -608,7 +633,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
 
     Returns
     -------
-    proc_dirs (list): list of paths to each unextracted session's proc/ directory
+    proc_dirs (1d-list): list of paths to each unextracted session's proc/ directory
     '''
 
     session_archive_pattern = re.compile(session_pattern)

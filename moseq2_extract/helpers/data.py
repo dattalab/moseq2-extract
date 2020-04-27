@@ -9,7 +9,7 @@ from cytoolz import keymap
 from cytoolz.curried import valmap
 from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
-    load_textdata, build_path, save_dict_contents_to_h5, click_param_annot
+    load_textdata, build_path, dict_to_h5, click_param_annot
 
 # extract all helper function
 def get_selected_sessions(to_extract, extract_all):
@@ -92,7 +92,6 @@ def get_selected_sessions(to_extract, extract_all):
 
     return to_extract
 
-#
 def load_h5s(to_load, snake_case=True):
     '''
     aggregate_results() Helper Function to load h5 files.
@@ -389,9 +388,9 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
     f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
     if extract is not None:
-        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+        dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
     else:
-        save_dict_contents_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
+        dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
 
     for key, value in acquisition_metadata.items():
         if type(value) is list and len(value) > 0 and type(value[0]) is str:
@@ -401,80 +400,3 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
             f.create_dataset(f'metadata/acquisition/{key}', data=value)
         else:
             f.create_dataset(f'metadata/acquisition/{key}', dtype="f")
-
-# Viz functions -- to refactor
-def _load_h5_to_dict(file: h5py.File, path: str) -> dict:
-    '''
-    Loads h5 file and returns dictionary object representing all contained data.
-
-    Parameters
-    ----------
-    file (h5py.File): h5 file to return dict from.
-    path (str): str path to data within h5 file. E.g. '/'.
-
-    Returns
-    -------
-    ans (dict): dictionary object containing all requested h5 data.
-    '''
-
-    ans = {}
-    if isinstance(file[path], h5py.Dataset):
-        # only use the final path key to add to `ans`
-        ans[path.split('/')[-1]] = file[path][()]
-    else:
-        for key, item in file[path].items():
-            if isinstance(item, h5py.Dataset):
-                ans[key] = item[()]
-            elif isinstance(item, h5py.Group):
-                ans[key] = _load_h5_to_dict(file, '/'.join([path, key]))
-    return ans
-
-def h5_to_dict(h5file, path: str = '/') -> dict:
-    '''
-    Loads h5 file and returns dictionary object representing all contained data,
-    given a path within the h5 file.
-
-    Parameters
-    ----------
-    h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
-    path (str): path to the base dataset within the h5 file. Default: '/'
-
-    Returns
-    -------
-    out (dict): a dict with h5 file contents with the same path structure
-    '''
-
-    if isinstance(h5file, str):
-        with h5py.File(h5file, 'r') as f:
-            out = _load_h5_to_dict(f, path)
-    elif isinstance(h5file, (h5py.File, h5py.Group)):
-        out = _load_h5_to_dict(h5file, path)
-    else:
-        raise Exception('file input not understood - need h5 file path or file object')
-    return out
-
-def clean_dict(dct):
-    '''
-    Standardizes types of dict value.
-
-    Parameters
-    ----------
-    dct (dict): dict object with mixed type value objects.
-
-    Returns
-    -------
-    dct (dict): dict object with list value objects.
-    '''
-
-    def clean_entry(e):
-        if isinstance(e, dict):
-            out = clean_dict(e)
-        elif isinstance(e, np.ndarray):
-            out = e.tolist()
-        elif isinstance(e, np.generic):
-            out = np.asscalar(e)
-        else:
-            out = e
-        return out
-
-    return valmap(clean_entry, dct)

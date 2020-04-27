@@ -29,15 +29,16 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
-                  verbose=0):
+                  verbose=0, **kwargs):
     '''
-    This function extracts individual chunks from depth videos.
+    This function looks for a mouse in background-subtracted frames from a chunk of depth video.
     It is called from the moseq2_extract.helpers.extract module.
 
     Parameters
     ----------
     chunk (3d np.ndarray): chunk to extract
-    use_em_tracker (bool): boolean for whether to extract 2D plane using RANSAC.
+    use_em_tracker (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
+        basis to the mouse's body and determine if pixels are mouse vs cable.
     prefilter_space (tuple): spatial kernel size
     prefilter_time (tuple): temporal kernel size
     iters_tail (int): number of filtering iterations on mouse tail
@@ -52,8 +53,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     roi (np.ndarray): numpy array represented previously computed roi
     rho_mean (int): smoothing parameter for the mean
     rho_cov (int): smoothing parameter for the covariance
-    tracking_ll_threshold (int):
-    tracking_segment (bool): boolean for whether to use EM mouse tracking for cable recording cases.
+    tracking_ll_threshold (float):  threshold for calling pixels a cable vs a mouse (usually between -16 to -12).
+        If the log-likelihood falls below this value, pixels are considered cable.
+    tracking_segment (bool): boolean for whether to use only the largest blob for EM updates.
     tracking_init_mean (float): Initialized mean value for EM Tracking
     tracking_init_cov (float): Initialized covariance value for EM Tracking
     tracking_init_strel (cv2::StructuringElement - Ellipse):
@@ -70,11 +72,12 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     angle_hampel_sig (int): Angle filter standard deviation
     model_smoothing_clips (tuple): Model smoothing clips
     tracking_model_init (str): Method for tracking model initialization
-    verbose (bool): Level of verbosity during extraction process. [0-2]
+    verbose (int): Level of verbosity during extraction process. [0-2]
 
     Returns
     -------
-    results: (np.ndarray) - extracted RGB video chunk to be written to file.
+    results: (3d np.ndarray) - (nframes, crop_height, crop_width)
+    extracted cropped, oriented and centered RGB video chunk to be written to file.
     '''
 
     # if we pass bground or roi files, be sure to use 'em...

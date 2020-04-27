@@ -407,7 +407,6 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     # scale frames d00d
 
     use_cmap = plt.get_cmap(cmap)
-
     for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
         disp_img = frames[i, ...].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
