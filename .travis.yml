@@ -5,15 +5,15 @@ os: linux
 cache: false
 
 stages:
-  - latest-pipfile
-  - name: latest-pip
+  - latest-installs
+  - name: latest-pythons
     if: branch = master
 
 jobs:
   include:
     - env: ISOLATED=true
       python: '3.6'
-      stage: latest-pipfile
+      stage: latest-installs
       before_install:
         - pip install pipenv
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -31,7 +31,7 @@ jobs:
     - env: ISOLATED=true
       dist: xenial
       python: '3.7'
-      stage: latest-pipfile
+      stage: latest-pythons
       before_install:
         - pip install pipenv
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -48,7 +48,7 @@ jobs:
         - codecov -t $CC_TEST_REPORTER_ID
     - env: ISOLATED=true
       python: '3.6'
-      stage: latest-pip
+      stage: latest-installs
       # get the dependencies
       before_install:
         - pip install pytest codecov
@@ -66,7 +66,7 @@ jobs:
     - env: ISOLATED=true
       dist: xenial
       python: '3.7'
-      stage: latest-pip
+      stage: latest-pythons
       # get the dependencies
       before_install:
         - pip install pytest codecov
