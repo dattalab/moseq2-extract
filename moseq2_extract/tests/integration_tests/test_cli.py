@@ -66,7 +66,7 @@ class CLITests(TestCase):
                 input_dir.mkdir()
 
             if not data_path.parent.is_dir():
-                Path.mkdir(data_path)
+                data_path.parent.mkdir()
             else:
                 for f in data_path.parent.iterdir():
                     if f.is_file():

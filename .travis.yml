@@ -33,7 +33,7 @@ jobs:
       before_install:
         - pip install pipenv
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
-        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
@@ -67,7 +67,7 @@ jobs:
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
-        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
