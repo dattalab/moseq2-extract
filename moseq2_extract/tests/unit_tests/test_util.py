@@ -7,7 +7,7 @@ from unittest import TestCase
 from moseq2_extract.cli import find_roi
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, scalar_attributes, save_dict_contents_to_h5, click_param_annot
+    select_strel, scalar_attributes, dict_to_h5, click_param_annot
 
 class testExtractUtils(TestCase):
     def test_gen_batch_sequence(self):
@@ -71,7 +71,7 @@ class testExtractUtils(TestCase):
         assert(dct is not None)
 
 
-    def test_save_dict_contents_to_h5(self):
+    def test_dict_to_h5(self):
 
         tmp_dic = {
             'subdict': {
@@ -91,9 +91,8 @@ class testExtractUtils(TestCase):
         }
         with TemporaryDirectory() as tmp:
             fpath = NamedTemporaryFile(prefix=tmp, suffix=".h5")
-            f = h5py.File(fpath.name, 'w')
-            save_dict_contents_to_h5(f, tmp_dic, tmp)
-            f.close()
+            with h5py.File(fpath.name, 'w') as f:
+                dict_to_h5(f, tmp_dic, tmp)
 
             def h5_to_dict(h5file, path):
                 ans = {}
@@ -106,7 +105,8 @@ class testExtractUtils(TestCase):
                         ans[key] = h5_to_dict(h5file, path + key + '/')
                 return ans
 
-            result = h5_to_dict(h5py.File(fpath.name, 'r'), tmp)
+            with h5py.File(fpath.name, 'r') as f:
+                result = h5_to_dict(f, tmp)
             npt.assert_equal(result, tmp_dic)
 
     def test_click_param_annot(self):

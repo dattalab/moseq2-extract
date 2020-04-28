@@ -1,9 +1,11 @@
 import os
 import sys
+import shutil
+from pathlib import Path
 import ruamel.yaml as yaml
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
 from unittest import TestCase
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import check_progress, generate_config_command, view_extraction, \
     generate_index_command, aggregate_extract_results_command, get_found_sessions, download_flip_command,\
     find_roi_command, sample_extract_command, extract_command
@@ -72,17 +74,17 @@ class GUITests(TestCase):
         # test file does not exist case
         with TemporaryDirectory() as tmp:
             progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            outfile = progress_path.name
+            outfile = Path(progress_path.name)
 
             # case: file does not exist
-            if os.path.exists(outfile):
+            if outfile.exists():
                 os.remove(outfile)
 
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
-                check_progress(os.path.dirname(progress_path.name), outfile)
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
+                check_progress(tmp, str(outfile))
 
-            assert os.path.exists(progress_path.name)
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
+            assert Path(progress_path.name).exists()
 
             # simulate opening file
             with open(outfile, 'r') as f:
@@ -92,7 +94,8 @@ class GUITests(TestCase):
                 if k != 'base_dir':
                     assert v in self.progress_vars.values()
 
-            assert os.path.exists(progress_path.name)
+            assert Path(progress_path.name).exists()
+
             # now test case when file exists
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             with open(stdin.name, 'w') as f:
@@ -102,7 +105,7 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
-                check_progress(os.path.dirname(progress_path.name), outfile)
+                check_progress(tmp, str(outfile))
 
             assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
 
@@ -114,22 +117,22 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
-                check_progress(os.path.dirname(progress_path.name), outfile)
+                check_progress(tmp, str(outfile))
 
             assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
 
     def test_generate_config_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            outfile = config_path.name
+            outfile = Path(config_path.name)
 
-            if os.path.exists(outfile):
+            if outfile.exists():
                 os.remove(outfile)
 
             # file does not exist yet
-            ret = generate_config_command(outfile)
+            ret = generate_config_command(str(outfile))
             assert "success" in ret
-            assert os.path.exists(outfile)
+            assert outfile.exists()
 
             # file exists
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
@@ -140,7 +143,7 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            ret = generate_config_command(outfile)
+            ret = generate_config_command(str(outfile))
             assert "retained" in ret
 
             # overwrite old version
@@ -150,7 +153,7 @@ class GUITests(TestCase):
             f.close()
 
             sys.stdin = open(stdin.name)
-            ret = generate_config_command(outfile)
+            ret = generate_config_command(str(outfile))
             assert 'success' in ret
 
     def test_view_extractions(self):
@@ -167,40 +170,39 @@ class GUITests(TestCase):
 
             ret = view_extraction(extractions)
             assert len(ret) == 3
-            assert ret == ['1','2','3']
+            assert ret == ['1', '2', '3']
 
     def test_generate_index_command(self):
         with TemporaryDirectory() as tmp:
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
-            outfile = os.path.join(input_dir, 'moseq2-index.yaml')
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            outfile = input_dir.joinpath('moseq2-index.yaml')
 
             # minimal test case - more use cases to come
-            generate_index_command(input_dir, '', outfile, [], [])
-            assert os.path.exists(outfile)
+            generate_index_command(str(input_dir), '', str(outfile), [], [])
+            assert outfile.exists()
 
     def test_get_found_sessions(self):
         with TemporaryDirectory() as tmp:
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
+            ft1 = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            ft2 = NamedTemporaryFile(prefix=tmp, suffix=".mkv")
+            ft3 = NamedTemporaryFile(prefix=tmp, suffix=".avi")
 
-            f1 = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            f2 = NamedTemporaryFile(prefix=tmp, suffix=".mkv")
-            f3 = NamedTemporaryFile(prefix=tmp, suffix=".avi")
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
 
-            f1 = os.path.join(input_dir, os.path.dirname(f1.name), 'temp1', 'temp2',
-                                     f1.name.split('/')[-1])
-            f2 = os.path.join(input_dir, os.path.dirname(f2.name), 'temp1', 'temp2',
-                              f2.name.split('/')[-1])
-            f3 = os.path.join(input_dir, os.path.dirname(f3.name), 'temp1', 'temp2',
-                              f3.name.split('/')[-1])
+            f1 = input_dir.joinpath('temp2/', Path(ft1.name).name)
+            f2 = input_dir.joinpath('temp2/', Path(ft2.name).name)
+            f3 = input_dir.joinpath('temp2/', Path(ft3.name).name)
 
-            if not os.path.exists(os.path.dirname(f1)):
-                os.makedirs(os.path.dirname(f1))
+            if not f1.parent.exists():
+                f1.parent.mkdir()
             else:
-                for f in os.listdir(os.path.dirname(f1)):
-                    if os.path.isfile(os.path.join(os.path.dirname(f1), f)):
-                        os.remove(os.path.join(os.path.dirname(f1), f))
-                    elif os.path.isdir(f):
-                        os.removedirs(os.path.join(os.path.dirname(f1), f))
+                for f in f1.parent.iterdir():
+                    if f1.resolve().is_file():
+                        os.remove(f1.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
+                    elif f.is_file():
+                        os.remove(str(f))
 
             with open(f1, 'w') as f:
                 f.write('Y')
@@ -214,11 +216,11 @@ class GUITests(TestCase):
                 f.write('Y')
             f.close()
 
-            assert os.path.exists(f1)
-            assert os.path.exists(f2)
-            assert os.path.exists(f3)
+            assert f1.is_file()
+            assert f2.is_file()
+            assert f3.is_file()
 
-            data_dir, found_sessions = get_found_sessions(input_dir)
+            data_dir, found_sessions = get_found_sessions(str(input_dir))
             assert(found_sessions == 3)
 
 
@@ -230,9 +232,9 @@ class GUITests(TestCase):
     def test_find_roi_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name
+            configfile = Path(config_path.name)
 
-            if os.path.exists(configfile):
+            if configfile.is_file():
                 os.remove(configfile)
 
             generate_config_command(configfile)
@@ -246,24 +248,24 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            out = find_roi_command(tmp, configfile)
+            out = find_roi_command(tmp, str(configfile))
             assert (out == None)
 
             # writing a file to test following pipeline
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
-                                     data_path.name.split('/')[-1])
-            if not os.path.exists(os.path.dirname(data_path)):
-                os.makedirs(os.path.dirname(data_path))
-            else:
-                for f in os.listdir(os.path.dirname(data_path)):
-                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
-                        os.remove(os.path.join(os.path.dirname(data_path), f))
-                    elif os.path.isdir(f):
-                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
-            write_fake_movie(data_path)
+            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not data_path.parent.is_dir():
+                data_path.parent.mkdir()
+            else:
+                for f in data_path.parent.iterdir():
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
+            write_fake_movie(data_path)
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             # select test file
@@ -272,7 +274,7 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            images, filenames = find_roi_command(input_dir, configfile)
+            images, filenames = find_roi_command(str(input_dir), str(configfile))
             assert (len(filenames) == 3)
             assert (len(images) == 3)
 
@@ -280,7 +282,7 @@ class GUITests(TestCase):
     def test_sample_extract_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name
+            configfile = Path(config_path.name)
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             # select test file
@@ -289,24 +291,26 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            generate_config_command(configfile)
+            generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2', data_path.name.split('/')[-1])
-            if not os.path.exists(os.path.dirname(data_path)):
-                os.makedirs(os.path.dirname(data_path))
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not data_path.parent.is_dir():
+                data_path.parent.mkdir()
             else:
-                for f in os.listdir(os.path.dirname(data_path)):
-                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
-                        os.remove(os.path.join(os.path.dirname(data_path), f))
-                    elif os.path.isdir(f):
-                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
-            write_fake_movie(data_path)
+                for f in data_path.parent.iterdir():
+                    print(f)
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
 
-            assert(os.path.exists(data_path))
+            write_fake_movie(data_path)
+            assert(data_path.is_file())
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             # select test file
@@ -315,40 +319,42 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            output_dir = sample_extract_command(input_dir, configfile, 40, exts=['dat'])
+            output_dir = sample_extract_command(str(input_dir), str(configfile), 40, exts=['dat'])
             assert os.path.exists(output_dir)
 
     def test_extract_command(self):
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
-            configfile = config_path.name
+            configfile = Path(config_path.name)
 
-            if os.path.exists(configfile):
-                os.remove(configfile)
+            if configfile.is_file():
+                configfile.unlink()
 
-            generate_config_command(configfile)
+            generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
 
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
-                                     data_path.name.split('/')[-1])
-            if not os.path.exists(os.path.dirname(data_path)):
-                os.makedirs(os.path.dirname(data_path))
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not data_path.parent.is_dir():
+                data_path.parent.mkdir()
             else:
-                for f in os.listdir(os.path.dirname(data_path)):
-                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
-                        os.remove(os.path.join(os.path.dirname(data_path), f))
-                    elif os.path.isdir(f):
-                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
+                for f in data_path.parent.iterdir():
+                    print(f)
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
+            assert(data_path.is_file())
 
-            assert(os.path.exists(data_path))
-            ret = extract_command(data_path, None, configfile, skip=True)
-            assert('proc' in os.listdir(os.path.dirname(data_path)))
-            assert ('done.txt' in os.listdir(os.path.join(os.path.dirname(data_path), 'proc')))
+            ret = extract_command(str(data_path), None, str(configfile), skip=True)
+
+            assert(data_path.parent.joinpath('proc').is_dir())
+            assert(data_path.parent.joinpath('proc', 'done.txt').is_file())
             assert ('completed' in ret)
 
     def test_aggregate_results_command(self):

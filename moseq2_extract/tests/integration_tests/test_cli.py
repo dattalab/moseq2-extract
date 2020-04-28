@@ -1,7 +1,9 @@
 import os
 import cv2
 import click
+import shutil
 import numpy as np
+from pathlib import Path
 import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
@@ -54,27 +56,28 @@ class CLITests(TestCase):
     def test_extract(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            tmp_file = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = Path(tmp_file.name)
 
-            input_dir = os.path.join(os.path.dirname(tmp), 'temp1')
-            data_path = os.path.join(input_dir, os.path.dirname(data_path.name), 'temp1', 'temp2',
-                                     data_path.name.split('/')[-1])
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath(data_path.parent, 'temp1', 'temp2', data_path.name)
 
-            if not os.path.exists(os.path.dirname(data_path)):
-                os.makedirs(os.path.dirname(data_path))
+            if not data_path.parent.is_dir():
+                Path.mkdir(data_path)
             else:
-                for f in os.listdir(os.path.dirname(data_path)):
-                    if os.path.isfile(os.path.join(os.path.dirname(data_path), f)):
-                        os.remove(os.path.join(os.path.dirname(data_path), f))
-                    elif os.path.isdir(f):
-                        os.removedirs(os.path.join(os.path.dirname(data_path), f))
+                for f in data_path.parent.iterdir():
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(f.resolve())
 
             write_fake_movie(data_path)
-            assert os.path.exists(data_path)
+            assert data_path.exists()
 
+            print(data_path.resolve(), data_path.parent)
             runner = CliRunner()
-            result = runner.invoke(extract, [data_path,
-                                             '--output-dir', os.path.dirname(data_path),
+            result = runner.invoke(extract, [str(data_path),
+                                             '--output-dir', str(data_path.resolve().parent),
                                              #'--angle-hampel-span', 5, # add auto fix for incorrect param inputs
                                              #'--centroid-hampel-span', 5
                                              ],
@@ -125,41 +128,47 @@ class CLITests(TestCase):
     def test_convert_raw_to_avi(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            outfile = data_path.name.replace('dat', 'avi')
+            tmp_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = Path(tmp_path.name)
 
-            write_fake_movie(data_path.name)
+            outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))
+
+
+            write_fake_movie(data_path.resolve())
 
             runner = CliRunner()
             result = runner.invoke(convert_raw_to_avi, [
-                                                data_path.name, '-o', outfile,
+                                                str(data_path.resolve()), '-o', str(outfile.resolve()),
                                                 '-b', 1000, '--delete'
                                                         ])
 
-            assert (outfile.split('/')[-1] in os.listdir(os.path.dirname(data_path.name)))
-            assert (data_path.name.split('/')[-1] not in os.listdir(os.path.dirname(data_path.name)))
+            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
+            assert (data_path.name not in data_path.parent.iterdir())
             assert (result.exit_code == 0)
 
-            write_fake_movie(data_path.name)
+            write_fake_movie(data_path.resolve())
 
             result = runner.invoke(convert_raw_to_avi, [
-                data_path.name, '-o', outfile, '-b', 1000,
+                str(data_path.resolve()), '-o', str(outfile.resolve()), '-b', 1000,
             ])
 
-            assert (outfile.split('/')[-1] in os.listdir(os.path.dirname(data_path.name)))
+            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
             assert (result.exit_code == 0)
 
     def test_copy_slice(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            outfile = data_path.name.replace('dat', 'avi')
+            tmp_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = Path(tmp_path.name)
 
-            write_fake_movie(data_path.name)
+            outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))
+
+            write_fake_movie(data_path.resolve())
+
             runner = CliRunner()
-            result = runner.invoke(copy_slice, [data_path.name, '-o', outfile,
+            result = runner.invoke(copy_slice, [str(data_path.resolve()), '-o', str(outfile.resolve()),
                                                 '-b', 1000, '--delete'])
 
-            assert (outfile.split('/')[-1] in os.listdir(os.path.dirname(data_path.name)))
-            assert (data_path.name.split('/')[-1] not in os.listdir(os.path.dirname(data_path.name)))
+            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
+            assert (data_path.name not in data_path.parent.iterdir())
             assert (result.exit_code == 0)

@@ -5,10 +5,10 @@ from glob import glob
 from pathlib import Path
 import ruamel.yaml as yaml
 from cytoolz import partial
-from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, build_manifest, copy_manifest_results
-from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper
 from moseq2_extract.io.image import read_image
+from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
+from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, build_manifest, copy_manifest_results
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper
 from moseq2_extract.util import (recursive_find_h5s, escape_path,
                                  mouse_threshold_filter, recursive_find_unextracted_dirs)
 

@@ -4,24 +4,32 @@ os: linux
 dist: trusty
 python: 
   - 3.6
-  #- 3.7 # enable once supported by travis
+  - 3.7
 
 # get the dependencies
-# install what we need for testing
-# ffmpeg from https://gist.github.com/kevinGodell/bd52cd74c8c2d66fb69f108ef223c356
-# maybe os x support, seems super flaky though, https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-195620855
 before_install:
   - pip install pipenv
   - export PYTHONPATH=$PYTHONPATH:$(pwd)
-  - # add github paths for needed for tests
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
-install:
-  - pipenv install --dev --ignore-pipfile --deploy
 
-# script for tests
-script:
-  - pipenv run pytest --cov-report xml --cov-report term
-after_success:
-  - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0 # hide this
+stages:
+  - test
+  - name: version
+    if branch = master
+
+jobs:
+  include:
+    - stage: test
+    install:
+      - pipenv install --dev --ignore-pipfile --deploy
+    script:
+      - pipenv run pytest --cov-report xml --cov-report term
+    after_success:
+      - codecov -t $CC_TEST_REPORTER_ID
+    - stage: version
+      install:
+        - pip install -e .
+      script:
+        - pytest
