@@ -1,6 +1,6 @@
 #specs for travis ci
 language: python
-dist: xenial
+dist: trusty
 os: linux
 cache: false
 
