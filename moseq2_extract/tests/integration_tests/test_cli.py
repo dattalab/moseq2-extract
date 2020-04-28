@@ -62,6 +62,9 @@ class CLITests(TestCase):
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath(data_path.parent, 'temp1', 'temp2', data_path.name)
 
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
             if not data_path.parent.is_dir():
                 Path.mkdir(data_path)
             else:

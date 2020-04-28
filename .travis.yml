@@ -26,6 +26,8 @@ jobs:
       after_success:
         - codecov -t $CC_TEST_REPORTER_ID
     - env: ISOLATED=true
+      dist: xenial
+      sudo: true
       python: '3.7'
       stage: latest-pipfile
       before_install:
@@ -56,6 +58,8 @@ jobs:
       script:
         - pytest --cov=./moseq2_extract/tests/
     - env: ISOLATED=true
+      dist: xenial
+      sudo: true
       python: '3.7'
       stage: latest-pip
       # get the dependencies

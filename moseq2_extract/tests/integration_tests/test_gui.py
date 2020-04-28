@@ -177,6 +177,9 @@ class GUITests(TestCase):
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             outfile = input_dir.joinpath('moseq2-index.yaml')
 
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
             # minimal test case - more use cases to come
             generate_index_command(str(input_dir), '', str(outfile), [], [])
             assert outfile.exists()
@@ -192,6 +195,9 @@ class GUITests(TestCase):
             f1 = input_dir.joinpath('temp2/', Path(ft1.name).name)
             f2 = input_dir.joinpath('temp2/', Path(ft2.name).name)
             f3 = input_dir.joinpath('temp2/', Path(ft3.name).name)
+
+            if not input_dir.is_dir():
+                input_dir.mkdir()
 
             if not f1.parent.exists():
                 f1.parent.mkdir()
@@ -257,6 +263,9 @@ class GUITests(TestCase):
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
 
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
             else:
@@ -299,6 +308,9 @@ class GUITests(TestCase):
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
 
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
             else:
@@ -337,6 +349,9 @@ class GUITests(TestCase):
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not input_dir.is_dir():
+                input_dir.mkdir()
 
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
