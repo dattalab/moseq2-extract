@@ -38,7 +38,7 @@ class GUITests(TestCase):
                 temp_prog[key] = 0
                 progress[key] = 0
 
-            assert all(progress.values()) == 0
+            assert all(progress.values()) == 0, "dict values were not updated"
 
             # simulate write
             with open(progress_path.name, 'w') as f:
@@ -50,7 +50,7 @@ class GUITests(TestCase):
                 progress1= yaml.safe_load(f)
             f.close()
 
-            assert progress1 == temp_prog
+            assert progress1 == temp_prog, "dict was not saved correctly"
 
 
     def test_restore_progress_vars(self):
@@ -67,7 +67,7 @@ class GUITests(TestCase):
                 progress1 = yaml.safe_load(f)
             f.close()
 
-            assert progress1 == temp_prog
+            assert progress1 == temp_prog, "dict was not returned correctly"
 
     def test_check_progress(self):
 
@@ -83,8 +83,9 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, str(outfile))
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
-            assert Path(progress_path.name).exists()
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+                "initial progress check failed"
+            assert Path(progress_path.name).exists(), "progress yaml was not created"
 
             # simulate opening file
             with open(outfile, 'r') as f:
@@ -92,9 +93,7 @@ class GUITests(TestCase):
             f.close()
             for k,v in progress1.items():
                 if k != 'base_dir':
-                    assert v in self.progress_vars.values()
-
-            assert Path(progress_path.name).exists()
+                    assert v in self.progress_vars.values(), "read dict values to dont match simulated data"
 
             # now test case when file exists
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
@@ -107,7 +106,8 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, str(outfile))
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+                "progress retrieval from pre-existing file failed"
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             with open(stdin.name, 'w') as f:
@@ -119,7 +119,8 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, str(outfile))
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+                "ignoring pre-existing progress file failed"
 
     def test_generate_config_command(self):
         with TemporaryDirectory() as tmp:
@@ -131,11 +132,12 @@ class GUITests(TestCase):
 
             # file does not exist yet
             ret = generate_config_command(str(outfile))
-            assert "success" in ret
-            assert outfile.exists()
+            assert "success" in ret, "config file was not generated sucessfully"
+            assert outfile.exists(), "config file does not exist in specified path"
 
             # file exists
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+
             # retain old version
             with open(stdin.name, 'w') as f:
                 f.write('N')
@@ -144,7 +146,8 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             ret = generate_config_command(str(outfile))
-            assert "retained" in ret
+            assert "retained" in ret, "old config file was not retained"
+
 
             # overwrite old version
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
@@ -154,7 +157,7 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
             ret = generate_config_command(str(outfile))
-            assert 'success' in ret
+            assert 'success' in ret, "overwriting failed"
 
     def test_view_extractions(self):
         extractions = ['1','2','3','4']
@@ -169,8 +172,8 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             ret = view_extraction(extractions)
-            assert len(ret) == 3
-            assert ret == ['1', '2', '3']
+            assert len(ret) == 3, "function did not return the correct number of extractions to view"
+            assert ret == ['1', '2', '3'], "function returned incorrect extractions to view"
 
     def test_generate_index_command(self):
         with TemporaryDirectory() as tmp:
@@ -182,7 +185,7 @@ class GUITests(TestCase):
 
             # minimal test case - more use cases to come
             generate_index_command(str(input_dir), '', str(outfile), [], [])
-            assert outfile.exists()
+            assert outfile.exists(), "index file was not generated correctly"
 
     def test_get_found_sessions(self):
         with TemporaryDirectory() as tmp:
@@ -222,18 +225,18 @@ class GUITests(TestCase):
                 f.write('Y')
             f.close()
 
-            assert f1.is_file()
-            assert f2.is_file()
-            assert f3.is_file()
+            assert f1.is_file(), "temp file 1 was not created properly"
+            assert f2.is_file(), "temp file 2 was not created properly"
+            assert f3.is_file(), "temp file 3 was not created properly"
 
             data_dir, found_sessions = get_found_sessions(str(input_dir))
-            assert(found_sessions == 3)
+            assert(found_sessions == 3), "temp files were not successfully located"
 
 
     def test_download_flip_file_command(self):
         with TemporaryDirectory() as tmp:
             download_flip_command(tmp)
-            assert True in [x.endswith('pkl') for x in os.listdir(tmp)]
+            assert True in [x.endswith('pkl') for x in os.listdir(tmp)], "flip file does not exist in correct directory"
 
     def test_find_roi_command(self):
         with TemporaryDirectory() as tmp:
@@ -255,7 +258,7 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             out = find_roi_command(tmp, str(configfile))
-            assert (out == None)
+            assert (out == None), "roi function did not find any rois to extract"
 
             # writing a file to test following pipeline
             data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
@@ -284,8 +287,8 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             images, filenames = find_roi_command(str(input_dir), str(configfile))
-            assert (len(filenames) == 3)
-            assert (len(images) == 3)
+            assert (len(filenames) == 3), "incorrect number of rois were computed"
+            assert (len(images) == 3), "incorrect number of rois images were computed"
 
 
     def test_sample_extract_command(self):
@@ -322,7 +325,7 @@ class GUITests(TestCase):
                         shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
-            assert(data_path.is_file())
+            assert(data_path.is_file()), "fake movie was not written correctly"
 
             stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
             # select test file
@@ -332,7 +335,7 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             output_dir = sample_extract_command(str(input_dir), str(configfile), 40, exts=['dat'])
-            assert os.path.exists(output_dir)
+            assert os.path.exists(output_dir), "sample_proc directory was not created"
 
     def test_extract_command(self):
         with TemporaryDirectory() as tmp:
@@ -364,19 +367,19 @@ class GUITests(TestCase):
                         shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
-            assert(data_path.is_file())
+            assert(data_path.is_file()), "fake movie was not written correctly"
 
             ret = extract_command(str(data_path), None, str(configfile), skip=True)
 
-            assert(data_path.parent.joinpath('proc').is_dir())
-            assert(data_path.parent.joinpath('proc', 'done.txt').is_file())
-            assert ('completed' in ret)
+            assert(data_path.parent.joinpath('proc').is_dir()), "proc directory was not created"
+            assert(data_path.parent.joinpath('proc', 'done.txt').is_file()), "extraction did not finish"
+            assert ('completed' in ret), "GUI command failed"
 
     def test_aggregate_results_command(self):
         with TemporaryDirectory() as tmp:
             ret = aggregate_extract_results_command(tmp, "", "aggregate_results")
-            assert ret == os.path.join(tmp, 'moseq2-index.yaml')
-            assert os.path.exists(os.path.join(tmp,'aggregate_results'))
+            assert ret == os.path.join(tmp, 'moseq2-index.yaml'), "index file was not generated in correct directory"
+            assert os.path.exists(os.path.join(tmp,'aggregate_results')), "aggregate results directory was not created"
 
     def test_extract_found_sessions(self):
         print('not implemented: will test individual components first.')

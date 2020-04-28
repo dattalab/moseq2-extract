@@ -2,31 +2,20 @@ import os
 import re
 import cv2
 import glob
-import pytest
 import numpy as np
 import numpy.testing as npt
 from unittest import TestCase
-from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.io.image import read_image
 from moseq2_extract.extract.proc import get_roi, crop_and_rotate_frames,\
     get_frame_features, compute_scalars, clean_frames, get_largest_cc
 
-
-# https://stackoverflow.com/questions/34504757/
-# get-pytest-to-look-within-the-base-directory-of-the-testing-script
-@pytest.fixture(scope="function")
-def script_loc(request):
-    return request.fspath.join('..')
-
 class TestExtractProc(TestCase):
     def test_get_roi(self):
         # load in a bunch of ROIs where we have some ground truth
-        cwd = str(script_loc)
-        bground_list = glob.glob(os.path.join(cwd, 'test_rois/bground*.tiff'))
+        bground_list = glob.glob('data/bground*.tiff')
 
         for bground in bground_list:
             tmp = read_image(bground, scale=True)
-            print(bground)
 
             if re.search(r'gradient', bground) is not None:
                 roi = get_roi(tmp.astype('float32'), depth_range=(750, 900),
@@ -61,10 +50,8 @@ class TestExtractProc(TestCase):
                 frac_nonoverlap_roi1[1] = np.mean(np.logical_xor(ground_truth,
                                                                  roi[0][1]))
 
-                print(frac_nonoverlap_roi2)
                 assert(np.min(frac_nonoverlap_roi2) < .2)
 
-            print(frac_nonoverlap_roi1)
             assert(np.min(frac_nonoverlap_roi1) < .2)
 
 

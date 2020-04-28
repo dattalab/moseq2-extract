@@ -75,7 +75,7 @@ class CLITests(TestCase):
                         shutil.rmtree(f.resolve())
 
             write_fake_movie(data_path)
-            assert data_path.exists()
+            assert data_path.exists(), "fake movie was not written"
 
             print(data_path.resolve(), data_path.parent)
             runner = CliRunner()
@@ -86,8 +86,8 @@ class CLITests(TestCase):
                                              ],
                                    catch_exceptions=False)
 
-            assert(result.exit_code == 0)
-            assert ('done.txt' in os.listdir(os.path.dirname(data_path)))
+            assert(result.exit_code == 0), "CLI command did not successfully complete"
+            assert ('done.txt' in os.listdir(os.path.dirname(data_path))), "extraction was interrupted"
 
     def test_find_roi(self):
 
@@ -99,7 +99,9 @@ class CLITests(TestCase):
         runner = CliRunner()
         result = runner.invoke(find_roi, [data_path.name, '--output-dir', tmp])
 
-        assert(result.exit_code == 0)
+        assert(result.exit_code == 0), "CLI command did not successfully complete"
+        assert (len(list(Path(tmp).glob("*.tiff"))) == 3), \
+            "ROI files were not generated in the correct directory"
 
 
     def test_download_flip_file(self):
@@ -109,7 +111,8 @@ class CLITests(TestCase):
 
             runner = CliRunner()
             result = runner.invoke(download_flip_file, [data_path.name, '--output-dir', tmp], input='0\n')
-            assert(result.exit_code == 0)
+            assert (result.exit_code == 0), "CLI command did not complete successfully"
+            assert (len(list(Path(tmp).glob("*.pkl"))) > 0), "Flip file was not downloaded correctly"
 
 
     def test_generate_config(self):
@@ -126,7 +129,8 @@ class CLITests(TestCase):
         for param in params:
             npt.assert_equal(yaml_data[param.human_readable_name], param.default)
 
-        assert(result.exit_code == 0)
+        assert(result.exit_code == 0), "CLI Command did not complete successfully"
+        assert(Path(data_path.name).is_file()), "Config file does not exist"
 
     def test_convert_raw_to_avi(self):
 
@@ -145,9 +149,9 @@ class CLITests(TestCase):
                                                 '-b', 1000, '--delete'
                                                         ])
 
-            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
-            assert (data_path.name not in data_path.parent.iterdir())
-            assert (result.exit_code == 0)
+            assert (outfile.resolve().exists()), "avi file not created"
+            assert (not data_path.resolve().exists()), "raw file was not deleted"
+            assert (result.exit_code == 0), "CLI command did not complete successfully"
 
             write_fake_movie(data_path.resolve())
 
@@ -155,8 +159,8 @@ class CLITests(TestCase):
                 str(data_path.resolve()), '-o', str(outfile.resolve()), '-b', 1000,
             ])
 
-            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
-            assert (result.exit_code == 0)
+            assert (outfile.resolve().exists()), "avi file not created"
+            assert (result.exit_code == 0), "CLI command did not complete successfully"
 
     def test_copy_slice(self):
 
@@ -172,6 +176,6 @@ class CLITests(TestCase):
             result = runner.invoke(copy_slice, [str(data_path.resolve()), '-o', str(outfile.resolve()),
                                                 '-b', 1000, '--delete'])
 
-            assert (outfile.resolve() in [f for f in Path(tmp).resolve().iterdir()])
-            assert (data_path.name not in data_path.parent.iterdir())
-            assert (result.exit_code == 0)
+            assert (outfile.resolve().exists()), "slice was not copied correctly"
+            assert (not data_path.resolve().exists()), "input data was not deleted"
+            assert (result.exit_code == 0), "CLI command did not complete successfully"
