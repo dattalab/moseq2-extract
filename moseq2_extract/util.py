@@ -421,9 +421,9 @@ def click_param_annot(click_cmd):
     return annotations
 
 
-def find_disk(img, true_depth, threshold=760):
+def find_disk(img, true_depth, threshold=740):
     # convert the grayscale image to binary image
-    ret, thresh = cv2.threshold(img, threshold, true_depth+50, 0)
+    ret, thresh = cv2.threshold(img, threshold, true_depth, 0)
 
     # calculate moments of binary image
     M = cv2.moments(thresh)
@@ -445,7 +445,8 @@ def make_gradient_v2(width, height, h, k, a, b, theta):
     # Calculate the weight for each pixel
     weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
 
-    return np.clip(1 - weights, 0, 0.8)
+    #return np.clip(1.2 - weights, 0, 0.8)
+    return np.clip(1 - weights, 0.08, 0.8)
 
 # https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
 # https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
@@ -460,29 +461,30 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
 
     # getting helper user parameters
-    xoffset = config_data.get('x_bg_offset', 0)
-    yoffset = config_data.get('y_offset', 0)
-    widen_radius = config_data.get('widen_radius', 65)
-    bg_threshold = config_data.get('bg_threshold', 760)
+    xoffset = config_data.get('x_bg_offset', -2)
+    yoffset = config_data.get('y_offset', 2)
+    widen_radius = config_data.get('widen_radius', 0)
+    bg_threshold = config_data.get('bg_threshold', 740)
 
     # getting bground centroid
     cx, cy = find_disk(deepcopy(old_bg), true_depth, threshold=bg_threshold)
 
     # set up gradient
     h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
-    a, b = cx + widen_radius, cy + widen_radius  # x,y radii of gradient circle
+    a, b = cx + widen_radius + 67, cy + widen_radius + 67 # x,y radii of gradient circle
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
     # create slant gradient
-    bground_im = np.float64(make_gradient_v2(width, height, h, k, a, b, theta) * 255)
+    bground_im = np.float64((make_gradient_v2(width, height, h, k, a, b, theta)) * 255)
 
     # scale it back to depth
-    bground_im *= np.uint8((true_depth * 1.0615) / bground_im.max())
+    #bground_im *= np.uint8((true_depth) / (bground_im.max()*0.83)) # fine-tuned - probably needs revising
+    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
 
     # overlay with actual bucket floor distance
-    mask = np.ma.less(old_bg, old_bg.max())
-    bground_im = np.where(mask == False, old_bg, bground_im)
-    bground_im = cv2.GaussianBlur(bground_im, (5, 5), 5)
+    mask = np.ma.equal(old_bg, old_bg.max())
+    bground_im = np.where(mask == True, old_bg, bground_im)
+    bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
 
     write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
 

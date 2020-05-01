@@ -1057,17 +1057,19 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     write_image(os.path.join(output_dir, roi_filename),
                 roi, scale=True, dtype='uint8')
 
+    if config_data.get('detected_true_depth', 'auto') == 'auto':
+        true_depth = np.median(bground_im[roi > 0])
+    else:
+        true_depth = config_data['detected_true_depth']
 
-    true_depth = np.median(bground_im[roi > 0])
     print('Detected true depth: {}'.format(true_depth))
 
     if config_data['dilate_iterations'] > 1:
         print('Dilating background')
+
         bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
 
-
     # farm out the batches and write to an hdf5 file
-
     with h5py.File(os.path.join(output_dir, '{}.testh5'.format(output_filename)), 'w') as f:
         f.create_dataset('metadata/uuid', data=status_dict['uuid'])
         for scalar in scalars:
