@@ -17,7 +17,7 @@ setup(
     name='moseq2-extract',
     author='Jeff Markowitz',
     description='To boldly go where no mouse has gone before',
-    version='0.2.4',
+    version='0.2.5',
     platforms=['mac', 'unix'],
     packages=find_packages(),
     install_requires=['h5py', 'matplotlib', 'scipy',
