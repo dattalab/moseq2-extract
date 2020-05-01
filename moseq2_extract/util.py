@@ -420,24 +420,19 @@ def click_param_annot(click_cmd):
             annotations[p.human_readable_name] = p.help
     return annotations
 
-def find_disk(img, true_depth, threshold=200):
-    blurred = cv2.GaussianBlur(img, (5, 5), 0)
-    mask = cv2.inRange(blurred, threshold, true_depth)
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Find and use the biggest contour
-    r = 0
-    for cnt in contours:
-        (c_x, c_y), c_r = cv2.minEnclosingCircle(cnt)
-        if c_r > r:
-            x = c_x
-            y = c_y
-            r = c_r
+def find_disk(img, true_depth, threshold=760):
+    # convert the grayscale image to binary image
+    ret, thresh = cv2.threshold(img, threshold, true_depth+50, 0)
 
-    if x is None:
-        raise RuntimeError("No disks detected in the image.")
+    # calculate moments of binary image
+    M = cv2.moments(thresh)
 
-    return round(x), round(y), round(r)
+    # calculate x,y coordinate of center
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+
+    return cX, cY
 
 def make_gradient_v2(width, height, h, k, a, b, theta):
     # Precalculate constants
@@ -450,7 +445,7 @@ def make_gradient_v2(width, height, h, k, a, b, theta):
     # Calculate the weight for each pixel
     weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
 
-    return np.clip(1 - weights, 0, 0.81)
+    return np.clip(1 - weights, 0, 0.8)
 
 # https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
 # https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
@@ -464,11 +459,14 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     # determine center of bground roi
     width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
 
-    cx, cy, r = find_disk(deepcopy(old_bg), true_depth)
-
+    # getting helper user parameters
     xoffset = config_data.get('x_bg_offset', 0)
     yoffset = config_data.get('y_offset', 0)
     widen_radius = config_data.get('widen_radius', 65)
+    bg_threshold = config_data.get('bg_threshold', 760)
+
+    # getting bground centroid
+    cx, cy = find_disk(deepcopy(old_bg), true_depth, threshold=bg_threshold)
 
     # set up gradient
     h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
@@ -479,10 +477,10 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     bground_im = np.float64(make_gradient_v2(width, height, h, k, a, b, theta) * 255)
 
     # scale it back to depth
-    bground_im *= np.uint8((true_depth * 1.068) / bground_im.max())
+    bground_im *= np.uint8((true_depth * 1.0615) / bground_im.max())
 
     # overlay with actual bucket floor distance
-    mask = np.ma.less(old_bg, old_bg.max()-(old_bg.max()/32))
+    mask = np.ma.less(old_bg, old_bg.max())
     bground_im = np.where(mask == False, old_bg, bground_im)
     bground_im = cv2.GaussianBlur(bground_im, (5, 5), 5)
 

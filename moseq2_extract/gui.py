@@ -1059,13 +1059,12 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
 
 
     true_depth = np.median(bground_im[roi > 0])
+    print('Detected true depth: {}'.format(true_depth))
 
     if config_data['dilate_iterations'] > 1:
         print('Dilating background')
         bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
 
-
-    print('Detected true depth: {}'.format(true_depth))
 
     # farm out the batches and write to an hdf5 file
 
