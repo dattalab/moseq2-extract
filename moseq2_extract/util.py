@@ -7,8 +7,11 @@ import ruamel.yaml as yaml
 import h5py
 import re
 from typing import Pattern
+import math
 import warnings
+from copy import deepcopy
 from cytoolz import valmap, assoc
+from moseq2_extract.io.image import write_image
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -400,7 +403,6 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
 
     return proc_dirs
 
-
 def click_param_annot(click_cmd):
     """ Given a click.Command instance, return a dict that maps option names to help strings
 
@@ -417,3 +419,73 @@ def click_param_annot(click_cmd):
         if isinstance(p, click.Option):
             annotations[p.human_readable_name] = p.help
     return annotations
+
+def find_disk(img, true_depth, threshold=200):
+    blurred = cv2.GaussianBlur(img, (5, 5), 0)
+    mask = cv2.inRange(blurred, threshold, true_depth)
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Find and use the biggest contour
+    r = 0
+    for cnt in contours:
+        (c_x, c_y), c_r = cv2.minEnclosingCircle(cnt)
+        if c_r > r:
+            x = c_x
+            y = c_y
+            r = c_r
+
+    if x is None:
+        raise RuntimeError("No disks detected in the image.")
+
+    return round(x), round(y), round(r)
+
+def make_gradient_v2(width, height, h, k, a, b, theta):
+    # Precalculate constants
+    st, ct = math.sin(theta), math.cos(theta)
+    aa, bb = a ** 2, b ** 2
+
+    # Generate (x,y) coordinate arrays
+    y, x = np.mgrid[-k:height - k, -h:width - h]
+
+    # Calculate the weight for each pixel
+    weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
+
+    return np.clip(1 - weights, 0, 0.81)
+
+# https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
+# https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
+def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir):
+    # store old and new backgrounds
+    old_bg = deepcopy(bground_im)
+
+    # dilate background size to match ROI size and attribute wall noise to cancel out
+    bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data['dilate_iterations'])
+
+    # determine center of bground roi
+    width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
+
+    cx, cy, r = find_disk(deepcopy(old_bg), true_depth)
+
+    xoffset = config_data.get('x_bg_offset', 0)
+    yoffset = config_data.get('y_offset', 0)
+    widen_radius = config_data.get('widen_radius', 65)
+
+    # set up gradient
+    h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
+    a, b = cx + widen_radius, cy + widen_radius  # x,y radii of gradient circle
+    theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
+
+    # create slant gradient
+    bground_im = np.float64(make_gradient_v2(width, height, h, k, a, b, theta) * 255)
+
+    # scale it back to depth
+    bground_im *= np.uint8((true_depth * 1.068) / bground_im.max())
+
+    # overlay with actual bucket floor distance
+    mask = np.ma.less(old_bg, old_bg.max()-(old_bg.max()/32))
+    bground_im = np.where(mask == False, old_bg, bground_im)
+    bground_im = cv2.GaussianBlur(bground_im, (5, 5), 5)
+
+    write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
+
+    return bground_im
