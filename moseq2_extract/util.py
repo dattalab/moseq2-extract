@@ -1,14 +1,17 @@
-import numpy as np
 import os
-import json
-import cv2
-import click
-import ruamel.yaml as yaml
-import h5py
 import re
-from typing import Pattern
+import cv2
+import math
+import json
+import h5py
+import click
 import warnings
+import numpy as np
+from copy import deepcopy
+import ruamel.yaml as yaml
+from typing import Pattern
 from cytoolz import valmap, assoc
+from moseq2_extract.io.image import write_image
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -678,3 +681,126 @@ def click_param_annot(click_cmd):
         if isinstance(p, click.Option):
             annotations[p.human_readable_name] = p.help
     return annotations
+
+def get_bucket_center(img, true_depth, threshold=740):
+    '''
+    https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
+    Finds Centroid coordinates of circular bucket.
+
+    Parameters
+    ----------
+    img (2d np.ndaarray): original background image.
+    true_depth (float): distance value from camera to bucket floor (automatically pre-computed)
+    threshold (float): distance values to accept region into detected circle. (used to reduce fall noise interference)
+
+    Returns
+    -------
+    cX (int): x-coordinate of circle centroid
+    cY (int): y-coordinate of circle centroid
+    '''
+
+    # convert the grayscale image to binary image
+    ret, thresh = cv2.threshold(img, threshold, true_depth, 0)
+
+    # calculate moments of binary image
+    M = cv2.moments(thresh)
+
+    # calculate x,y coordinate of center
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+
+    return cX, cY
+
+def make_gradient_v2(width, height, h, k, a, b, theta):
+    '''
+    https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
+    Creates gradient around bucket floor representing slanted wall values.
+    This is done by drawing an "ellipse" of equal x,y radii, resulting in a circle with weighted
+    depth values from highest to lowest surrounding the circumference of the circle
+
+    Parameters
+    ----------
+    width (int): bounding box width
+    height (int) bounding box height
+    h (int): centroid x coordinate
+    k (int): centroid y coordinate
+    a (int): x-radius of drawn ellipse
+    b (int): y-radius of drawn ellipse
+    theta (float): degree to rotate ellipse in radians. (has no effect if drawing a circle)
+
+    Returns
+    -------
+    (2d np.ndarray): numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
+    to create a gradient from. 0.8 being the proportioned values closest to the circle wall.
+    '''
+
+    # Precalculate constants
+    st, ct = math.sin(theta), math.cos(theta)
+    aa, bb = a ** 2, b ** 2
+
+    # Generate (x,y) coordinate arrays
+    y, x = np.mgrid[-k:height - k, -h:width - h]
+
+    # Calculate the weight for each pixel
+    weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
+
+    return np.clip(1 - weights, 0.08, 0.8)
+
+
+def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir):
+    '''
+    Creates a gradient to represent the dilated (now visible) bucket wall regions.
+    Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
+    This is done to handle noise attributed by bucket walls being slanted, and thus being picked
+    up as large noise depth values. Moreover, to appropriately subtract the background from input
+    images during extraction without obscuring the rodent, or including unwanted wall regions.
+    Parameters
+    ----------
+    bground_im (2d np.ndarray): the bucket floor image computed as the median distance throughout the session.
+    config_data (dict): dictionary containing helper user configuration parameters.
+    strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
+    true_depth (float): median distance computed throughout recording.
+    output_dir (str): path to save background to use.
+
+    Returns
+    -------
+    bground_im (2d np.ndarray): the new background image with a gradient around the floor from high to low depth values.
+    '''
+
+    # store old and new backgrounds
+    old_bg = deepcopy(bground_im)
+
+    # dilate background size to match ROI size and attribute wall noise to cancel out
+    bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data['dilate_iterations'])
+
+    # determine center of bground roi
+    width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
+
+    # getting helper user parameters
+    xoffset = config_data.get('x_bg_offset', -2)
+    yoffset = config_data.get('y_offset', 2)
+    widen_radius = config_data.get('widen_radius', 0)
+    bg_threshold = config_data.get('bg_threshold', 740)
+
+    # getting bground centroid
+    cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
+
+    # set up gradient
+    h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
+    a, b = cx + widen_radius + 67, cy + widen_radius + 67 # x,y radii of gradient circle
+    theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
+
+    # create slant gradient
+    bground_im = np.float64((make_gradient_v2(width, height, h, k, a, b, theta)) * 255)
+
+    # scale it back to depth
+    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
+
+    # overlay with actual bucket floor distance
+    mask = np.ma.equal(old_bg, old_bg.max())
+    bground_im = np.where(mask == True, old_bg, bground_im)
+    bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
+
+    write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
+
+    return bground_im

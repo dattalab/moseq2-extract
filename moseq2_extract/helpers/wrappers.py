@@ -18,7 +18,7 @@ from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_
 from moseq2_extract.io.video import load_movie_data, convert_mkv_to_avi, get_movie_info
 from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, \
                             load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s, \
-                            clean_dict, h5_to_dict
+                            clean_dict, h5_to_dict, graduate_dilated_wall_area
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
@@ -335,19 +335,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         yaml.safe_dump(status_dict, f)
 
     bg_roi_file = input_file
-    if input_file.endswith('.mkv'):
-        # create a depth.avi file to represent PCs
-        bg_roi_file = convert_mkv_to_avi(input_file)
 
+    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
     strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
     strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
 
-    if bg_roi_file != input_file:
-        roi, bground_im, first_frame = get_roi_wrapper(bg_roi_file, config_data,
-                                                      output_dir=output_dir, extract_helper=True)
-    else:
-        roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data,
-                                                      output_dir=output_dir, extract_helper=True)
+    roi, bground_im, first_frame = get_roi_wrapper(bg_roi_file, config_data, output_dir=output_dir, extract_helper=True)
 
     if config_data['detected_true_depth'] == 'auto':
         true_depth = np.median(bground_im[roi > 0])
@@ -359,6 +352,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         bground_im = np.where(new_bg == True, new_bg, true_depth)
 
     print('Detected true depth:', true_depth)
+
+    if config_data['dilate_iterations'] > 1:
+        print('Dilating background')
+        bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
 
     # farm out the batches and write to an hdf5 file
     with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:

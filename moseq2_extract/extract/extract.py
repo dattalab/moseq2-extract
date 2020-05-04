@@ -36,7 +36,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
 
     Parameters
     ----------
-    chunk (3d np.ndarray): chunk to extract
+    chunk (3d np.ndarray): chunk to extract - (chunksize, height, width)
     use_em_tracker (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
         basis to the mouse's body and determine if pixels are mouse vs cable.
     prefilter_space (tuple): spatial kernel size
