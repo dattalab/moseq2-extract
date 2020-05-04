@@ -5,9 +5,11 @@ import numpy as np
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.cli import find_roi
+from moseq2_extract.io.image import read_image
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, scalar_attributes, dict_to_h5, click_param_annot
+    select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
+    get_bucket_center, make_gradient, graduate_dilated_wall_area
 
 class testExtractUtils(TestCase):
     def test_gen_batch_sequence(self):
@@ -130,3 +132,45 @@ class testExtractUtils(TestCase):
 
         test_dict = click_param_annot(find_roi)
         npt.assert_equal(ref_dict, test_dict)
+
+    def test_get_bucket_center(self):
+        img = read_image('data/bground_bucket.tiff')
+        roi = read_image('data/roi_bucket_01.tiff')
+        true_depth = np.median(img[roi > 0])
+
+        x, y = get_bucket_center(img, true_depth)
+
+        assert isinstance(x, int)
+        assert isinstance(y, int)
+
+        assert x > 0 and x < img.shape[1]
+        assert y > 0 and y < img.shape[0]
+
+
+    def test_make_gradient(self):
+        img = read_image('data/bground_bucket.tiff')
+        width = img.shape[1]
+        height = img.shape[0]
+        xc = int(img.shape[1]/ 2)
+        yc = int(img.shape[0] / 2)
+        radx = int(img.shape[1] / 2)
+        rady = int(img.shape[0] / 2)
+        theta = 0
+
+        grad = make_gradient(width, height, xc, yc, radx, rady, theta)
+        assert grad[grad >= 0.08].all() == True
+        assert grad[grad <= 0.8].all() == True
+
+    def test_graduate_dilated_wall_area(self):
+        img = read_image('data/bground_bucket.tiff')
+        roi = read_image('data/roi_bucket_01.tiff')
+        true_depth = np.median(img[roi > 0])
+
+        config_data = {}
+        strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        output_dir = 'data/'
+
+        new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, true_depth, output_dir)
+
+        assert new_bg.all() != img.all()
+        assert np.median(new_bg) > np.median(img)

@@ -711,7 +711,7 @@ def get_bucket_center(img, true_depth, threshold=740):
 
     return cX, cY
 
-def make_gradient_v2(width, height, h, k, a, b, theta):
+def make_gradient(width, height, h, k, a, b, theta=0):
     '''
     https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
     Creates gradient around bucket floor representing slanted wall values.
@@ -760,7 +760,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     config_data (dict): dictionary containing helper user configuration parameters.
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
     true_depth (float): median distance computed throughout recording.
-    output_dir (str): path to save background to use.
+    output_dir (str): path to save newly computed background to use.
 
     Returns
     -------
@@ -771,7 +771,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     old_bg = deepcopy(bground_im)
 
     # dilate background size to match ROI size and attribute wall noise to cancel out
-    bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data['dilate_iterations'])
+    bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data.get('dilate_iterations', 5))
 
     # determine center of bground roi
     width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
@@ -791,7 +791,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
     # create slant gradient
-    bground_im = np.float64((make_gradient_v2(width, height, h, k, a, b, theta)) * 255)
+    bground_im = np.float64((make_gradient(width, height, h, k, a, b, theta)) * 255)
 
     # scale it back to depth
     bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising

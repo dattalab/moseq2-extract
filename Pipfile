@@ -21,3 +21,4 @@ ruamel_yaml = '*'
 scikit-image = "*"
 scikit-learn = "*"
 opencv-python = '*'
+moseq2-extract = {editable = true, path = "."}
