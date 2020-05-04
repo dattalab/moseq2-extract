@@ -682,7 +682,7 @@ def click_param_annot(click_cmd):
             annotations[p.human_readable_name] = p.help
     return annotations
 
-def get_bucket_center(img, true_depth, threshold=740):
+def get_bucket_center(img, true_depth, threshold=650):
     '''
     https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
     Finds Centroid coordinates of circular bucket.
@@ -780,7 +780,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     xoffset = config_data.get('x_bg_offset', -2)
     yoffset = config_data.get('y_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
-    bg_threshold = config_data.get('bg_threshold', 740)
+    bg_threshold = config_data.get('bg_threshold', 650)
 
     # getting bground centroid
     cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
