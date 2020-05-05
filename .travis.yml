@@ -15,6 +15,7 @@ jobs:
       python: '3.6'
       stage: latest-installs
       before_install:
+        - pip install -U pip
         - pip install pipenv
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
@@ -33,6 +34,7 @@ jobs:
       python: '3.7'
       stage: latest-pythons
       before_install:
+        - pip install -U pip
         - pip install pipenv
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
@@ -51,6 +53,8 @@ jobs:
       stage: latest-installs
       # get the dependencies
       before_install:
+        - pip install -U pip
+        - pip install awscli
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -69,6 +73,8 @@ jobs:
       stage: latest-pythons
       # get the dependencies
       before_install:
+        - pip install -U pip
+        - pip install awscli
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)

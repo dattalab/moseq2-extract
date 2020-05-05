@@ -13,6 +13,7 @@ tqdm = "*"
 scipy = "*"
 numpy = "*"
 click = "*"
+awscli = "*"
 joblib = "*"
 cytoolz = "*"
 matplotlib = '*'
