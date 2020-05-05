@@ -6,7 +6,6 @@ from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
     get_movie_info, load_movie_data
 
-
 class TestVideoIO(TestCase):
     def test_read_frames_raw(self):
 
