@@ -458,6 +458,15 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     else:
         output_dir = os.path.join(output_directory, output_dir)
 
+    # Generate Index file before
+    if output_directory is None:
+        indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
+    else:
+        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (),
+                                           False)
+    print(f'Index file path: {indexpath}')
+
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -588,12 +597,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
 
     print('Results successfully aggregated in', output_dir)
 
-    if output_directory is None:
-        indexpath = generate_index_command(input_dir, '', 'moseq2-index.yaml', (), False)
-    else:
-        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False)
 
-    print(f'Index file path: {indexpath}')
     return indexpath
 
 def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
