@@ -270,7 +270,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     with config_file.open() as f:
         params = yaml.safe_load(f)
 
-    cluster_type = params.get('cluster_type', default='local')
+    cluster_type = params.get('cluster_type', 'local')
 
     if type(params['bg_roi_index']) is int:
         params['bg_roi_index'] = [params['bg_roi_index']]
