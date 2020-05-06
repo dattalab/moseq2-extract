@@ -180,14 +180,6 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # NEW FUNCTIONALITY S
-    if input_file.endswith('.mkv'):
-        # create a depth.avi file to represent PCs
-        temp = convert_mkv_to_avi(input_file)
-        if isinstance(temp, str):
-            input_file = temp
-    # NEW FUNCTIONALITY E
-
     print('Getting background...')
     bground_im = get_bground_im_file(input_file)
     write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
@@ -342,14 +334,14 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     roi, bground_im, first_frame = get_roi_wrapper(bg_roi_file, config_data, output_dir=output_dir, extract_helper=True)
 
-    if config_data['detected_true_depth'] == 'auto':
+    if config_data.get('detected_true_depth', 'auto') == 'auto':
         true_depth = np.median(bground_im[roi > 0])
     else:
         true_depth = int(config_data['detected_true_depth'])
 
-    if input_file.endswith('mkv'):
-        new_bg = np.ma.masked_not_equal(roi, 0)
-        bground_im = np.where(new_bg == True, new_bg, true_depth)
+    if config_data.get('dilate_iterations', 0) > 1:
+        print('Dilating background')
+        bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
 
     print('Detected true depth:', true_depth)
 

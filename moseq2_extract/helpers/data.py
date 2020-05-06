@@ -1,12 +1,12 @@
 import os
 import h5py
-from tqdm.auto import tqdm
 import shutil
 import tarfile
 import numpy as np
-import ruamel.yaml as yaml
 from cytoolz import keymap
-from cytoolz.curried import valmap
+import ruamel.yaml as yaml
+from tqdm.auto import tqdm
+from ast import literal_eval
 from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
     load_textdata, build_path, dict_to_h5, click_param_annot
@@ -26,71 +26,60 @@ def get_selected_sessions(to_extract, extract_all):
     to_extract (list): new list of selected sessions to extract.
     '''
 
+    selected_sess_idx, excluded_sess_idx, ret_extract = [], [], []
+
+    def parse_input(s):
+        if 'e' not in s and '-' not in s:
+            if isinstance(literal_eval(s), int):
+                selected_sess_idx.append(int(s))
+        elif 'e' not in s and '-' in s:
+            ss = s.split('-')
+            if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
+                for i in range(int(ss[0]), int(ss[1]) + 1):
+                    selected_sess_idx.append(i)
+        elif 'e' in s:
+            s = s.strip('e')
+            if '-' not in s:
+                if isinstance(literal_eval(s), int):
+                    excluded_sess_idx.append(int(s))
+            else:
+                ss = s.split('-')
+                if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
+                    for i in range(int(ss[0]), int(ss[1]) + 1):
+                        excluded_sess_idx.append(i)
+
     if len(to_extract) > 1 and not extract_all:
         for i, sess in enumerate(to_extract):
             print(f'[{str(i + 1)}] {sess}')
 
-        input_file_indices = []
-        while (True):
-            try:
-                input_file_indices = input("Input session indices to extract separated by commas, or empty string for all sessions.\nTo extract all except certain sessions: type 'e index1,index2,...'\n").strip()
-                if 'e' not in input_file_indices:
-                    if ',' in input_file_indices:
-                        input_file_indices = input_file_indices.split(',')
-                        for i in input_file_indices:
-                            i = int(i.strip())
-                            if i > len(to_extract):
-                                print('invalid index try again.')
-                                input_file_index = []
-                                break
+        print('You may input comma separated values for individual sessions')
+        print('Or you can input a hyphen separated range. E.g. "1-10" selects 10 sessions, including sessions 1 and 10')
+        print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5"')
+        while(len(ret_extract) == 0):
+            sessions = input('Input your selected sessions to extract: ')
+            if 'q' in sessions:
+                return []
+            if ',' in sessions:
+                selection = sessions.split(',')
+                for s in selection:
+                    s = s.strip()
+                    parse_input(s)
+                for i in selected_sess_idx:
+                    if i not in excluded_sess_idx:
+                        ret_extract.append(to_extract[i - 1])
 
-                        tmp = []
-                        for index in input_file_indices:
-                            index = int(index.strip())
-                            print('extracting ', to_extract[index-1])
-                            tmp.append(to_extract[index-1])
-                        to_extract = tmp
-                        break
-                    elif len(input_file_indices.strip()) == 1:
-                        index = int(input_file_indices.strip())
-                        to_extract = [to_extract[index-1]]
-                        print('extracting ', to_extract)
-                        break
-                    elif input_file_indices == '':
-                        break
-                else:
-                    input_file_indices = input_file_indices.strip('e ')
-                    if ',' in input_file_indices:
-                        input_file_indices = input_file_indices.split(',')
-                        for i in input_file_indices:
-                            i = int(i.strip())
-                            if i > len(to_extract):
-                                print('invalid index try again.')
-                                input_file_index = []
-                                break
-                        # values to remove
-                        vals = []
-                        for index in input_file_indices:
-                            index = int(index.strip())
-                            print('excluding ', to_extract[index-1])
-                            vals.append(to_extract[index-1])
-                        for val in vals:
-                            to_extract.remove(val)
-                        break
-                    elif len(input_file_indices.strip()) == 1:
-                        index = int(input_file_indices.strip())
-                        print('excluding ', to_extract[index-1])
-                        to_extract.remove(to_extract[index-1])
-                        break
-                    elif input_file_indices == '':
-                        break
-
-            except:
-                print('invalid input, only input correct comma separated indices, or no empty string for all sessions.')
+            elif ',' not in sessions and len(sessions) > 0:
+                parse_input(sessions)
+                for i in selected_sess_idx:
+                    if i not in excluded_sess_idx:
+                        if i-1 < len(to_extract):
+                            ret_extract.append(to_extract[i - 1])
+            else:
+                print('Invalid input. Try again or press q to quit.')
     else:
         print(f'Extracting {to_extract[0]}')
 
-    return to_extract
+    return ret_extract
 
 def load_h5s(to_load, snake_case=True):
     '''
