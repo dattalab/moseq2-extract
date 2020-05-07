@@ -1331,7 +1331,8 @@ def extract_command(input_file, output_dir, config_file, skip=False):
     status_filename = os.path.join(output_dir, '{}.yaml'.format(output_filename))
 
     if skip == True:
-        return
+        if os.path.exists(os.path.join(output_dir, 'done.txt')):
+            return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
@@ -1536,6 +1537,9 @@ def extract_command(input_file, output_dir, config_file, skip=False):
         pass
 
     status_dict['complete'] = True
+
+    with open(os.path.join(output_dir, 'done.txt'), 'w') as f:
+        f.write('done')
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
