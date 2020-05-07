@@ -1,17 +1,64 @@
+import os
 import cv2
 import h5py
 import json
+import shutil
 import numpy as np
+from pathlib import Path
+import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
     select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
-    get_bucket_center, make_gradient, graduate_dilated_wall_area
+    get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
+    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml
 
 class testExtractUtils(TestCase):
+
+    def test_build_path(self):
+        out = build_path({'test1':'value', 'test2':'value2'}, '{test1}_{test2}')
+        assert out == 'value_value2'
+
+    def test_read_yaml(self):
+
+        test_file = 'data/config.yaml'
+        test_dict = read_yaml(test_file)
+
+        with open(test_file, 'r') as f:
+            truth_dict = yaml.safe_load(f)
+
+        assert truth_dict == test_dict
+
+    def test_clean_file_str(self):
+        test_name = 'd<a:t\\t"a'
+        truth_out = 'd-a-t-t-a'
+
+        test_out = clean_file_str(test_name)
+        assert truth_out == test_out
+
+    def test_load_textdata(self):
+        data_file = 'data/depth_ts.txt'
+
+        data, timestamps = load_textdata(data_file, np.uint8)
+        assert data.all() != None
+        assert timestamps.all() != None
+        assert len(data) == len(timestamps)
+
+    def test_time_str_for_filename(self):
+
+        test_out = time_str_for_filename('12:12:12')
+        truth_out = '12-12-12'
+        assert test_out == truth_out
+
+    def test_recursive_find_h5s(self):
+
+        h5s, dicts, yamls = recursive_find_h5s('data/')
+        assert len(h5s) == len(dicts) == len(yamls) > 0
+
     def test_gen_batch_sequence(self):
 
         tmp_list = [range(0, 10),
@@ -37,7 +84,6 @@ class testExtractUtils(TestCase):
             loaded_timestamps = load_timestamps(txt_path.name)
             npt.assert_almost_equal(loaded_timestamps, tmp_timestamps, 10)
 
-
     def test_load_metadata(self):
 
         tmp_dict = {
@@ -53,6 +99,32 @@ class testExtractUtils(TestCase):
 
             assert(loaded_dict == tmp_dict)
 
+    def test_convert_raw_to_avi(self):
+
+        with TemporaryDirectory() as tmp:
+            # writing a file to test following pipeline
+            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
+            if not data_path.parent.is_dir():
+                data_path.parent.mkdir()
+            else:
+                for f in data_path.parent.iterdir():
+                    print(f)
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
+
+            write_fake_movie(data_path)
+
+        convert_raw_to_avi_function(str(data_path))
+        assert Path(str(data_path).replace('.dat', '.avi')).exists()
 
     def test_select_strel(self):
 
@@ -134,8 +206,8 @@ class testExtractUtils(TestCase):
         npt.assert_equal(ref_dict, test_dict)
 
     def test_get_bucket_center(self):
-        img = read_image('data/bground_bucket.tiff')
-        roi = read_image('data/roi_bucket_01.tiff')
+        img = read_image('data/tiffs/bground_bucket.tiff')
+        roi = read_image('data/tiffs/roi_bucket_01.tiff')
         true_depth = np.median(img[roi > 0])
 
         x, y = get_bucket_center(img, true_depth)
@@ -148,7 +220,7 @@ class testExtractUtils(TestCase):
 
 
     def test_make_gradient(self):
-        img = read_image('data/bground_bucket.tiff')
+        img = read_image('data/tiffs/bground_bucket.tiff')
         width = img.shape[1]
         height = img.shape[0]
         xc = int(img.shape[1]/ 2)
@@ -162,15 +234,17 @@ class testExtractUtils(TestCase):
         assert grad[grad <= 0.8].all() == True
 
     def test_graduate_dilated_wall_area(self):
-        img = read_image('data/bground_bucket.tiff')
-        roi = read_image('data/roi_bucket_01.tiff')
+        img = read_image('data/tiffs/bground_bucket.tiff')
+        roi = read_image('data/tiffs/roi_bucket_01.tiff')
         true_depth = np.median(img[roi > 0])
 
         config_data = {}
         strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-        output_dir = 'data/'
+        output_dir = 'data/tiffs/'
 
         new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, true_depth, output_dir)
 
         assert new_bg.all() != img.all()
         assert np.median(new_bg) > np.median(img)
+        assert os.path.exists('data/tiffs/new_bg.tiff')
+        os.remove('data/tiffs/new_bg.tiff')

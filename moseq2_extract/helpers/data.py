@@ -77,7 +77,7 @@ def get_selected_sessions(to_extract, extract_all):
             else:
                 print('Invalid input. Try again or press q to quit.')
     else:
-        print(f'Extracting {to_extract[0]}')
+        return to_extract
 
     return ret_extract
 

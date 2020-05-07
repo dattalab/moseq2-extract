@@ -3,14 +3,14 @@ import re
 import sys
 import uuid
 import h5py
-from tqdm.auto import tqdm
-import urllib.request
 import shutil
 import warnings
 import numpy as np
+import urllib.request
 from cytoolz import pluck
 from copy import deepcopy
 import ruamel.yaml as yaml
+from tqdm.auto import tqdm
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file

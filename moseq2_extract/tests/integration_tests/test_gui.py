@@ -6,9 +6,9 @@ import ruamel.yaml as yaml
 from unittest import TestCase
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
-from moseq2_extract.gui import check_progress, generate_config_command, view_extraction, \
+from moseq2_extract.gui import update_progress, check_progress, generate_config_command, view_extraction, \
     generate_index_command, aggregate_extract_results_command, get_found_sessions, download_flip_command,\
-    find_roi_command, sample_extract_command, extract_command
+    find_roi_command, sample_extract_command, extract_command, extract_found_sessions
 
 
 class GUITests(TestCase):
@@ -24,33 +24,19 @@ class GUITests(TestCase):
 
         with TemporaryDirectory() as tmp:
             progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+
             with open(progress_path.name, 'w') as f:
                 yaml.safe_dump(temp_prog, f)
             f.close()
 
-            # simulate opening file
-            with open(progress_path.name, 'r') as f:
-                progress = yaml.safe_load(f)
-            f.close()
-
-            # simulate update for all supported keys
-            for key in temp_prog.keys():
-                temp_prog[key] = 0
-                progress[key] = 0
-
-            assert all(progress.values()) == 0, "dict values were not updated"
-
-            # simulate write
-            with open(progress_path.name, 'w') as f:
-                yaml.safe_dump(progress, f)
-            f.close()
+            update_progress(progress_path.name, 'config_file', 1)
 
             # simulate opening file
             with open(progress_path.name, 'r') as f:
-                progress1= yaml.safe_load(f)
+                test_progress = yaml.safe_load(f)
             f.close()
 
-            assert progress1 == temp_prog, "dict was not saved correctly"
+            assert test_progress != temp_prog, "dict was not saved correctly"
 
 
     def test_restore_progress_vars(self):
@@ -232,6 +218,9 @@ class GUITests(TestCase):
             data_dir, found_sessions = get_found_sessions(str(input_dir))
             assert(found_sessions == 3), "temp files were not successfully located"
 
+            data_dir, found_sessions = get_found_sessions('')
+            assert found_sessions == 0, "filesystem structure is incorrect. No sessions should be found."
+
 
     def test_download_flip_file_command(self):
         with TemporaryDirectory() as tmp:
@@ -292,6 +281,7 @@ class GUITests(TestCase):
 
 
     def test_sample_extract_command(self):
+
         with TemporaryDirectory() as tmp:
             config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
             configfile = Path(config_path.name)
@@ -318,7 +308,6 @@ class GUITests(TestCase):
                 data_path.parent.mkdir()
             else:
                 for f in data_path.parent.iterdir():
-                    print(f)
                     if f.is_file():
                         os.remove(f.resolve())
                     elif f.is_dir():
@@ -369,11 +358,30 @@ class GUITests(TestCase):
             write_fake_movie(data_path)
             assert(data_path.is_file()), "fake movie was not written correctly"
 
+            download_flip_command('data/')
+            flip_file = 'data/flip_classifier_k2_c57_10to13weeks.pkl'
+            assert Path(flip_file).is_file()
+
+            with open(str(configfile), 'r') as f:
+                config_data = yaml.safe_load(f)
+
+            config_data['flip_classifier'] = flip_file
+
+            with open(str(configfile), 'w') as f:
+                yaml.safe_dump(config_data, f)
+
+            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            with open(stdin.name, 'w') as f:
+                f.write('Y')
+            f.close()
+            sys.stdin = open(stdin.name)
+
             ret = extract_command(str(data_path), None, str(configfile), skip=True)
 
             assert(data_path.parent.joinpath('proc').is_dir()), "proc directory was not created"
             assert(data_path.parent.joinpath('proc', 'done.txt').is_file()), "extraction did not finish"
             assert ('completed' in ret), "GUI command failed"
+            os.remove(flip_file)
 
     def test_aggregate_results_command(self):
         with TemporaryDirectory() as tmp:
@@ -382,4 +390,36 @@ class GUITests(TestCase):
             assert os.path.exists(os.path.join(tmp,'aggregate_results')), "aggregate results directory was not created"
 
     def test_extract_found_sessions(self):
-        print('not implemented: will test individual components first.')
+
+        with TemporaryDirectory() as tmp:
+            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            configfile = Path(config_path.name)
+
+            if configfile.is_file():
+                configfile.unlink()
+
+            generate_config_command(str(configfile))
+
+            # writing a file to test following pipeline
+            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+
+            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+
+            if not input_dir.is_dir():
+                input_dir.mkdir()
+
+            if not data_path.parent.is_dir():
+                data_path.parent.mkdir()
+            else:
+                for f in data_path.parent.iterdir():
+                    print(f)
+                    if f.is_file():
+                        os.remove(f.resolve())
+                    elif f.is_dir():
+                        shutil.rmtree(str(f))
+
+            write_fake_movie(data_path)
+            assert(data_path.is_file()), "fake movie was not written correctly"
+
+            extract_found_sessions(str(data_path.parent), str(configfile), '.dat', skip_extracted=True)

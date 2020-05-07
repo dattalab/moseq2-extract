@@ -103,7 +103,6 @@ class CLITests(TestCase):
         assert (len(list(Path(tmp).glob("*.tiff"))) == 3), \
             "ROI files were not generated in the correct directory"
 
-
     def test_download_flip_file(self):
 
         with TemporaryDirectory() as tmp:

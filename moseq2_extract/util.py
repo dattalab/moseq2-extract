@@ -429,7 +429,7 @@ def load_textdata(data_file, dtype=np.float32):
     with open(data_file, "r") as f:
         for line in f.readlines():
             tmp = line.split(' ', 1)
-            timestamps.append(int(tmp[0]))
+            timestamps.append(int(float(tmp[0])))
             clean_data = np.fromstring(tmp[1].replace(" ", "").strip(), sep=',', dtype=dtype)
             data.append(clean_data)
 
