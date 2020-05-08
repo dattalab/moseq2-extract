@@ -112,19 +112,23 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
         'pca_path': pca_file
     }
 
+    rm_samples = [i for i, f in enumerate(file_with_uuids) if 'sample_' in f[0]]
+    files_to_use = []
+    for i, tup in enumerate(file_with_uuids):
+        if i not in rm_samples:
+            files_to_use.append(tup)
+
     index_uuids = []
-    for i, file_tup in enumerate(file_with_uuids):
+    for i, file_tup in enumerate(files_to_use):
         if file_tup[2]['uuid'] not in index_uuids:
-            try:
-                output_dict['files'].append({
-                    'path': (file_tup[0], file_tup[1]),
-                    'uuid': file_tup[2]['uuid'],
-                    'group': 'default'
-                })
-                index_uuids.append(file_tup[2]['uuid'])
-
-                output_dict['files'][i]['metadata'] = {}
-
+            output_dict['files'].append({
+                'path': (file_tup[0], file_tup[1]),
+                'uuid': file_tup[2]['uuid'],
+                'group': 'default',
+                'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'}
+            })
+            index_uuids.append(file_tup[2]['uuid'])
+            if 'metadata' in file_tup[2].keys():
                 for k, v in file_tup[2]['metadata'].items():
                     for filt in filter:
                         if k == filt[0]:
@@ -133,9 +137,9 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
                                 v = tmp[0]
 
                     output_dict['files'][i]['metadata'][k] = v
-            except:
-                pass
-
+            else:
+                print('skipping', file_tup[0])
+                
     # write out index yaml
     with open(output_file, 'w') as f:
         yaml.safe_dump(output_dict, f)
