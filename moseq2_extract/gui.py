@@ -1332,6 +1332,7 @@ def extract_command(input_file, output_dir, config_file, skip=False):
 
     if skip == True:
         if os.path.exists(os.path.join(output_dir, 'done.txt')):
+            print('Skipping completed extraction...')
             return
 
     with open(status_filename, 'w') as f:
