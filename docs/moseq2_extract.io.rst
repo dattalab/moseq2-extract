@@ -1,10 +1,7 @@
-moseq2\-extract.moseq2\_extract.io package
+moseq2\_extract.io package
 ==========================================
 
-Submodules
-----------
-
-IO - Image Module
+moseq2\_extract.io.image module
 -----------------------------------------------
 
 .. automodule:: moseq2_extract.io.image
@@ -12,7 +9,7 @@ IO - Image Module
    :undoc-members:
    :show-inheritance:
 
-IO - Video Module
+moseq2\_extract.io.video module
 -----------------------------------------------
 
 .. automodule:: moseq2_extract.io.video

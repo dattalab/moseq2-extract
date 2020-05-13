@@ -1,10 +1,7 @@
-moseq2\-extract.moseq2\_extract.extract package
+moseq2\_extract.extract package
 ===============================================
 
-Submodules
-----------
-
-Extract - Extract Module
+moseq2\_extract.extract.extract module
 ------------------------------------------------------
 
 .. automodule:: moseq2_extract.extract.extract
@@ -12,7 +9,7 @@ Extract - Extract Module
    :undoc-members:
    :show-inheritance:
 
-Extract - Proc Module
+moseq2\_extract.extract.proc module
 ---------------------------------------------------
 
 .. automodule:: moseq2_extract.extract.proc
@@ -20,7 +17,7 @@ Extract - Proc Module
    :undoc-members:
    :show-inheritance:
 
-Extract - ROI Module
+moseq2\_extract.extract.roi module
 --------------------------------------------------
 
 .. automodule:: moseq2_extract.extract.roi
@@ -28,7 +25,7 @@ Extract - ROI Module
    :undoc-members:
    :show-inheritance:
 
-Extract - Track Module
+moseq2\_extract.extract.track module
 ----------------------------------------------------
 
 .. automodule:: moseq2_extract.extract.track

@@ -12,9 +12,7 @@ Welcome to moseq2-extract's documentation!
 
    modules
 
-Indices and tables
-==================
+Index
+=====
 
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
