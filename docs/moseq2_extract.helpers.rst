@@ -1,7 +1,7 @@
 moseq2\_extract.helpers package
 ===============================================
 
-moseq2\_extract.helpers.data module
+Helpers - Data Module
 ---------------------------------------------------
 
 .. automodule:: moseq2_extract.helpers.data
@@ -9,7 +9,7 @@ moseq2\_extract.helpers.data module
    :undoc-members:
    :show-inheritance:
 
-moseq2\_extract.helpers.extract module
+Helpers - Extract Module
 ------------------------------------------------------
 
 .. automodule:: moseq2_extract.helpers.extract
@@ -17,7 +17,7 @@ moseq2\_extract.helpers.extract module
    :undoc-members:
    :show-inheritance:
 
-moseq2\_extract.helpers.wrappers module
+Helpers - Wrappers Module
 -------------------------------------------------------
 
 .. automodule:: moseq2_extract.helpers.wrappers

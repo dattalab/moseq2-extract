@@ -1,14 +1,14 @@
 moseq2\_extract package
 =======================================
 
-moseq2\_extract.cli module
+CLI Module
 ------------------------------------------
 
 .. click:: moseq2_extract.cli:cli
     :prog: moseq2-extract
     :show-nested:
 
-moseq2\_extract.gui module
+GUI Module
 ------------------------------------------
 
 .. automodule:: moseq2_extract.gui
@@ -16,7 +16,7 @@ moseq2\_extract.gui module
    :undoc-members:
    :show-inheritance:
 
-moseq2\_extract.util module
+General Utilities Module
 -------------------------------------------
 
 .. automodule:: moseq2_extract.util
