@@ -4,7 +4,8 @@ Welcome to moseq2, the latest version of a software package for mouse tracking i
 
 ## Documentation
 
-All documentation regarding moseq2-extract can be found in our [github wiki](https://github.com/dattalab/moseq2-extract/wiki).
+All documentation regarding moseq2-extract can be found in the `Documentation.pdf` file in the root directory, 
+or in a html format in `docs/_build/html/index.html`.
 
 ## Contributing
 
