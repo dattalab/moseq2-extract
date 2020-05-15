@@ -20,7 +20,7 @@ from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestam
 class testExtractUtils(TestCase):
 
     def test_build_path(self):
-        out = build_path({'test1':'value', 'test2':'value2'}, '{test1}_{test2}')
+        out = build_path({'test1': 'value', 'test2': 'value2'}, '{test1}_{test2}')
         assert out == 'value_value2'
 
     def test_read_yaml(self):
@@ -74,7 +74,7 @@ class testExtractUtils(TestCase):
     def test_load_timestamps(self):
 
         with TemporaryDirectory() as tmp:
-            txt_path = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            txt_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
 
             tmp_timestamps = np.arange(0, 5, .05)
             with open(txt_path.name, 'w') as f:
@@ -91,7 +91,7 @@ class testExtractUtils(TestCase):
         }
 
         with TemporaryDirectory() as tmp:
-            json_file = NamedTemporaryFile(prefix=tmp, suffix=".json")
+            json_file = NamedTemporaryFile(prefix=tmp+'/', suffix=".json")
             with open(json_file.name, 'w') as f:
                 json.dump(tmp_dict, f)
 
@@ -103,28 +103,12 @@ class testExtractUtils(TestCase):
 
         with TemporaryDirectory() as tmp:
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            write_fake_movie(str(data_path))
 
-            if not input_dir.is_dir():
-                input_dir.mkdir()
-
-            if not data_path.parent.is_dir():
-                data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
-
-            write_fake_movie(data_path)
-
-        convert_raw_to_avi_function(str(data_path))
-        assert Path(str(data_path).replace('.dat', '.avi')).exists()
+            convert_raw_to_avi_function(str(data_path))
+            assert Path(str(data_path).replace('.dat', '.avi')).is_file()
 
     def test_select_strel(self):
 
@@ -164,7 +148,7 @@ class testExtractUtils(TestCase):
             'list': [1,2,3],
         }
         with TemporaryDirectory() as tmp:
-            fpath = NamedTemporaryFile(prefix=tmp, suffix=".h5")
+            fpath = NamedTemporaryFile(prefix=tmp+'/', suffix=".h5")
             with h5py.File(fpath.name, 'w') as f:
                 dict_to_h5(f, tmp_dic, tmp)
 

@@ -23,7 +23,7 @@ class GUITests(TestCase):
         temp_prog = self.progress_vars
 
         with TemporaryDirectory() as tmp:
-            progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            progress_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
 
             with open(progress_path.name, 'w') as f:
                 yaml.safe_dump(temp_prog, f)
@@ -43,7 +43,7 @@ class GUITests(TestCase):
         temp_prog = self.progress_vars
 
         with TemporaryDirectory() as tmp:
-            progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            progress_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             with open(progress_path.name, 'w') as f:
                 yaml.safe_dump(temp_prog, f)
             f.close()
@@ -59,7 +59,7 @@ class GUITests(TestCase):
 
         # test file does not exist case
         with TemporaryDirectory() as tmp:
-            progress_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            progress_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             outfile = Path(progress_path.name)
 
             # case: file does not exist
@@ -82,7 +82,7 @@ class GUITests(TestCase):
                     assert v in self.progress_vars.values(), "read dict values to dont match simulated data"
 
             # now test case when file exists
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             with open(stdin.name, 'w') as f:
                 f.write('Y')
             f.close()
@@ -95,7 +95,7 @@ class GUITests(TestCase):
             assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
                 "progress retrieval from pre-existing file failed"
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             with open(stdin.name, 'w') as f:
                 f.write('N')
             f.close()
@@ -110,7 +110,7 @@ class GUITests(TestCase):
 
     def test_generate_config_command(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             outfile = Path(config_path.name)
 
             if outfile.exists():
@@ -122,7 +122,7 @@ class GUITests(TestCase):
             assert outfile.exists(), "config file does not exist in specified path"
 
             # file exists
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
 
             # retain old version
             with open(stdin.name, 'w') as f:
@@ -136,7 +136,7 @@ class GUITests(TestCase):
 
 
             # overwrite old version
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             with open(stdin.name, 'w') as f:
                 f.write('Y')
             f.close()
@@ -149,7 +149,7 @@ class GUITests(TestCase):
         extractions = ['1','2','3','4']
 
         with TemporaryDirectory() as tmp:
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             # retain old version
             with open(stdin.name, 'w') as f:
                 f.write('1,2,3')
@@ -175,9 +175,9 @@ class GUITests(TestCase):
 
     def test_get_found_sessions(self):
         with TemporaryDirectory() as tmp:
-            ft1 = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-            ft2 = NamedTemporaryFile(prefix=tmp, suffix=".mkv")
-            ft3 = NamedTemporaryFile(prefix=tmp, suffix=".avi")
+            ft1 = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+            ft2 = NamedTemporaryFile(prefix=tmp+'/', suffix=".mkv")
+            ft3 = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
 
@@ -229,7 +229,7 @@ class GUITests(TestCase):
 
     def test_find_roi_command(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
             if configfile.is_file():
@@ -237,7 +237,7 @@ class GUITests(TestCase):
 
             generate_config_command(configfile)
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
 
             # retain old version
             with open(stdin.name, 'w') as f:
@@ -250,7 +250,7 @@ class GUITests(TestCase):
             assert (out == None), "roi function did not find any rois to extract"
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
@@ -268,7 +268,7 @@ class GUITests(TestCase):
                         shutil.rmtree(str(f))
             write_fake_movie(data_path)
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             # select test file
             with open(stdin.name, 'w') as f:
                 f.write('1')
@@ -283,10 +283,10 @@ class GUITests(TestCase):
     def test_sample_extract_command(self):
 
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             # select test file
             with open(stdin.name, 'w') as f:
                 f.write('Y')
@@ -296,7 +296,7 @@ class GUITests(TestCase):
             generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
@@ -316,7 +316,7 @@ class GUITests(TestCase):
             write_fake_movie(data_path)
             assert(data_path.is_file()), "fake movie was not written correctly"
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             # select test file
             with open(stdin.name, 'w') as f:
                 f.write('1')
@@ -328,7 +328,7 @@ class GUITests(TestCase):
 
     def test_extract_command(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
             if configfile.is_file():
@@ -337,7 +337,7 @@ class GUITests(TestCase):
             generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
@@ -370,7 +370,7 @@ class GUITests(TestCase):
             with open(str(configfile), 'w') as f:
                 yaml.safe_dump(config_data, f)
 
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
             with open(stdin.name, 'w') as f:
                 f.write('Y')
             f.close()
@@ -392,7 +392,7 @@ class GUITests(TestCase):
     def test_extract_found_sessions(self):
 
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
             if configfile.is_file():
@@ -401,7 +401,7 @@ class GUITests(TestCase):
             generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
             input_dir = Path(tmp).resolve().parent.joinpath('temp1')
             data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)

@@ -55,47 +55,31 @@ class TestHelperExtract(TestCase):
 
         with TemporaryDirectory() as tmp:
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            write_fake_movie(str(data_path))
 
-            if not input_dir.is_dir():
-                input_dir.mkdir()
+            with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as g:
+                create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
+                                  true_depth, roi, bground_im, first_frame, None, extract=None)
+                video_pipe = process_extract_batches(g, str(data_path), config_data, bground_im, roi, scalars, frame_batches,
+                                                     first_frame_idx, true_depth, tar, strel_tail, strel_min, output_dir,
+                                                     output_filename)
+                if video_pipe:
+                    video_pipe.stdin.close()
+                    video_pipe.wait()
 
-            if not data_path.parent.is_dir():
-                data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
-
-            write_fake_movie(data_path)
-
-        with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as g:
-            create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
-                              true_depth, roi, bground_im, first_frame, None, extract=None)
-            video_pipe = process_extract_batches(g, str(data_path), config_data, bground_im, roi, scalars, frame_batches,
-                                                 first_frame_idx, true_depth, tar, strel_tail, strel_min, output_dir,
-                                                 output_filename)
-            if video_pipe:
-                video_pipe.stdin.close()
-                video_pipe.wait()
-
-        assert Path(output_dir).joinpath(f'{output_filename}.h5').exists()
-        Path(output_dir).joinpath(f'{output_filename}.h5').unlink()
-        assert Path(output_dir).joinpath(f'{output_filename}.mp4').exists()
-        Path(output_dir).joinpath(f'{output_filename}.mp4').unlink()
+            assert Path(output_dir).joinpath(f'{output_filename}.h5').exists()
+            Path(output_dir).joinpath(f'{output_filename}.h5').unlink()
+            assert Path(output_dir).joinpath(f'{output_filename}.mp4').exists()
+            Path(output_dir).joinpath(f'{output_filename}.mp4').unlink()
 
 
 
-    def run_local_extract(self):
+    def test_run_local_extract(self):
 
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
             if configfile.is_file():
@@ -104,73 +88,41 @@ class TestHelperExtract(TestCase):
             generate_config_command(str(configfile))
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
-
-            if not input_dir.is_dir():
-                input_dir.mkdir()
-
-            if not data_path.parent.is_dir():
-                data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
             write_fake_movie(data_path)
             assert (data_path.is_file()), "fake movie was not written correctly"
 
-        with configfile.open() as f:
-            params = yaml.safe_load(f)
+            with configfile.open() as f:
+                params = yaml.safe_load(f)
 
-        prefix = ''
+            prefix = ''
 
-        run_local_extract([str(data_path)], params, prefix)
+            run_local_extract([str(data_path)], params, prefix)
 
     def test_run_slurm_extract(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
             configfile = Path(config_path.name)
 
             if configfile.is_file():
                 configfile.unlink()
 
-            generate_config_command(str(configfile))
-
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp, suffix=".dat")
-
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
-
-            if not input_dir.is_dir():
-                input_dir.mkdir()
-
-            if not data_path.parent.is_dir():
-                data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
             write_fake_movie(data_path)
             assert (data_path.is_file()), "fake movie was not written correctly"
 
-        with configfile.open() as f:
-            params = yaml.safe_load(f)
+            generate_config_command(str(configfile))
 
-        params['cores'] = 1
-        params['memory'] = '4GB'
-        params['wall_time'] = '01:00:00'
-        partition = 'short'
-        prefix = ''
+            with configfile.open() as f:
+                params = yaml.safe_load(f)
 
-        run_slurm_extract([str(data_path)], params, partition, prefix, escape_path)
+            params['cores'] = 1
+            params['memory'] = '4GB'
+            params['wall_time'] = '01:00:00'
+            partition = 'short'
+            prefix = ''
+
+            run_slurm_extract([str(data_path)], params, partition, prefix, escape_path)

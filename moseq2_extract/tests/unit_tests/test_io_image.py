@@ -9,7 +9,7 @@ from skimage.external import tifffile
 class TestImageIO(TestCase):
     def test_write_image(self):
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".tiff")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".tiff")
 
             # make some random ints, don't exceed 16 bit limits
             rnd_img = np.random.randint(low=0, high=100, size=(50, 50)).astype('uint16')
@@ -26,7 +26,7 @@ class TestImageIO(TestCase):
     def test_read_image(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".tiff")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".tiff")
 
             rnd_img = np.random.randint(low=0, high=100, size=(50, 50)).astype('uint16')
 

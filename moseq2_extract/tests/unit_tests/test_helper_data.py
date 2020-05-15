@@ -17,7 +17,7 @@ class TestHelperData(TestCase):
         to_extract = ['test1', 'test2', 'test3', 'test4', 'test5']
 
         with TemporaryDirectory() as tmp:
-            stdin = NamedTemporaryFile(prefix=tmp, suffix=".txt")
+            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
 
             test_ext = get_selected_sessions(to_extract, True)
 

@@ -56,11 +56,10 @@ class CLITests(TestCase):
     def test_extract(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_file = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            tmp_file = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
             data_path = Path(tmp_file.name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath(data_path.parent, 'temp1', 'temp2', data_path.name)
+            input_dir = Path(tmp)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -77,10 +76,9 @@ class CLITests(TestCase):
             write_fake_movie(data_path)
             assert data_path.exists(), "fake movie was not written"
 
-            print(data_path.resolve(), data_path.parent)
             runner = CliRunner()
             result = runner.invoke(extract, [str(data_path),
-                                             '--output-dir', str(data_path.resolve().parent),
+                                             '--output-dir', str(data_path.parent),
                                              #'--angle-hampel-span', 5, # add auto fix for incorrect param inputs
                                              #'--centroid-hampel-span', 5
                                              ],
@@ -92,21 +90,21 @@ class CLITests(TestCase):
     def test_find_roi(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
-        write_fake_movie(data_path.name)
+            write_fake_movie(data_path.name)
 
-        runner = CliRunner()
-        result = runner.invoke(find_roi, [data_path.name, '--output-dir', tmp])
+            runner = CliRunner()
+            result = runner.invoke(find_roi, [data_path.name, '--output-dir', tmp+'/out/'])
 
-        assert(result.exit_code == 0), "CLI command did not successfully complete"
-        assert (len(list(Path(tmp).glob("*.tiff"))) == 3), \
-            "ROI files were not generated in the correct directory"
+            assert(result.exit_code == 0), "CLI command did not successfully complete"
+            assert (len(list(Path(tmp+'/out/').glob("*.tiff"))) == 3), \
+                "ROI files were not generated in the correct directory"
 
     def test_download_flip_file(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
 
             runner = CliRunner()
             result = runner.invoke(download_flip_file, [data_path.name, '--output-dir', tmp], input='0\n')
@@ -117,24 +115,24 @@ class CLITests(TestCase):
     def test_generate_config(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".yaml")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
 
-        runner = CliRunner()
-        result = runner.invoke(generate_config, ['--output-file', data_path.name])
-        yaml_data = yaml.load(tmp, Loader=yaml.RoundTripLoader)
-        temp_p = extract.params
-        params = [param for param in temp_p if type(temp_p) is click.core.Option]
+            runner = CliRunner()
+            result = runner.invoke(generate_config, ['--output-file', data_path.name])
+            yaml_data = yaml.load(tmp, Loader=yaml.RoundTripLoader)
+            temp_p = extract.params
+            params = [param for param in temp_p if type(temp_p) is click.core.Option]
 
-        for param in params:
-            npt.assert_equal(yaml_data[param.human_readable_name], param.default)
+            for param in params:
+                npt.assert_equal(yaml_data[param.human_readable_name], param.default)
 
-        assert(result.exit_code == 0), "CLI Command did not complete successfully"
-        assert(Path(data_path.name).is_file()), "Config file does not exist"
+            assert(result.exit_code == 0), "CLI Command did not complete successfully"
+            assert(Path(data_path.name).is_file()), "Config file does not exist"
 
     def test_convert_raw_to_avi(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            tmp_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
             data_path = Path(tmp_path.name)
 
             outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))
@@ -164,7 +162,7 @@ class CLITests(TestCase):
     def test_copy_slice(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            tmp_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
             data_path = Path(tmp_path.name)
 
             outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))

@@ -10,19 +10,19 @@ class TestVideoIO(TestCase):
     def test_read_frames_raw(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
-        test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
-        test_data.tofile(data_path.name)
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            test_data.tofile(data_path.name)
 
-        read_data = read_frames_raw(data_path.name)
-        npt.assert_array_equal(test_data, read_data)
+            read_data = read_frames_raw(data_path.name)
+            npt.assert_array_equal(test_data, read_data)
 
 
     def test_get_raw_info(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
 
             test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
@@ -39,7 +39,7 @@ class TestVideoIO(TestCase):
     def test_ffv1(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".avi")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
             test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
             test_data.tofile(data_path.name)
@@ -58,7 +58,7 @@ class TestVideoIO(TestCase):
     def test_write_frames_preview(self):
 
         with TemporaryDirectory() as tmp:
-            data_path = NamedTemporaryFile(prefix=tmp, suffix=".avi")
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
             test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
             write_frames_preview(data_path.name, test_data, fps=30)
@@ -67,8 +67,8 @@ class TestVideoIO(TestCase):
     def test_get_movie_info(self):
         with TemporaryDirectory() as tmp:
             for suff in ['.avi', '.mkv']:
-                avi_path = NamedTemporaryFile(prefix=tmp, suffix=suff)
-                dat_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+                avi_path = NamedTemporaryFile(prefix=tmp+'/', suffix=suff)
+                dat_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
                 test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
 
@@ -84,8 +84,8 @@ class TestVideoIO(TestCase):
 
     def test_load_movie_data(self):
         with TemporaryDirectory() as tmp:
-            avi_path = NamedTemporaryFile(prefix=tmp, suffix=".avi")
-            dat_path = NamedTemporaryFile(prefix=tmp, suffix=".dat")
+            avi_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
+            dat_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
             test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
 

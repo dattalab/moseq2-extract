@@ -12,7 +12,7 @@ from moseq2_extract.extract.proc import get_roi, crop_and_rotate_frames,\
 class TestExtractProc(TestCase):
     def test_get_roi(self):
         # load in a bunch of ROIs where we have some ground truth
-        bground_list = glob.glob('data/bground*.tiff')
+        bground_list = glob.glob('data/tiffs/bground*.tiff')
 
         for bground in bground_list:
             tmp = read_image(bground, scale=True)
