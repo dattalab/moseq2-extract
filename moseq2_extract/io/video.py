@@ -25,14 +25,14 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
 
     bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
 
-    if type(filename) is str:
+    if type(filename) is not tarfile.TarInfo:
         file_info = {
             'bytes': os.stat(filename).st_size,
             'nframes': int(os.stat(filename).st_size / bytes_per_frame),
             'dims': frame_dims,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith('.mkv'):
+        if str(filename).endswith('.mkv'):
             try:
                 vid = cv2.VideoCapture(filename)
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
@@ -49,8 +49,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
                 }
             except:
                 pass
-
-    elif type(filename) is tarfile.TarInfo:
+    else:
         file_info = {
             'bytes': filename.size,
             'nframes': int(filename.size / bytes_per_frame),

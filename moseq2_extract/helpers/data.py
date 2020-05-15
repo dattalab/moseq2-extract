@@ -263,7 +263,7 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
     last_frame_idx (int): index number of last frame in extraction
     '''
 
-    if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
+    if str(input_file).endswith('.tar.gz') or str(input_file).endswith('.tgz'):
         print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))

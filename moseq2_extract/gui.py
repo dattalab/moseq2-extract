@@ -388,12 +388,15 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     found_sessions (int): number of found sessions with given extensions
     '''
 
+    data_dir = str(data_dir) # ensuring type for string manipulation
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     found_sessions = 0
     sessions = []
+
     for ext in exts:
         if len(data_dir) == 0:
             data_dir = os.getcwd()

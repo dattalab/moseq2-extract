@@ -56,25 +56,10 @@ class CLITests(TestCase):
     def test_extract(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_file = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
-            data_path = Path(tmp_file.name)
-
-            input_dir = Path(tmp)
-
-            if not input_dir.is_dir():
-                input_dir.mkdir()
-
-            if not data_path.parent.is_dir():
-                data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(f.resolve())
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
             write_fake_movie(data_path)
-            assert data_path.exists(), "fake movie was not written"
+            assert data_path.is_file(), "fake movie was not written"
 
             runner = CliRunner()
             result = runner.invoke(extract, [str(data_path),
@@ -132,47 +117,45 @@ class CLITests(TestCase):
     def test_convert_raw_to_avi(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
-            data_path = Path(tmp_path.name)
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))
+            outfile = data_path.parent.joinpath(data_path.name.replace('dat', 'avi'))
 
 
-            write_fake_movie(data_path.resolve())
+            write_fake_movie(data_path)
 
             runner = CliRunner()
             result = runner.invoke(convert_raw_to_avi, [
-                                                str(data_path.resolve()), '-o', str(outfile.resolve()),
+                                                str(data_path), '-o', str(outfile),
                                                 '-b', 1000, '--delete'
                                                         ])
 
-            assert (outfile.resolve().exists()), "avi file not created"
-            assert (not data_path.resolve().exists()), "raw file was not deleted"
+            assert (outfile.is_file()), "avi file not created"
+            assert (not data_path.is_file()), "raw file was not deleted"
             assert (result.exit_code == 0), "CLI command did not complete successfully"
 
-            write_fake_movie(data_path.resolve())
+            write_fake_movie(data_path)
 
             result = runner.invoke(convert_raw_to_avi, [
-                str(data_path.resolve()), '-o', str(outfile.resolve()), '-b', 1000,
+                str(data_path), '-o', str(outfile), '-b', 1000,
             ])
 
-            assert (outfile.resolve().exists()), "avi file not created"
+            assert (outfile.is_file()), "avi file not created"
             assert (result.exit_code == 0), "CLI command did not complete successfully"
 
     def test_copy_slice(self):
 
         with TemporaryDirectory() as tmp:
-            tmp_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
-            data_path = Path(tmp_path.name)
+            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            outfile = data_path.joinpath(tmp, data_path.name.replace('dat', 'avi'))
+            outfile = data_path.parent.joinpath(data_path.name.replace('.dat', '.avi'))
 
-            write_fake_movie(data_path.resolve())
+            write_fake_movie(data_path)
 
             runner = CliRunner()
-            result = runner.invoke(copy_slice, [str(data_path.resolve()), '-o', str(outfile.resolve()),
+            result = runner.invoke(copy_slice, [str(data_path), '-o', str(outfile),
                                                 '-b', 1000, '--delete'])
 
-            assert (outfile.resolve().exists()), "slice was not copied correctly"
-            assert (not data_path.resolve().exists()), "input data was not deleted"
+            assert (outfile.is_file()), "slice was not copied correctly"
+            assert (not data_path.is_file()), "input data was not deleted"
             assert (result.exit_code == 0), "CLI command did not complete successfully"

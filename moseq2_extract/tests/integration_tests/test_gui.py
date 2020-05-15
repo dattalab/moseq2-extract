@@ -103,23 +103,22 @@ class GUITests(TestCase):
             sys.stdin = open(stdin.name)
 
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
-                check_progress(tmp, str(outfile))
+                check_progress(tmp, outfile)
 
             assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
                 "ignoring pre-existing progress file failed"
 
     def test_generate_config_command(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
-            outfile = Path(config_path.name)
+            config_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml").name)
 
-            if outfile.exists():
-                os.remove(outfile)
+            if config_path.is_file():
+                os.remove(config_path)
 
             # file does not exist yet
-            ret = generate_config_command(str(outfile))
+            ret = generate_config_command(config_path)
             assert "success" in ret, "config file was not generated sucessfully"
-            assert outfile.exists(), "config file does not exist in specified path"
+            assert config_path.is_file(), "config file does not exist in specified path"
 
             # file exists
             stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
@@ -131,9 +130,8 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            ret = generate_config_command(str(outfile))
+            ret = generate_config_command(config_path)
             assert "retained" in ret, "old config file was not retained"
-
 
             # overwrite old version
             stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
@@ -142,7 +140,7 @@ class GUITests(TestCase):
             f.close()
 
             sys.stdin = open(stdin.name)
-            ret = generate_config_command(str(outfile))
+            ret = generate_config_command(config_path)
             assert 'success' in ret, "overwriting failed"
 
     def test_view_extractions(self):
@@ -163,14 +161,14 @@ class GUITests(TestCase):
 
     def test_generate_index_command(self):
         with TemporaryDirectory() as tmp:
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            input_dir = Path(tmp).parent.joinpath('temp1')
             outfile = input_dir.joinpath('moseq2-index.yaml')
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
 
             # minimal test case - more use cases to come
-            generate_index_command(str(input_dir), '', str(outfile), [], [])
+            generate_index_command(input_dir, '', outfile, [], [])
             assert outfile.exists(), "index file was not generated correctly"
 
     def test_get_found_sessions(self):
@@ -179,7 +177,7 @@ class GUITests(TestCase):
             ft2 = NamedTemporaryFile(prefix=tmp+'/', suffix=".mkv")
             ft3 = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
+            input_dir = Path(tmp).parent.joinpath('temp1')
 
             f1 = input_dir.joinpath('temp2/', Path(ft1.name).name)
             f2 = input_dir.joinpath('temp2/', Path(ft2.name).name)
@@ -192,30 +190,24 @@ class GUITests(TestCase):
                 f1.parent.mkdir()
             else:
                 for f in f1.parent.iterdir():
-                    if f1.resolve().is_file():
-                        os.remove(f1.resolve())
+                    if f1.is_file():
+                        f1.unlink()
                     elif f.is_dir():
-                        shutil.rmtree(str(f))
+                        shutil.rmtree(f)
                     elif f.is_file():
-                        os.remove(str(f))
+                        f.unlink()
 
-            with open(f1, 'w') as f:
-                f.write('Y')
-            f.close()
 
-            with open(f2, 'w') as f:
-                f.write('Y')
-            f.close()
-
-            with open(f3, 'w') as f:
-                f.write('Y')
-            f.close()
+            for i in [f1, f2, f3]:
+                with open(i, 'w') as f:
+                    f.write('Y')
+                f.close()
 
             assert f1.is_file(), "temp file 1 was not created properly"
             assert f2.is_file(), "temp file 2 was not created properly"
             assert f3.is_file(), "temp file 3 was not created properly"
 
-            data_dir, found_sessions = get_found_sessions(str(input_dir))
+            data_dir, found_sessions = get_found_sessions(input_dir)
             assert(found_sessions == 3), "temp files were not successfully located"
 
             data_dir, found_sessions = get_found_sessions('')
@@ -246,26 +238,21 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            out = find_roi_command(tmp, str(configfile))
+            out = find_roi_command(tmp, configfile)
             assert (out == None), "roi function did not find any rois to extract"
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+            data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            input_dir = Path(tmp).parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
 
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
+
             write_fake_movie(data_path)
 
             stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
@@ -275,7 +262,7 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            images, filenames = find_roi_command(str(input_dir), str(configfile))
+            images, filenames = find_roi_command(input_dir, configfile)
             assert (len(filenames) == 3), "incorrect number of rois were computed"
             assert (len(images) == 3), "incorrect number of rois images were computed"
 
@@ -293,25 +280,19 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            generate_config_command(str(configfile))
+            generate_config_command(configfile)
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+            data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            input_dir = Path(tmp).joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
 
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
             assert(data_path.is_file()), "fake movie was not written correctly"
@@ -323,51 +304,46 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            output_dir = sample_extract_command(str(input_dir), str(configfile), 40, exts=['dat'])
+            output_dir = sample_extract_command(input_dir, configfile, 40, exts=['dat'])
             assert os.path.exists(output_dir), "sample_proc directory was not created"
 
     def test_extract_command(self):
         with TemporaryDirectory() as tmp:
-            config_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml")
-            configfile = Path(config_path.name)
+            configfile = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".yaml").name)
 
             if configfile.is_file():
                 configfile.unlink()
 
-            generate_config_command(str(configfile))
-
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+            data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            input_dir = Path(tmp).joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
 
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
             assert(data_path.is_file()), "fake movie was not written correctly"
 
-            download_flip_command('data/')
-            flip_file = 'data/flip_classifier_k2_c57_10to13weeks.pkl'
-            assert Path(flip_file).is_file()
+            generate_config_command(configfile)
+            assert configfile.is_file()
 
-            with open(str(configfile), 'r') as f:
+            flip_file = Path('data/flip_classifier_k2_c57_10to13weeks.pkl')
+            if not flip_file.is_file():
+                download_flip_command('data/')
+
+            assert flip_file.is_file()
+
+            with open(configfile, 'r') as f:
                 config_data = yaml.safe_load(f)
 
-            config_data['flip_classifier'] = flip_file
+            config_data['flip_classifier'] = str(flip_file)
 
-            with open(str(configfile), 'w') as f:
+            with open(configfile, 'w') as f:
                 yaml.safe_dump(config_data, f)
 
             stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
@@ -376,7 +352,7 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            ret = extract_command(str(data_path), None, str(configfile), skip=True)
+            ret = extract_command(data_path, None, configfile, skip=True)
 
             assert(data_path.parent.joinpath('proc').is_dir()), "proc directory was not created"
             assert(data_path.parent.joinpath('proc', 'done.txt').is_file()), "extraction did not finish"
@@ -398,28 +374,21 @@ class GUITests(TestCase):
             if configfile.is_file():
                 configfile.unlink()
 
-            generate_config_command(str(configfile))
+            generate_config_command(configfile)
 
             # writing a file to test following pipeline
-            data_filepath = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+            data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).resolve().parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', Path(data_filepath.name).name)
+            input_dir = Path(tmp).parent.joinpath('temp1')
+            data_path = input_dir.joinpath('temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
 
             if not data_path.parent.is_dir():
                 data_path.parent.mkdir()
-            else:
-                for f in data_path.parent.iterdir():
-                    print(f)
-                    if f.is_file():
-                        os.remove(f.resolve())
-                    elif f.is_dir():
-                        shutil.rmtree(str(f))
 
             write_fake_movie(data_path)
             assert(data_path.is_file()), "fake movie was not written correctly"
 
-            extract_found_sessions(str(data_path.parent), str(configfile), '.dat', skip_extracted=True)
+            extract_found_sessions(data_path.parent, configfile, '.dat', skip_extracted=True)
