@@ -167,28 +167,6 @@ class testExtractUtils(TestCase):
                 result = h5_to_dict(f, tmp)
             npt.assert_equal(result, tmp_dic)
 
-    def test_click_param_annot(self):
-        ref_dict = {
-            'bg_roi_dilate': 'Size of strel to dilate roi',
-            'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
-            'bg_roi_index': 'Index of roi to use',
-            'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
-            'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
-            'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
-            'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
-            'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
-            'bg_sort_roi_by_position': 'Sort ROIs by position',
-            'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
-            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
-            'bg_roi_fill_holes': 'Fill holes in ROI',
-            'output_dir': 'Output directory',
-            'use_plane_bground': 'Use plane fit for background',
-            'config_file': None
-        }
-
-        test_dict = click_param_annot(find_roi)
-        npt.assert_equal(ref_dict, test_dict)
-
     def test_get_bucket_center(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
         roi = read_image('data/tiffs/roi_bucket_01.tiff')
@@ -232,3 +210,24 @@ class testExtractUtils(TestCase):
         assert np.median(new_bg) > np.median(img)
         assert os.path.exists('data/tiffs/new_bg.tiff')
         os.remove('data/tiffs/new_bg.tiff')
+
+    def test_click_param_annot(self):
+        ref_dict = {
+            'bg_roi_dilate': 'Size of strel to dilate roi',
+            'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
+            'bg_roi_index': 'Index of which background mask(s) to use',
+            'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
+            'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
+            'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
+            'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
+            'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
+            'bg_sort_roi_by_position': 'Sort ROIs by position',
+            'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
+            'bg_roi_fill_holes': 'Fill holes in ROI',
+            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
+            'output_dir': 'Output directory to save the results h5 file',
+            'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
+            'config_file': None
+        }
+        test_dict = click_param_annot(find_roi)
+        npt.assert_equal(ref_dict, test_dict)

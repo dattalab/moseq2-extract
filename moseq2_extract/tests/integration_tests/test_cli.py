@@ -119,10 +119,11 @@ class CLITests(TestCase):
         with TemporaryDirectory() as tmp:
             data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            outfile = data_path.parent.joinpath(data_path.name.replace('dat', 'avi'))
-
+            outfile = data_path.parent.joinpath(data_path.name.replace('.dat', '.avi'))
 
             write_fake_movie(data_path)
+
+            assert (data_path.is_file()), "temp depth file not created"
 
             runner = CliRunner()
             result = runner.invoke(convert_raw_to_avi, [
@@ -130,18 +131,20 @@ class CLITests(TestCase):
                                                 '-b', 1000, '--delete'
                                                         ])
 
+            assert (result.exit_code == 0), "CLI command did not complete successfully"
             assert (outfile.is_file()), "avi file not created"
             assert (not data_path.is_file()), "raw file was not deleted"
-            assert (result.exit_code == 0), "CLI command did not complete successfully"
 
             write_fake_movie(data_path)
+
+            assert (data_path.is_file()), "temp depth file not created"
 
             result = runner.invoke(convert_raw_to_avi, [
                 str(data_path), '-o', str(outfile), '-b', 1000,
             ])
 
-            assert (outfile.is_file()), "avi file not created"
             assert (result.exit_code == 0), "CLI command did not complete successfully"
+            assert (outfile.is_file()), "avi file not created"
 
     def test_copy_slice(self):
 
