@@ -29,7 +29,7 @@ setup(
     version='0.4.4',
     platforms=['mac', 'unix'],
     packages=find_packages(),
-    install_requires=['h5py==2.10.0', 'tqdm==4.40.0', 'scipy==1.3.3', 'numpy==1.17.4', 'click==7.0',
+    install_requires=['h5py==2.10.0', 'tqdm==4.40.0', 'scipy==1.3.3', 'numpy==1.18.3', 'click==7.0',
                       'joblib==0.14.0', 'cytoolz==0.10.1', 'matplotlib==3.1.2', 'statsmodels==0.10.2',
                       'scikit-image==0.16.2', 'scikit-learn==0.22', 'opencv-python==4.1.2.30',
                       'ruamel.yaml==0.16.5'],

@@ -120,7 +120,7 @@ def test_click_param_annot():
     ref_dict = {
         'bg_roi_dilate': 'Size of strel to dilate roi',
         'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
-        'bg_roi_index': 'Index of roi to use',
+        'bg_roi_index': 'Index of which background mask(s) to use',
         'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
         'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
         'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
@@ -130,8 +130,8 @@ def test_click_param_annot():
         'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
         'bg_roi_fill_holes': 'Fill holes in ROI',
         'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
-        'output_dir': 'Output directory',
-        'use_plane_bground': 'Use plane fit for background',
+        'output_dir': 'Output directory to save the results h5 file',
+        'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
         'config_file': None
     }
     test_dict = click_param_annot(find_roi)
