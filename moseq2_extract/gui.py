@@ -646,11 +646,10 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     return data_dir, found_sessions
 
 
-def download_flip_command(output_dir, config_file="", selection=None):
+def download_flip_command(output_dir, config_file="", selection=1):
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
-    selected_flip = 1
 
 
     flip_files = {
@@ -663,9 +662,6 @@ def download_flip_command(output_dir, config_file="", selection=None):
     }
 
     key_list = list(flip_files.keys())
-
-    if selected_flip is not None:
-        selection = selected_flip
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
