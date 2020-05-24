@@ -105,7 +105,7 @@ class testExtractUtils(TestCase):
             # writing a file to test following pipeline
             data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            write_fake_movie(str(data_path))
+            write_fake_movie(data_path)
 
             convert_raw_to_avi_function(str(data_path))
             assert Path(str(data_path).replace('.dat', '.avi')).is_file()

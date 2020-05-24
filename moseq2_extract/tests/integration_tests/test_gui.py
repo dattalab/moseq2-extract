@@ -161,8 +161,8 @@ class GUITests(TestCase):
 
     def test_generate_index_command(self):
         with TemporaryDirectory() as tmp:
-            input_dir = Path(tmp).parent.joinpath('temp1')
-            outfile = input_dir.joinpath('moseq2-index.yaml')
+            input_dir = Path(Path(tmp).parent, 'temp1')
+            outfile = Path(input_dir, 'moseq2-index.yaml')
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -177,11 +177,11 @@ class GUITests(TestCase):
             ft2 = NamedTemporaryFile(prefix=tmp+'/', suffix=".mkv")
             ft3 = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
-            input_dir = Path(tmp).parent.joinpath('temp1')
+            input_dir = Path(Path(tmp).parent, 'temp1')
 
-            f1 = input_dir.joinpath('temp2/', Path(ft1.name).name)
-            f2 = input_dir.joinpath('temp2/', Path(ft2.name).name)
-            f3 = input_dir.joinpath('temp2/', Path(ft3.name).name)
+            f1 = Path(input_dir, 'temp2/', Path(ft1.name).name)
+            f2 = Path(input_dir, 'temp2/', Path(ft2.name).name)
+            f3 = Path(input_dir, 'temp2/', Path(ft3.name).name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -244,8 +244,8 @@ class GUITests(TestCase):
             # writing a file to test following pipeline
             data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', data_filepath.name)
+            input_dir = Path(Path(tmp).parent, 'temp1')
+            data_path = Path(input_dir, 'temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -285,8 +285,8 @@ class GUITests(TestCase):
             # writing a file to test following pipeline
             data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', data_filepath.name)
+            input_dir = Path(Path(tmp), 'temp1')
+            data_path = Path(input_dir, 'temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -317,8 +317,8 @@ class GUITests(TestCase):
             # writing a file to test following pipeline
             data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', data_filepath.name)
+            input_dir = Path(Path(tmp), 'temp1')
+            data_path = Path(input_dir, 'temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()
@@ -354,8 +354,8 @@ class GUITests(TestCase):
 
             ret = extract_command(data_path, None, configfile, skip=True)
 
-            assert(data_path.parent.joinpath('proc').is_dir()), "proc directory was not created"
-            assert(data_path.parent.joinpath('proc', 'done.txt').is_file()), "extraction did not finish"
+            assert(Path(data_path.parent, 'proc').is_dir()), "proc directory was not created"
+            assert(Path(data_path.parent, 'proc', 'done.txt').is_file()), "extraction did not finish"
             assert ('completed' in ret), "GUI command failed"
             os.remove(flip_file)
 
@@ -379,8 +379,8 @@ class GUITests(TestCase):
             # writing a file to test following pipeline
             data_filepath = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            input_dir = Path(tmp).parent.joinpath('temp1')
-            data_path = input_dir.joinpath('temp2', data_filepath.name)
+            input_dir = Path(Path(tmp).parent, 'temp1')
+            data_path = Path(input_dir, 'temp2', data_filepath.name)
 
             if not input_dir.is_dir():
                 input_dir.mkdir()

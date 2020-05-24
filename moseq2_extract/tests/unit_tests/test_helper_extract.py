@@ -69,10 +69,10 @@ class TestHelperExtract(TestCase):
                     video_pipe.stdin.close()
                     video_pipe.wait()
 
-            assert Path(output_dir).joinpath(f'{output_filename}.h5').exists()
-            Path(output_dir).joinpath(f'{output_filename}.h5').unlink()
-            assert Path(output_dir).joinpath(f'{output_filename}.mp4').exists()
-            Path(output_dir).joinpath(f'{output_filename}.mp4').unlink()
+            assert Path(output_dir, f'{output_filename}.h5').exists()
+            Path(output_dir, f'{output_filename}.h5').unlink()
+            assert Path(output_dir, f'{output_filename}.mp4').exists()
+            Path(output_dir, f'{output_filename}.mp4').unlink()
 
 
 

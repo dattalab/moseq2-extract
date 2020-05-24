@@ -84,7 +84,7 @@ class TestHelperData(TestCase):
         copy_manifest_results(manifest, output_dir)
 
         for p in os.listdir(output_dir):
-            assert Path(output_dir).joinpath(p).is_file()
+            assert Path(output_dir, p).is_file()
 
         shutil.rmtree(output_dir)
 

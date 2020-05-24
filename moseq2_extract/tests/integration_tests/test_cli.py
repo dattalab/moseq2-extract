@@ -119,7 +119,7 @@ class CLITests(TestCase):
         with TemporaryDirectory() as tmp:
             data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            outfile = data_path.parent.joinpath(data_path.name.replace('.dat', '.avi'))
+            outfile = Path(data_path.parent, data_path.name.replace('.dat', '.avi'))
 
             write_fake_movie(data_path)
 
@@ -151,7 +151,7 @@ class CLITests(TestCase):
         with TemporaryDirectory() as tmp:
             data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
 
-            outfile = data_path.parent.joinpath(data_path.name.replace('.dat', '.avi'))
+            outfile = Path(data_path.parent, data_path.name.replace('.dat', '.avi'))
 
             write_fake_movie(data_path)
 
