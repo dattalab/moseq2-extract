@@ -46,7 +46,7 @@ def common_roi_options(function):
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
-    function = click.option('--dilate_iterations', default=1, type=int,
+    function = click.option('--dilate-iterations', default=1, type=int,
                             help='Number of dilation iterations to increase bucket floor size.')(function)
     function = click.option('--output-dir', default=None, help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
