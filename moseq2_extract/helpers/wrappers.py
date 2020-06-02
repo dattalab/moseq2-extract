@@ -11,14 +11,17 @@ from cytoolz import pluck
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
+from cytoolz import partial
 from moseq2_extract.io.image import write_image
+from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
+from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5
-from moseq2_extract.io.video import load_movie_data, convert_mkv_to_avi, get_movie_info
-from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, \
-                            load_timestamps, convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s, \
-                            clean_dict, h5_to_dict, graduate_dilated_wall_area
+from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, \
+                                        build_manifest, copy_manifest_results
+from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, load_timestamps, \
+                                convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s, \
+                                clean_dict, h5_to_dict, graduate_dilated_wall_area
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
@@ -99,7 +102,6 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
                            zip(h5s, yamls, dicts)]
     try:
         if 'metadata' not in file_with_uuids[0][2]:
-            #raise RuntimeError('Metadata not present in yaml files, run copy-h5-metadata-to-yaml to update yaml files')
             for h5 in h5s:
                 copy_h5_metadata_to_yaml_wrapper(input_dir, h5)
             file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
@@ -112,10 +114,10 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
         'pca_path': pca_file
     }
 
-    rm_samples = [i for i, f in enumerate(file_with_uuids) if 'sample_' in f[0]]
+    keep_samples = [i for i, f in enumerate(file_with_uuids) if '/proc/' in f[0]]
     files_to_use = []
     for i, tup in enumerate(file_with_uuids):
-        if i not in rm_samples:
+        if i in keep_samples:
             files_to_use.append(tup)
 
     index_uuids = []
@@ -139,12 +141,55 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
                     output_dict['files'][i]['metadata'][k] = v
             else:
                 print('skipping', file_tup[0])
-                
+
+    print(f'Number of sessions included in index file: {len(files_to_use)}')
     # write out index yaml
     with open(output_file, 'w') as f:
         yaml.safe_dump(output_dict, f)
 
     return output_file
+
+def aggregate_extract_results_wrapper(input_dir, format, output_dir):
+    '''
+    Copies all the h5, yaml and avi files generated from all successful extractions to
+    a new directory to hold all the necessary data to continue down the moseq pipeline.
+
+    Parameters
+    ----------
+    input_dir (str): path to base directory containing all session folders
+    format (str): string format for metadata to use as the new aggregated filename
+    output_dir (str): name of the directory to create and store all results in
+
+    Returns
+    -------
+    None
+    '''
+
+    mouse_threshold = 0 # defaulting this for now
+    h5s, dicts, _ = recursive_find_h5s(input_dir)
+
+    not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
+    complete = lambda d: d['complete'] and not d['skip']
+
+    # only include real extracted mice with this filter func
+    mtf = partial(mouse_threshold_filter, thresh=mouse_threshold)
+
+    def filter_h5(args):
+        '''remove h5's that should be skipped or extraction wasn't complete'''
+        _dict, _h5 = args
+        return complete(_dict) and not_in_output(_h5) and mtf(_h5)
+
+    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
+    # then stage the copy
+    to_load = list(filter(filter_h5, zip(dicts, h5s)))
+
+    loaded = load_h5s(to_load)
+
+    manifest = build_manifest(loaded, format=format)
+
+    copy_manifest_results(manifest, output_dir)
+
+    print('Results successfully aggregated in', output_dir)
 
 
 def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
@@ -169,6 +214,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
         bground_im (2d array): Background image to plot in GUI
         first_frame (2d array): First frame image to plot in GUI
     '''
+
     if gui:
         if output_directory is not None:
             output_dir = os.path.join(output_directory, 'proc')
@@ -343,13 +389,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     else:
         true_depth = int(config_data['detected_true_depth'])
 
-    if config_data.get('dilate_iterations', 0) > 1:
-        print('Dilating background')
-        bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
-
     print('Detected true depth:', true_depth)
 
-    if config_data['dilate_iterations'] > 1:
+    if config_data.get('dilate_iterations', 0) > 1:
         print('Dilating background')
         bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
 

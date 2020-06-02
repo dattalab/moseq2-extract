@@ -20,6 +20,7 @@ Options:
   --help  Show this message and exit.  [default: False]
 
 Commands:
+  aggregate-results   Copies all extracted results (h5, yaml, avi) files...
   convert-raw-to-avi  Converts/Compresses a raw depth file into an avi file...
   copy-slice          Copies a segment of an input depth recording into a...
   download-flip-file  Downloads Flip-correction model that helps with...
@@ -27,6 +28,7 @@ Commands:
   find-roi            Finds the ROI and background distance to subtract
                       from...
   generate-config     Generates a configuration file that holds editable...
+  generate-index      Generates an index YAML file containing all extracted...
   version             Print version number
 ```
 
@@ -54,7 +56,7 @@ For information on getting started, check out the [MoSeq Roadmap](https://github
 
 <img src="https://drive.google.com/uc?export=view&id=1w21Di6TsRg-Hgbd2PCwIU_kyrvGuajar" width=350 height=350>
 
-#### Convex-shaped Bucket (\_/) (from Azure Camera)
+#### Convex-shaped Bucket (\\_/) (from Azure Camera)
 Dilated Background and ROI respectively.
 
 <img src="https://drive.google.com/uc?export=view&id=1HObbzfZF1OXD0h_HBEF9G6-2ExEoc0HE">

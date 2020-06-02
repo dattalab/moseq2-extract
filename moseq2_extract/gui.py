@@ -4,13 +4,12 @@ from .cli import *
 from glob import glob
 from pathlib import Path
 import ruamel.yaml as yaml
-from cytoolz import partial
 from moseq2_extract.io.image import read_image
+from moseq2_extract.helpers.data import get_selected_sessions
+from moseq2_extract.util import escape_path, recursive_find_unextracted_dirs
 from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
-from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, build_manifest, copy_manifest_results
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper
-from moseq2_extract.util import (recursive_find_h5s, escape_path,
-                                 mouse_threshold_filter, recursive_find_unextracted_dirs)
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper, \
+                                            aggregate_extract_results_wrapper
 
 def update_progress(progress_file, varK, varV):
     '''
@@ -330,8 +329,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-    mouse_threshold = 0
-    snake_case = True
+
     if output_directory is None:
         output_dir = os.path.join(input_dir, output_dir)
     else:
@@ -347,30 +345,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
 
     print(f'Index file path: {indexpath}')
 
-    h5s, dicts, _ = recursive_find_h5s(input_dir)
-
-    not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
-    complete = lambda d: d['complete'] and not d['skip']
-
-    # only include real extracted mice with this filter func
-    mtf = partial(mouse_threshold_filter, thresh=mouse_threshold)
-
-    def filter_h5(args):
-        '''remove h5's that should be skipped or extraction wasn't complete'''
-        _dict, _h5 = args
-        return complete(_dict) and not_in_output(_h5) and mtf(_h5)
-
-    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
-    # then stage the copy
-    to_load = list(filter(filter_h5, zip(dicts, h5s)))
-
-    loaded = load_h5s(to_load)
-
-    manifest = build_manifest(loaded, format=format)
-
-    copy_manifest_results(manifest, output_dir)
-
-    print('Results successfully aggregated in', output_dir)
+    aggregate_extract_results_wrapper(input_dir, format, output_dir)
 
     return indexpath
 
@@ -451,7 +426,9 @@ def download_flip_command(output_dir, config_file="", selection=1):
 
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
     '''
-    Computes ROI files given depth file
+    Computes ROI files given depth file.
+    Will list out all available sessions to process and prompts user to input a corresponding session
+    index to process.
 
     Parameters
     ----------

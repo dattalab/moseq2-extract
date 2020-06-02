@@ -207,6 +207,9 @@ def copy_manifest_results(manifest, output_dir):
     None
     '''
 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     # now the key is the source h5 file and the value is the path to copy to
     for k, v in tqdm(manifest.items(), desc='Copying files'):
 

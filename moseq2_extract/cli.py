@@ -7,7 +7,8 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from moseq2_extract.util import (gen_batch_sequence, command_with_config)
 from moseq2_extract.io.video import (get_movie_info, load_movie_data, write_frames)
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
+                                            generate_index_wrapper, aggregate_extract_results_wrapper
 
 orig_init = click.core.Option.__init__
 
@@ -155,6 +156,27 @@ def generate_config(output_file):
         yaml.safe_dump(params, f)
 
     print('Successfully generated config file in base directory.')
+
+@cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--pca-file', '-p', type=click.Path(), default=os.path.join(os.getcwd(), '_pca/pca_scores.h5'), help='Path to PCA results')
+@click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
+@click.option('--filter', '-f', type=(str, str), default=None, help='Regex filter for metadata', multiple=True)
+@click.option('--all-uuids', '-a', type=bool, default=False, help='Use all uuids')
+def generate_index(input_dir, pca_file, output_file, filter, all_uuids):
+
+    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids)
+
+    if output_file != None:
+        print(f'Index file: {output_file} was successfully generated.')
+
+@cli.command(name='aggregate-results', help='Copies all extracted results (h5, yaml, avi) files from all extracted sessions to a new directory,')
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
+@click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
+def aggregate_extract_results(input_dir, format, output_dir):
+
+    aggregate_extract_results_wrapper(input_dir, format, output_dir)
 
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')

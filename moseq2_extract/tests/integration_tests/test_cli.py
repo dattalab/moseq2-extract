@@ -9,7 +9,8 @@ import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, convert_raw_to_avi, copy_slice
+from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, \
+    convert_raw_to_avi, copy_slice, version, generate_index, aggregate_extract_results
 
 def write_fake_movie(data_path):
     edge_size = 40
@@ -53,6 +54,46 @@ def write_fake_movie(data_path):
 
 class CLITests(TestCase):
 
+    def test_version(self):
+        runner = CliRunner()
+        result = runner.invoke(version)
+
+        assert (result.exit_code == 0)
+        assert result.stdout == '0.5.0\n'
+
+    def test_aggregate_extract_results(self):
+
+        input_dir = 'data/'
+        output_dir = Path('data/aggregate_results')
+
+        params = ['-i', input_dir,
+                  '-o', output_dir]
+
+        runner = CliRunner()
+        result = runner.invoke(aggregate_extract_results, params, catch_exceptions=False)
+
+        assert (result.exit_code == 0), "CLI command did not successfully complete"
+        assert output_dir.is_dir(), "aggregate results directory was not created"
+        assert len([f for f in output_dir.iterdir()]) == 2
+        shutil.rmtree(output_dir)
+
+    def test_generate_index(self):
+        input_dir = 'data/'
+        pca_path = ''
+        output_file = Path('data/moseq2-index.yaml')
+
+        params = ['-i', input_dir,
+                  '-p', pca_path,
+                  '-o', output_file]
+
+        runner = CliRunner()
+        result = runner.invoke(generate_index, params, catch_exceptions=False)
+
+        assert (result.exit_code == 0), "CLI command did not successfully complete"
+        assert output_file.is_file()
+        output_file.unlink()
+
+
     def test_extract(self):
 
         with TemporaryDirectory() as tmp:
@@ -64,8 +105,6 @@ class CLITests(TestCase):
             runner = CliRunner()
             result = runner.invoke(extract, [str(data_path),
                                              '--output-dir', str(data_path.parent),
-                                             #'--angle-hampel-span', 5, # add auto fix for incorrect param inputs
-                                             #'--centroid-hampel-span', 5
                                              ],
                                    catch_exceptions=False)
 
