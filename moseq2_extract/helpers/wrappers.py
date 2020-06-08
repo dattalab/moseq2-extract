@@ -59,7 +59,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             raise Exception
 
 
-def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
+def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath='/proc/'):
     '''
     Generates index file containing a summary of all extracted sessions.
 
@@ -114,7 +114,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids):
         'pca_path': pca_file
     }
 
-    keep_samples = [i for i, f in enumerate(file_with_uuids) if '/proc/' in f[0]]
+    keep_samples = [i for i, f in enumerate(file_with_uuids) if subpath in f[0]]
     files_to_use = []
     for i, tup in enumerate(file_with_uuids):
         if i in keep_samples:

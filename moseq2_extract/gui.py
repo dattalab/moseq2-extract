@@ -195,7 +195,7 @@ def view_extraction(extractions):
     while (True):
         try:
             input_file_indices = input(
-                "Input extracted session indices to view separated by commas, or empty string for all sessions.\n").strip()
+                "Input extracted session indices to view separated by commas, empty string for all sessions, or 'q' to exit.\n").strip()
             if ',' in input_file_indices:
                 input_file_indices = input_file_indices.split(',')
                 for i in input_file_indices:
@@ -211,6 +211,8 @@ def view_extraction(extractions):
                     tmp.append(extractions[index - 1])
                 extractions = tmp
                 break
+            elif input_file_indices.lower() == 'q':
+                return []
             elif len(input_file_indices.strip()) == 1:
                 index = int(input_file_indices.strip())
                 extractions = [extractions[index - 1]]
@@ -285,7 +287,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
+def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/proc/'):
     '''
     Generates Index File based on aggregated sessions
 
@@ -302,12 +304,12 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     output_file (str): path to index file.
     '''
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids)
+    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
     print('Index file successfully generated.')
     return output_file
 
 
-def aggregate_extract_results_command(input_dir, format, output_dir, output_directory=None):
+def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/proc/', output_directory=None):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -339,9 +341,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
         os.makedirs(output_dir)
 
     if output_directory is None:
-        indexpath = generate_index_command(input_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False)
+        indexpath = generate_index_command(input_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
     else:
-        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False)
+        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False, subpath=subpath)
 
     print(f'Index file path: {indexpath}')
 

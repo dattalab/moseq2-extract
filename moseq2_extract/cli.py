@@ -163,9 +163,10 @@ def generate_config(output_file):
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
 @click.option('--filter', '-f', type=(str, str), default=None, help='Regex filter for metadata', multiple=True)
 @click.option('--all-uuids', '-a', type=bool, default=False, help='Use all uuids')
-def generate_index(input_dir, pca_file, output_file, filter, all_uuids):
+@click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
+def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath):
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids)
+    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
 
     if output_file != None:
         print(f'Index file: {output_file} was successfully generated.')
