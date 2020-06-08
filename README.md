@@ -50,26 +50,26 @@ For information on getting started, check out the [MoSeq Roadmap](https://github
 
 #### Round Arena ROI and Background
 
-<img src="https://drive.google.com/uc?export=view&id=1v8GAgWJu-Gcvf9OhkoHX6G2SXmH5a4D_"></li><br><br>
+![alt text](media/plt_example.png)<br><br>
 
 #### Y-Maze Arena (from Kinect v2 Camera)
 
-<img src="https://drive.google.com/uc?export=view&id=1w21Di6TsRg-Hgbd2PCwIU_kyrvGuajar" width=350 height=350>
+![alt text ](media/found_arena.png)
 
 #### Convex-shaped Bucket (\\_/) (from Azure Camera)
 Dilated Background and ROI respectively.
 
-<img src="https://drive.google.com/uc?export=view&id=1HObbzfZF1OXD0h_HBEF9G6-2ExEoc0HE">
-<img src="https://drive.google.com/uc?export=view&id=1A_lQ03tiUWDiqMW3Ov7TDyV-_lH3km40">
+![alt text](media/bg_roi_dilated.png)
+![alt text](media/roi_dilated.png)
 
 #### Rectangular Arena (from RealSense)
 ROI and Weighted Background Image respectively.
 
-<img src="https://drive.google.com/uc?export=view&id=1Emx-Vlsxp7kM1QVIZ01Wi7bgHHAmx-TT">
+![alt text](media/rs_roi_example.png)
 
 ### Example Extraction
 
-<img src="https://drive.google.com/uc?export=view&id=1qg_twPau5g0hWpvnGUQzl_7_XdSSsL1c" width=350 height=350>
+![alt text](media/good_recording.gif)
 
 ***
 
