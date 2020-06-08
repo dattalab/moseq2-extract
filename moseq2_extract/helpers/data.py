@@ -2,6 +2,7 @@ import os
 import h5py
 import shutil
 import tarfile
+import warnings
 import numpy as np
 from cytoolz import keymap
 import ruamel.yaml as yaml
@@ -188,7 +189,7 @@ def build_manifest(loaded, format, snake_case=True):
                         'timestamps': timestamps
                     }
                 except:
-                    print('Did not load timestamps')
+                    warnings.warn('WARNING: Did not load timestamps! This may cause issues if total dropped frames > 2% of the session.')
 
     return manifest
 

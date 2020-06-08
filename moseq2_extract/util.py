@@ -102,6 +102,10 @@ def load_timestamps(timestamp_file, col=0):
         ts = np.array(ts)
     except FileNotFoundError as e:
         ts = None
+        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named \
+            "depth_ts.txt" or "timestamps.csv".')
+        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
+            imputing missing data.')
 
     return ts
 
