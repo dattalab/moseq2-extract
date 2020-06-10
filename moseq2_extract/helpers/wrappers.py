@@ -241,6 +241,14 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
     print('Getting roi...')
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
 
+    # Auto-setting background weights
+    if config_data.get('bg_roi_weights', (1, .1, 1)) == 'kinect':
+        config_data['bg_roi_weights'] = (1, .1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'azure':
+        config_data['bg_roi_weights'] = (10, 0.1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'realsense':
+        config_data['bg_roi_weights'] = (10, 1, 4)
+
     rois, plane, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
                                   dilate_iters=config_data['dilate_iterations'],
@@ -371,6 +379,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         # GUI FUNCTIONALITY
         if skip == True:
             if os.path.exists(os.path.join(output_dir, 'done.txt')):
+                print('Skipping...')
                 return
 
     with open(status_filename, 'w') as f:
