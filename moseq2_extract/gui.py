@@ -477,6 +477,17 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
+    # Auto-setting background weights
+    if config_data.get('bg_roi_weights', (1, .1, 1)) == 'kinect':
+        config_data['bg_roi_weights'] = (1, .1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'azure':
+        config_data['bg_roi_weights'] = (10, 0.1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'realsense':
+        config_data['bg_roi_weights'] = (10, 1, 4)
+
+    with open(config_file, 'w') as g:
+        yaml.safe_dump(config_data, g)
+
     output_dir = get_roi_wrapper(input_file, config_data, output_directory, gui=True)
 
     images = []
