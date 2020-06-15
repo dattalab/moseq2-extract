@@ -16,7 +16,7 @@ class GUITests(TestCase):
     progress_vars = {'base_dir': './', 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
                      'pca_dirname': 'TBD',
                      'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD',
-                     'plot_path': 'TBD'}
+                     'plot_path': './plots/'}
 
     def test_update_progress(self):
 
@@ -69,7 +69,7 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, str(outfile))
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 2, \
                 "initial progress check failed"
             assert Path(progress_path.name).exists(), "progress yaml was not created"
 
@@ -77,8 +77,9 @@ class GUITests(TestCase):
             with open(outfile, 'r') as f:
                 progress1 = yaml.safe_load(f)
             f.close()
+
             for k,v in progress1.items():
-                if k != 'base_dir':
+                if k != 'base_dir' and k != 'plot_path':
                     assert v in self.progress_vars.values(), "read dict values to dont match simulated data"
 
             # now test case when file exists
@@ -92,7 +93,7 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, str(outfile))
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 2, \
                 "progress retrieval from pre-existing file failed"
 
             stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
@@ -105,7 +106,7 @@ class GUITests(TestCase):
             config, index, tdd, pcadir, scores, model, score_path, cdir, pp = \
                 check_progress(tmp, outfile)
 
-            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 1, \
+            assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 2, \
                 "ignoring pre-existing progress file failed"
 
     def test_generate_config_command(self):
