@@ -131,7 +131,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False, output_d
     with config_store.open('w') as f:
         yaml.safe_dump(params, f)
 
-    for i, ext in tqdm(enumerate(to_extract), total=len(to_extract), desc='Extracting Sesssions'):
+    for i, ext in tqdm(enumerate(to_extract), total=len(to_extract), desc='Extracting Sessions'):
 
         base_command = ''
 

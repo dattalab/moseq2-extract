@@ -103,7 +103,7 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
 
                 progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
                                  'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
-                                 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
+                                 'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
 
                 with open(progress_filepath, 'w') as f:
                     yaml.safe_dump(progress_vars, f)
@@ -120,7 +120,7 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
     else:
         print('Progress file not found, creating new one.')
         progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD', 'pca_dirname': 'TBD',
-                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
+                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
 
         with open(progress_filepath, 'w') as f:
             yaml.safe_dump(progress_vars, f)
