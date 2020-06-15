@@ -238,7 +238,7 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            out = find_roi_command(tmp, configfile)
+            out = find_roi_command(tmp, configfile, select_session=True)
             assert (out == None), "roi function did not find any rois to extract"
 
             # writing a file to test following pipeline
@@ -262,7 +262,7 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            images, filenames = find_roi_command(input_dir, configfile)
+            images, filenames = find_roi_command(input_dir, configfile, select_session=True)
             assert (len(filenames) == 3), "incorrect number of rois were computed"
             assert (len(images) == 3), "incorrect number of rois images were computed"
 
@@ -304,7 +304,7 @@ class GUITests(TestCase):
             f.close()
             sys.stdin = open(stdin.name)
 
-            output_dir = sample_extract_command(input_dir, configfile, 40, exts=['dat'])
+            output_dir = sample_extract_command(input_dir, configfile, 40, exts=['dat'], select_session=True)
             assert os.path.exists(output_dir), "sample_proc directory was not created"
 
     def test_extract_command(self):

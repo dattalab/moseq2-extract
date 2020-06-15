@@ -426,7 +426,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
     flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
 
 
-def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
+def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0, output_directory=None):
     '''
     Computes ROI files given depth file.
     Will list out all available sessions to process and prompts user to input a corresponding session
@@ -437,6 +437,8 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     input_dir (str): path to directory containing depth file
     config_file (str): path to config file
     exts (list): list of supported extensions
+    select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
+    default_session (int): index of the default session to find ROI for
     output_directory (str): alternate output path
 
     Returns
@@ -450,30 +452,39 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = []
-    for ext in exts:
-        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext)))
+    if isinstance(exts, list):
+        for ext in exts:
+            files += sorted(glob(os.path.join(input_dir, '*/*.'+ext.replace('.', ''))))
+    else:
+        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
 
-    for i, sess in enumerate(files):
-        print(f'[{str(i+1)}] {sess}')
+    files = sorted(files)
 
-    if len(files) == 0:
-        print('No recordings found')
-        return
+    if select_session:
+        for i, sess in enumerate(files):
+            print(f'[{str(i+1)}] {sess}')
 
-    input_file_index = -1
-    while(int(input_file_index) < 0):
-        try:
-            input_file_index = int(input("Input session index to find rois: ").strip())
-            if int(input_file_index) > len(files):
-                print('invalid index try again.')
-                input_file_index = -1
-        except:
-            print('invalid input, only input integers. Input Q to exit.')
-            if 'q' in str(input_file_index).lower():
-                return
+        if len(files) == 0:
+            print('No recordings found')
+            return
 
-    input_file = files[input_file_index - 1]
+        input_file_index = -1
+        while(int(input_file_index) < 0):
+            try:
+                input_file_index = int(input("Input session index to find rois: ").strip())
+                if int(input_file_index) > len(files):
+                    print('invalid index try again.')
+                    input_file_index = -1
+            except:
+                print('invalid input, only input integers. Input Q to exit input prompt.')
+                if 'q' in str(input_file_index).lower():
+                    return
 
+        input_file = files[input_file_index - 1]
+    else:
+        input_file = files[default_session]
+
+    print(f'Processing session: {input_file}')
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
@@ -504,7 +515,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     print(f'ROIs were successfully computed in {output_dir}')
     return images, filenames
 
-def sample_extract_command(input_dir, config_file, nframes, output_directory=None, exts=['dat', 'mkv', 'avi']):
+def sample_extract_command(input_dir, config_file, nframes, select_session=False, default_session=0, output_directory=None, exts=['dat', 'mkv', 'avi']):
     '''
     Test extract command to extract a subset of the video.
 
@@ -513,6 +524,8 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     input_dir (str): path to directory containing depth file to extract
     config_file (str): path to config file
     nframes (int): number of frames to extract
+    select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
+    default_session (int): index of the default session to find ROI for
     output_directory (str): path to alternative directory
     exts (list): list of supported depth file extensions.
 
@@ -526,8 +539,11 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = []
-    for ext in exts:
-        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext.replace('.',''))))
+    if isinstance(exts, list):
+        for ext in exts:
+            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
+    else:
+        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
 
     files = sorted(files)
 
@@ -535,25 +551,28 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         print('No recordings found')
         return
 
-    for i, sess in enumerate(files):
-        print(f'[{str(i + 1)}] {sess}')
-    input_file_index = -1
+    if select_session:
+        for i, sess in enumerate(files):
+            print(f'[{str(i + 1)}] {sess}')
+        input_file_index = -1
 
-    while (int(input_file_index) < 0):
-        try:
-            input_file_index = int(input("Input session index to extract sample: ").strip())
-            if int(input_file_index) > len(files):
-                print('invalid index try again.')
-                input_file_index = -1
-        except:
-            print('invalid input, only input integers.')
+        while (int(input_file_index) < 0):
+            try:
+                input_file_index = int(input("Input session index to extract sample: ").strip())
+                if int(input_file_index) > len(files):
+                    print('invalid index try again.')
+                    input_file_index = -1
+            except:
+                print('invalid input, only input integers.')
+
+        input_file = files[input_file_index - 1]
+    else:
+        input_file = files[default_session]
 
     if output_directory is None:
-        output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'sample_proc')
+        output_dir = os.path.join(os.path.dirname(input_file), 'sample_proc')
     else:
         output_dir = os.path.join(output_directory, 'sample_proc')
-
-    input_file = files[input_file_index - 1]
 
     extract_command(input_file, output_dir, config_file, num_frames=nframes)
     print(f'Sample extraction of {nframes} frames completed successfully in {output_dir}.')
