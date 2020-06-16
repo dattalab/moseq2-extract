@@ -156,7 +156,7 @@ class GUITests(TestCase):
 
             sys.stdin = open(stdin.name)
 
-            ret = view_extraction(extractions)
+            ret = view_extraction(extractions, default=-1)
             assert len(ret) == 3, "function did not return the correct number of extractions to view"
             assert ret == ['1', '2', '3'], "function returned incorrect extractions to view"
 

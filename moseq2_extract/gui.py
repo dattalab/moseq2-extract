@@ -173,54 +173,60 @@ def generate_config_command(output_file):
 
     return 'Configuration file has been successfully generated.'
 
-def view_extraction(extractions):
+def view_extraction(extractions, default=0):
     '''
     Prompts user to select which extracted video(s) to preview.
 
     Parameters
     ----------
     extractions (list): list of paths to all extracted avi videos.
+    default (int): index of the default extraction to display
 
     Returns
     -------
     extractions (list): list of selected extractions.
     '''
 
-    if len(extractions) > 1:
+    if len(extractions) == 0:
+        print('no sessions to view')
+        return []
+
+    if default < 0:
         for i, sess in enumerate(extractions):
             print(f'[{str(i + 1)}] {sess}')
+
+        while (True):
+            try:
+                input_file_indices = input(
+                    "Input extracted session indices to view separated by commas, empty string for all sessions, or 'q' to exit user-prompt.\n").strip()
+                if ',' in input_file_indices:
+                    input_file_indices = input_file_indices.split(',')
+                    for i in input_file_indices:
+                        i = int(i.strip())
+                        if i > len(extractions):
+                            print('invalid index try again.')
+                            input_file_index = []
+                            break
+
+                    tmp = []
+                    for index in input_file_indices:
+                        index = int(index.strip())
+                        tmp.append(extractions[index - 1])
+                    extractions = tmp
+                    break
+                elif input_file_indices.lower() == 'q':
+                    return []
+                elif len(input_file_indices.strip()) == 1:
+                    index = int(input_file_indices.strip())
+                    extractions = [extractions[index - 1]]
+                    break
+                elif input_file_indices == '':
+                    break
+            except:
+                print('unexpected error:', sys.exc_info()[0])
     else:
-        print('no sessions to view')
-
-    while (True):
-        try:
-            input_file_indices = input(
-                "Input extracted session indices to view separated by commas, empty string for all sessions, or 'q' to exit.\n").strip()
-            if ',' in input_file_indices:
-                input_file_indices = input_file_indices.split(',')
-                for i in input_file_indices:
-                    i = int(i.strip())
-                    if i > len(extractions):
-                        print('invalid index try again.')
-                        input_file_index = []
-                        break
-
-                tmp = []
-                for index in input_file_indices:
-                    index = int(index.strip())
-                    tmp.append(extractions[index - 1])
-                extractions = tmp
-                break
-            elif input_file_indices.lower() == 'q':
-                return []
-            elif len(input_file_indices.strip()) == 1:
-                index = int(input_file_indices.strip())
-                extractions = [extractions[index - 1]]
-                break
-            elif input_file_indices == '':
-                break
-        except:
-            print('unexpected error:', sys.exc_info()[0])
+        print(f"Displaying {extractions[default]}")
+        return [extractions[default]]
 
     return extractions
 
