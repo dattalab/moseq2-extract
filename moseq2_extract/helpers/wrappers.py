@@ -182,7 +182,8 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
     # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
     # then stage the copy
     to_load = list(filter(filter_h5, zip(dicts, h5s)))
-
+    to_load = [tup for tup in to_load if 'sample' not in tup[1]]
+    
     loaded = load_h5s(to_load)
 
     manifest = build_manifest(loaded, format=format)

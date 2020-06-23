@@ -283,10 +283,10 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
         params['bg_roi_index'] = [params['bg_roi_index']]
 
     if cluster_type == 'slurm':
-        run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory)
+        base_command = run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory)
 
     elif cluster_type == 'local':
-        run_local_extract(to_extract, params, prefix, skip_extracted, output_directory)
+        base_command = run_local_extract(to_extract, params, prefix, skip_extracted, output_directory)
 
     else:
         raise NotImplementedError('Other cluster types not supported')

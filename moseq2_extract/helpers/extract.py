@@ -166,6 +166,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False, output_d
                 print('Unexpected error:', e)
                 print('could not extract', to_extract[i])
 
+    return base_command
 
 def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted=False, output_directory=None):
     '''
@@ -234,3 +235,5 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
                 print('could not extract', to_extract[i])
 
         base_command += '"'
+
+    return base_command
