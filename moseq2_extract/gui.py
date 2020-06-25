@@ -26,12 +26,15 @@ def update_progress(progress_file, varK, varV):
     None
     '''
 
+    yml = yaml.YAML()
+    yml.indent(mapping=2, offset=2)
+
     with open(progress_file, 'r') as f:
         progress = yaml.safe_load(f)
 
     progress[varK] = varV
     with open(progress_file, 'w') as f:
-        yaml.safe_dump(progress, f)
+        yml.dump(progress, f)
 
     print(f'Successfully updated progress file with {varK} -> {varV}')
 
@@ -68,6 +71,9 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
     -------
     All restored variables or None.
     '''
+
+    yml = yaml.YAML()
+    yml.indent(mapping=2, offset=2)
 
     if output_directory is not None:
         progress_filepath = os.path.join(output_directory, progress_filepath.split('/')[-1])
@@ -123,7 +129,7 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
                          'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
 
         with open(progress_filepath, 'w') as f:
-            yaml.safe_dump(progress_vars, f)
+            yml.dump(progress_vars, f)
         f.close()
 
         print('\nProgress file created, listing initialized variables...')
@@ -258,8 +264,14 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     config_file = Path(config_file)
 
     prefix = ''
-    to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=skip_checks)
-    to_extract = [e for e in to_extract if e.endswith(ext)]
+    to_extract = []
+    if isinstance(ext, str):
+        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=skip_checks)
+        to_extract = [e for e in to_extract if e.endswith(ext)]
+    elif isinstance(ext, list):
+        for ex in ext:
+            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=skip_checks)
+            to_extract += [e for e in tmp if e.endswith(ex)]
     temp = []
     for dir in to_extract:
         if '/tmp/' not in dir:
@@ -293,7 +305,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/proc/'):
+def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/'):
     '''
     Generates Index File based on aggregated sessions
 
@@ -315,7 +327,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, 
     return output_file
 
 
-def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/proc/', output_directory=None):
+def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/', output_directory=None):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -346,14 +358,15 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/p
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    aggregate_extract_results_wrapper(input_dir, format, output_dir)
+
     if output_directory is None:
-        indexpath = generate_index_command(input_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
+        indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
     else:
-        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False, subpath=subpath)
+        indexpath = generate_index_command(output_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False, subpath=subpath)
 
     print(f'Index file path: {indexpath}')
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir)
 
     return indexpath
 
