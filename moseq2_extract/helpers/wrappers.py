@@ -193,7 +193,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
     print('Results successfully aggregated in', output_dir)
 
 
-def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=None, gui=False, extract_helper=False):
+def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract_helper=False):
     '''
     Wrapper function to compute ROI given depth file.
 
@@ -202,7 +202,6 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
     input_file (str): path to depth file.
     config_data (dict): dictionary of ROI extraction parameters.
     output_dir (str): path to desired directory to save results in.
-    output_directory (str): GUI optional secondary external save directory path
     gui (bool): indicate whether GUI is running.
     extract_helper (bool): indicate whether this is being run independently or by extract function
 
@@ -216,14 +215,8 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, output_directory=N
         first_frame (2d array): First frame image to plot in GUI
     '''
 
-    if gui:
-        if output_directory is not None:
-            output_dir = os.path.join(output_directory, 'proc')
-        else:
-            output_dir = os.path.join(os.path.dirname(input_file), 'proc')
-    else:
-        if not output_dir:
-            output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+    if output_dir == None:
+        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
 
     if type(config_data['bg_roi_index']) is int:
         bg_roi_index = [config_data['bg_roi_index']]

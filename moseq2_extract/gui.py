@@ -57,7 +57,7 @@ def restore_progress_vars(progress_file):
 
     return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
 
-def check_progress(base_dir, progress_filepath, output_directory=None):
+def check_progress(base_dir, progress_filepath):
     '''
     Checks whether progress file exists and prompts user input on whether to overwrite, load old, or generate a new one.
 
@@ -65,7 +65,6 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
     ----------
     base_dir (str): path to directory to create/find progress file
     progress_filepath (str): path to progress filename
-    output_directory (str): optional alternative output directory path.
 
     Returns
     -------
@@ -74,9 +73,6 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
 
     yml = yaml.YAML()
     yml.indent(mapping=2, offset=2)
-
-    if output_directory is not None:
-        progress_filepath = os.path.join(output_directory, progress_filepath.split('/')[-1])
 
     if os.path.exists(progress_filepath):
         with open(progress_filepath, 'r') as f:
@@ -236,7 +232,7 @@ def view_extraction(extractions, default=0):
 
     return extractions
 
-def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False, output_directory=None):
+def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False):
     '''
     Searches for all depth files within input_directory with selected extension
 
@@ -247,7 +243,6 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     ext (str): file extension to search for
     extract_all (bool): if True, auto searches for all sessions, else, prompts user to select sessions individually.
     skip_extracted (bool): indicates whether to skip already extracted session.
-    output_directory (str): optional alternative output_directory.
 
     Returns
     -------
@@ -295,10 +290,10 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
         params['bg_roi_index'] = [params['bg_roi_index']]
 
     if cluster_type == 'slurm':
-        base_command = run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory)
+        base_command = run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted)
 
     elif cluster_type == 'local':
-        base_command = run_local_extract(to_extract, params, prefix, skip_extracted, output_directory)
+        base_command = run_local_extract(to_extract, params, prefix, skip_extracted)
 
     else:
         raise NotImplementedError('Other cluster types not supported')
@@ -327,7 +322,7 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, 
     return output_file
 
 
-def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/', output_directory=None):
+def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -338,7 +333,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
-    output_directory (str): alternate path to save results
 
     Returns
     -------
@@ -349,21 +343,14 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-
-    if output_directory is None:
-        output_dir = os.path.join(input_dir, output_dir)
-    else:
-        output_dir = os.path.join(output_directory, output_dir)
+    output_dir = os.path.join(input_dir, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     aggregate_extract_results_wrapper(input_dir, format, output_dir)
 
-    if output_directory is None:
-        indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
-    else:
-        indexpath = generate_index_command(output_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False, subpath=subpath)
+    indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
 
     print(f'Index file path: {indexpath}')
 
@@ -445,7 +432,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
     flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
 
 
-def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0, output_directory=None):
+def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):
     '''
     Computes ROI files given depth file.
     Will list out all available sessions to process and prompts user to input a corresponding session
@@ -458,7 +445,6 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     exts (list): list of supported extensions
     select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
     default_session (int): index of the default session to find ROI for
-    output_directory (str): alternate output path
 
     Returns
     -------
@@ -518,7 +504,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     with open(config_file, 'w') as g:
         yaml.safe_dump(config_data, g)
 
-    output_dir = get_roi_wrapper(input_file, config_data, output_directory, gui=True)
+    output_dir = get_roi_wrapper(input_file, config_data, gui=True)
 
     images = []
     filenames = []
@@ -534,7 +520,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     print(f'ROIs were successfully computed in {output_dir}')
     return images, filenames
 
-def sample_extract_command(input_dir, config_file, nframes, select_session=False, default_session=0, output_directory=None, exts=['dat', 'mkv', 'avi']):
+def sample_extract_command(input_dir, config_file, nframes, select_session=False, default_session=0, exts=['dat', 'mkv', 'avi']):
     '''
     Test extract command to extract a subset of the video.
 
@@ -545,7 +531,6 @@ def sample_extract_command(input_dir, config_file, nframes, select_session=False
     nframes (int): number of frames to extract
     select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
     default_session (int): index of the default session to find ROI for
-    output_directory (str): path to alternative directory
     exts (list): list of supported depth file extensions.
 
     Returns
@@ -588,10 +573,8 @@ def sample_extract_command(input_dir, config_file, nframes, select_session=False
     else:
         input_file = files[default_session]
 
-    if output_directory is None:
-        output_dir = os.path.join(os.path.dirname(input_file), 'sample_proc')
-    else:
-        output_dir = os.path.join(output_directory, 'sample_proc')
+
+    output_dir = os.path.join(os.path.dirname(input_file), 'sample_proc')
 
     extract_command(input_file, output_dir, config_file, num_frames=nframes)
     print(f'Sample extraction of {nframes} frames completed successfully in {output_dir}.')
