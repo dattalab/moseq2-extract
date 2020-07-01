@@ -36,7 +36,7 @@ def write_image(filename, image, scale=True,
 
         if not scale_factor:
             # scale image to `dtype`'s full range
-            scale_factor = int(max_int / np.nanmax(image))
+            scale_factor = int(max_int / (np.nanmax(image) + 1e-25)) # adding very small value to avoid divide by 0
             image = image * scale_factor
         elif isinstance(scale_factor, tuple):
             image = np.float32(image)

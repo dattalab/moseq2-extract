@@ -102,6 +102,10 @@ def load_timestamps(timestamp_file, col=0):
         ts = np.array(ts)
     except FileNotFoundError as e:
         ts = None
+        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named \
+            "depth_ts.txt" or "timestamps.csv".')
+        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
+            imputing missing data.')
 
     return ts
 
@@ -358,19 +362,20 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     h5s = []
     yamls = []
     for root, dirs, files in os.walk(root_dir):
-        for file in files:
-            yaml_file = yaml_string.format(os.path.splitext(file)[0])
-            if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
-                try:
-                    with h5py.File(os.path.join(root, file), 'r') as f:
-                        if 'frames' not in f.keys():
-                            continue
-                except OSError:
-                    warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
-                    continue
-                h5s.append(os.path.join(root, file))
-                yamls.append(os.path.join(root, yaml_file))
-                dicts.append(read_yaml(os.path.join(root, yaml_file)))
+        if 'sample' not in root:
+            for file in files:
+                yaml_file = yaml_string.format(os.path.splitext(file)[0])
+                if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
+                    try:
+                        with h5py.File(os.path.join(root, file), 'r') as f:
+                            if 'frames' not in f.keys():
+                                continue
+                    except OSError:
+                        warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
+                        continue
+                    h5s.append(os.path.join(root, file))
+                    yamls.append(os.path.join(root, yaml_file))
+                    dicts.append(read_yaml(os.path.join(root, yaml_file)))
 
     return h5s, dicts, yamls
 
@@ -429,7 +434,7 @@ def load_textdata(data_file, dtype=np.float32):
     with open(data_file, "r") as f:
         for line in f.readlines():
             tmp = line.split(' ', 1)
-            timestamps.append(int(tmp[0]))
+            timestamps.append(int(float(tmp[0])))
             clean_data = np.fromstring(tmp[1].replace(" ", "").strip(), sep=',', dtype=dtype)
             data.append(clean_data)
 
@@ -686,11 +691,13 @@ def get_bucket_center(img, true_depth, threshold=650):
     '''
     https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
     Finds Centroid coordinates of circular bucket.
+
     Parameters
     ----------
     img (2d np.ndaarray): original background image.
     true_depth (float): distance value from camera to bucket floor (automatically pre-computed)
     threshold (float): distance values to accept region into detected circle. (used to reduce fall noise interference)
+
     Returns
     -------
     cX (int): x-coordinate of circle centroid
@@ -715,6 +722,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     Creates gradient around bucket floor representing slanted wall values.
     This is done by drawing an "ellipse" of equal x,y radii, resulting in a circle with weighted
     depth values from highest to lowest surrounding the circumference of the circle
+
     Parameters
     ----------
     width (int): bounding box width
@@ -724,6 +732,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     a (int): x-radius of drawn ellipse
     b (int): y-radius of drawn ellipse
     theta (float): degree to rotate ellipse in radians. (has no effect if drawing a circle)
+
     Returns
     -------
     (2d np.ndarray): numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
@@ -757,6 +766,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
     true_depth (float): median distance computed throughout recording.
     output_dir (str): path to save newly computed background to use.
+
     Returns
     -------
     bground_im (2d np.ndarray): the new background image with a gradient around the floor from high to low depth values.

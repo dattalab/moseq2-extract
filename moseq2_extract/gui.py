@@ -4,13 +4,12 @@ from .cli import *
 from glob import glob
 from pathlib import Path
 import ruamel.yaml as yaml
-from cytoolz import partial
-from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, build_manifest, copy_manifest_results
-from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper
 from moseq2_extract.io.image import read_image
-from moseq2_extract.util import (recursive_find_h5s, escape_path,
-                                 mouse_threshold_filter, recursive_find_unextracted_dirs)
+from moseq2_extract.helpers.data import get_selected_sessions
+from moseq2_extract.util import escape_path, recursive_find_unextracted_dirs
+from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper, \
+                                            aggregate_extract_results_wrapper
 
 def update_progress(progress_file, varK, varV):
     '''
@@ -27,12 +26,15 @@ def update_progress(progress_file, varK, varV):
     None
     '''
 
+    yml = yaml.YAML()
+    yml.indent(mapping=2, offset=2)
+
     with open(progress_file, 'r') as f:
         progress = yaml.safe_load(f)
 
     progress[varK] = varV
     with open(progress_file, 'w') as f:
-        yaml.safe_dump(progress, f)
+        yml.dump(progress, f)
 
     print(f'Successfully updated progress file with {varK} -> {varV}')
 
@@ -55,7 +57,7 @@ def restore_progress_vars(progress_file):
 
     return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
 
-def check_progress(base_dir, progress_filepath, output_directory=None):
+def check_progress(base_dir, progress_filepath):
     '''
     Checks whether progress file exists and prompts user input on whether to overwrite, load old, or generate a new one.
 
@@ -63,15 +65,14 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
     ----------
     base_dir (str): path to directory to create/find progress file
     progress_filepath (str): path to progress filename
-    output_directory (str): optional alternative output directory path.
 
     Returns
     -------
     All restored variables or None.
     '''
 
-    if output_directory is not None:
-        progress_filepath = os.path.join(output_directory, progress_filepath.split('/')[-1])
+    yml = yaml.YAML()
+    yml.indent(mapping=2, offset=2)
 
     if os.path.exists(progress_filepath):
         with open(progress_filepath, 'r') as f:
@@ -104,7 +105,7 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
 
                 progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
                                  'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
-                                 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
+                                 'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
 
                 with open(progress_filepath, 'w') as f:
                     yaml.safe_dump(progress_vars, f)
@@ -121,10 +122,10 @@ def check_progress(base_dir, progress_filepath, output_directory=None):
     else:
         print('Progress file not found, creating new one.')
         progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD', 'pca_dirname': 'TBD',
-                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': 'TBD'}
+                         'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
 
         with open(progress_filepath, 'w') as f:
-            yaml.safe_dump(progress_vars, f)
+            yml.dump(progress_vars, f)
         f.close()
 
         print('\nProgress file created, listing initialized variables...')
@@ -174,56 +175,64 @@ def generate_config_command(output_file):
 
     return 'Configuration file has been successfully generated.'
 
-def view_extraction(extractions):
+def view_extraction(extractions, default=0):
     '''
     Prompts user to select which extracted video(s) to preview.
 
     Parameters
     ----------
     extractions (list): list of paths to all extracted avi videos.
+    default (int): index of the default extraction to display
 
     Returns
     -------
     extractions (list): list of selected extractions.
     '''
 
-    if len(extractions) > 1:
+    if len(extractions) == 0:
+        print('no sessions to view')
+        return []
+
+    if default < 0:
         for i, sess in enumerate(extractions):
             print(f'[{str(i + 1)}] {sess}')
+
+        while (True):
+            try:
+                input_file_indices = input(
+                    "Input extracted session indices to view separated by commas, empty string for all sessions, or 'q' to exit user-prompt.\n").strip()
+                if ',' in input_file_indices:
+                    input_file_indices = input_file_indices.split(',')
+                    for i in input_file_indices:
+                        i = int(i.strip())
+                        if i > len(extractions):
+                            print('invalid index try again.')
+                            input_file_index = []
+                            break
+
+                    tmp = []
+                    for index in input_file_indices:
+                        index = int(index.strip())
+                        tmp.append(extractions[index - 1])
+                    extractions = tmp
+                    break
+                elif input_file_indices.lower() == 'q':
+                    return []
+                elif len(input_file_indices.strip()) == 1:
+                    index = int(input_file_indices.strip())
+                    extractions = [extractions[index - 1]]
+                    break
+                elif input_file_indices == '':
+                    break
+            except:
+                print('unexpected error:', sys.exc_info()[0])
     else:
-        print('no sessions to view')
-
-    while (True):
-        try:
-            input_file_indices = input(
-                "Input extracted session indices to view separated by commas, or empty string for all sessions.\n").strip()
-            if ',' in input_file_indices:
-                input_file_indices = input_file_indices.split(',')
-                for i in input_file_indices:
-                    i = int(i.strip())
-                    if i > len(extractions):
-                        print('invalid index try again.')
-                        input_file_index = []
-                        break
-
-                tmp = []
-                for index in input_file_indices:
-                    index = int(index.strip())
-                    tmp.append(extractions[index - 1])
-                extractions = tmp
-                break
-            elif len(input_file_indices.strip()) == 1:
-                index = int(input_file_indices.strip())
-                extractions = [extractions[index - 1]]
-                break
-            elif input_file_indices == '':
-                break
-        except:
-            print('unexpected error:', sys.exc_info()[0])
+        print(f"Displaying {extractions[default]}")
+        return [extractions[default]]
 
     return extractions
 
-def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False, output_directory=None):
+def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False):
     '''
     Searches for all depth files within input_directory with selected extension
 
@@ -234,7 +243,6 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     ext (str): file extension to search for
     extract_all (bool): if True, auto searches for all sessions, else, prompts user to select sessions individually.
     skip_extracted (bool): indicates whether to skip already extracted session.
-    output_directory (str): optional alternative output_directory.
 
     Returns
     -------
@@ -251,8 +259,14 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     config_file = Path(config_file)
 
     prefix = ''
-    to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=skip_checks)
-    to_extract = [e for e in to_extract if e.endswith(ext)]
+    to_extract = []
+    if isinstance(ext, str):
+        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=skip_checks)
+        to_extract = [e for e in to_extract if e.endswith(ext)]
+    elif isinstance(ext, list):
+        for ex in ext:
+            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=skip_checks)
+            to_extract += [e for e in tmp if e.endswith(ex)]
     temp = []
     for dir in to_extract:
         if '/tmp/' not in dir:
@@ -276,17 +290,17 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
         params['bg_roi_index'] = [params['bg_roi_index']]
 
     if cluster_type == 'slurm':
-        run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory)
+        base_command = run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted)
 
     elif cluster_type == 'local':
-        run_local_extract(to_extract, params, prefix, skip_extracted, output_directory)
+        base_command = run_local_extract(to_extract, params, prefix, skip_extracted)
 
     else:
         raise NotImplementedError('Other cluster types not supported')
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
+def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/'):
     '''
     Generates Index File based on aggregated sessions
 
@@ -303,12 +317,12 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids):
     output_file (str): path to index file.
     '''
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids)
+    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
     print('Index file successfully generated.')
     return output_file
 
 
-def aggregate_extract_results_command(input_dir, format, output_dir, output_directory=None):
+def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -319,7 +333,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
-    output_directory (str): alternate path to save results
 
     Returns
     -------
@@ -330,47 +343,17 @@ def aggregate_extract_results_command(input_dir, format, output_dir, output_dire
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-    mouse_threshold = 0
-    snake_case = True
-    if output_directory is None:
-        output_dir = os.path.join(input_dir, output_dir)
-    else:
-        output_dir = os.path.join(output_directory, output_dir)
+    output_dir = os.path.join(input_dir, output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    if output_directory is None:
-        indexpath = generate_index_command(input_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False)
-    else:
-        indexpath = generate_index_command(input_dir, '', os.path.join(output_directory, 'moseq2-index.yaml'), (), False)
+    aggregate_extract_results_wrapper(input_dir, format, output_dir)
+
+    indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
 
     print(f'Index file path: {indexpath}')
 
-    h5s, dicts, _ = recursive_find_h5s(input_dir)
-
-    not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
-    complete = lambda d: d['complete'] and not d['skip']
-
-    # only include real extracted mice with this filter func
-    mtf = partial(mouse_threshold_filter, thresh=mouse_threshold)
-
-    def filter_h5(args):
-        '''remove h5's that should be skipped or extraction wasn't complete'''
-        _dict, _h5 = args
-        return complete(_dict) and not_in_output(_h5) and mtf(_h5)
-
-    # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
-    # then stage the copy
-    to_load = list(filter(filter_h5, zip(dicts, h5s)))
-
-    loaded = load_h5s(to_load)
-
-    manifest = build_manifest(loaded, format=format)
-
-    copy_manifest_results(manifest, output_dir)
-
-    print('Results successfully aggregated in', output_dir)
 
     return indexpath
 
@@ -389,12 +372,15 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     found_sessions (int): number of found sessions with given extensions
     '''
 
+    data_dir = str(data_dir) # ensuring type for string manipulation
+
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     found_sessions = 0
     sessions = []
+
     for ext in exts:
         if len(data_dir) == 0:
             data_dir = os.getcwd()
@@ -446,16 +432,19 @@ def download_flip_command(output_dir, config_file="", selection=1):
     flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
 
 
-def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_directory=None):
+def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):
     '''
-    Computes ROI files given depth file
+    Computes ROI files given depth file.
+    Will list out all available sessions to process and prompts user to input a corresponding session
+    index to process.
 
     Parameters
     ----------
     input_dir (str): path to directory containing depth file
     config_file (str): path to config file
     exts (list): list of supported extensions
-    output_directory (str): alternate output path
+    select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
+    default_session (int): index of the default session to find ROI for
 
     Returns
     -------
@@ -468,34 +457,54 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = []
-    for ext in exts:
-        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext)))
+    if isinstance(exts, list):
+        for ext in exts:
+            files += sorted(glob(os.path.join(input_dir, '*/*.'+ext.replace('.', ''))))
+    else:
+        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
 
-    for i, sess in enumerate(files):
-        print(f'[{str(i+1)}] {sess}')
+    files = sorted(files)
 
-    if len(files) == 0:
-        print('No recordings found')
-        return
+    if select_session:
+        for i, sess in enumerate(files):
+            print(f'[{str(i+1)}] {sess}')
 
-    input_file_index = -1
-    while(int(input_file_index) < 0):
-        try:
-            input_file_index = int(input("Input session index to find rois: ").strip())
-            if int(input_file_index) > len(files):
-                print('invalid index try again.')
-                input_file_index = -1
-        except:
-            print('invalid input, only input integers. Input Q to exit.')
-            if 'q' in str(input_file_index).lower():
-                return
+        if len(files) == 0:
+            print('No recordings found')
+            return
 
-    input_file = files[input_file_index - 1]
+        input_file_index = -1
+        while(int(input_file_index) < 0):
+            try:
+                input_file_index = int(input("Input session index to find rois: ").strip())
+                if int(input_file_index) > len(files):
+                    print('invalid index try again.')
+                    input_file_index = -1
+            except:
+                print('invalid input, only input integers. Input Q to exit input prompt.')
+                if 'q' in str(input_file_index).lower():
+                    return
 
+        input_file = files[input_file_index - 1]
+    else:
+        input_file = files[default_session]
+
+    print(f'Processing session: {input_file}')
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    output_dir = get_roi_wrapper(input_file, config_data, output_directory, gui=True)
+    # Auto-setting background weights
+    if config_data.get('bg_roi_weights', (1, .1, 1)) == 'kinect':
+        config_data['bg_roi_weights'] = (1, .1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'azure':
+        config_data['bg_roi_weights'] = (10, 0.1, 1)
+    elif config_data.get('bg_roi_weights', (1, .1, 1)) == 'realsense':
+        config_data['bg_roi_weights'] = (10, 1, 4)
+
+    with open(config_file, 'w') as g:
+        yaml.safe_dump(config_data, g)
+
+    output_dir = get_roi_wrapper(input_file, config_data, gui=True)
 
     images = []
     filenames = []
@@ -511,7 +520,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], output_
     print(f'ROIs were successfully computed in {output_dir}')
     return images, filenames
 
-def sample_extract_command(input_dir, config_file, nframes, output_directory=None, exts=['dat', 'mkv', 'avi']):
+def sample_extract_command(input_dir, config_file, nframes, select_session=False, default_session=0, exts=['dat', 'mkv', 'avi']):
     '''
     Test extract command to extract a subset of the video.
 
@@ -520,7 +529,8 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     input_dir (str): path to directory containing depth file to extract
     config_file (str): path to config file
     nframes (int): number of frames to extract
-    output_directory (str): path to alternative directory
+    select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
+    default_session (int): index of the default session to find ROI for
     exts (list): list of supported depth file extensions.
 
     Returns
@@ -533,8 +543,11 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
     warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = []
-    for ext in exts:
-        files += sorted(glob(os.path.join(input_dir, '*/*.'+ext.replace('.',''))))
+    if isinstance(exts, list):
+        for ext in exts:
+            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
+    else:
+        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
 
     files = sorted(files)
 
@@ -542,25 +555,26 @@ def sample_extract_command(input_dir, config_file, nframes, output_directory=Non
         print('No recordings found')
         return
 
-    for i, sess in enumerate(files):
-        print(f'[{str(i + 1)}] {sess}')
-    input_file_index = -1
+    if select_session:
+        for i, sess in enumerate(files):
+            print(f'[{str(i + 1)}] {sess}')
+        input_file_index = -1
 
-    while (int(input_file_index) < 0):
-        try:
-            input_file_index = int(input("Input session index to extract sample: ").strip())
-            if int(input_file_index) > len(files):
-                print('invalid index try again.')
-                input_file_index = -1
-        except:
-            print('invalid input, only input integers.')
+        while (int(input_file_index) < 0):
+            try:
+                input_file_index = int(input("Input session index to extract sample: ").strip())
+                if int(input_file_index) > len(files):
+                    print('invalid index try again.')
+                    input_file_index = -1
+            except:
+                print('invalid input, only input integers.')
 
-    if output_directory is None:
-        output_dir = os.path.join(os.path.dirname(files[input_file_index-1]), 'sample_proc')
+        input_file = files[input_file_index - 1]
     else:
-        output_dir = os.path.join(output_directory, 'sample_proc')
+        input_file = files[default_session]
 
-    input_file = files[input_file_index - 1]
+
+    output_dir = os.path.join(os.path.dirname(input_file), 'sample_proc')
 
     extract_command(input_file, output_dir, config_file, num_frames=nframes)
     print(f'Sample extraction of {nframes} frames completed successfully in {output_dir}.')

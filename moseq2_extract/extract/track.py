@@ -1,9 +1,8 @@
-from moseq2_extract.util import select_strel
+import cv2
 import numpy as np
 import scipy.stats
+from tqdm.auto import tqdm
 import statsmodels.stats.correlation_tools as stats_tools
-import cv2
-import tqdm
 
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
@@ -163,7 +162,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         model_parameters[k][:] = np.nan
 
     frames = frames.reshape(frames.shape[0], frames.shape[1]*frames.shape[2])
-    pbar = tqdm.tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
+    pbar = tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
     i = 0
     repeat = False
     while i < nframes:
@@ -296,7 +295,7 @@ def em_get_ll(frames, mean, cov, progress_bar=True):
 
     ll = np.zeros(frames.shape, dtype='float64')
 
-    for i in tqdm.tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
+    for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
         xyz = np.vstack((coords, frames[i, ...].ravel()))
         ll[i, ...] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i, ...], cov[i, ...]).reshape((r, c))
 

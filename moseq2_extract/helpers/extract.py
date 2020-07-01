@@ -1,11 +1,10 @@
 import os
-import sys
-from tqdm.auto import tqdm
 import datetime
 import numpy as np
 from pathlib import Path
 from copy import deepcopy
 import ruamel.yaml as yaml
+from tqdm.auto import tqdm
 
 from moseq2_extract.extract.proc import apply_roi
 from moseq2_extract.extract.extract import extract_chunk
@@ -104,7 +103,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     return video_pipe
 
 
-def run_local_extract(to_extract, params, prefix, skip_extracted, output_directory):
+def run_local_extract(to_extract, params, prefix, skip_extracted=False):
     '''
     Runs the extract command on given list of sessions to extract on local platform.
     This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
@@ -115,7 +114,6 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
     params (dict): dictionary of ROI metadata from config file.
     prefix (str): prefix to CLI extraction command.
     skip_extracted (bool): Whether to skip already extracted session.
-    output_directory (str): path to preferred output directory.
 
     Returns
     -------
@@ -132,12 +130,17 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
     with config_store.open('w') as f:
         yaml.safe_dump(params, f)
 
-    for i, ext in enumerate(to_extract):
+    base_command = ''
+
+    for i, ext in tqdm(enumerate(to_extract), total=len(to_extract), desc='Extracting Sessions'):
 
         base_command = ''
 
         if prefix is not None:
             base_command += '{}; '.format(prefix)
+
+        if isinstance(params['bg_roi_index'], int):
+            params['bg_roi_index'] = [params['bg_roi_index']]
 
         if len(params['bg_roi_index']) > 1:
             base_command += 'moseq2-extract find-roi --config-file {} {}; '.format(
@@ -151,12 +154,10 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
             with open(roi_config_store, 'w') as f:
                 yaml.safe_dump(roi_config, f)
 
-            if output_directory is None:
-                base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
-                    .format(roi_config_store, roi, ext)
-            else:
-                base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
-                    .format(output_directory, roi_config_store, roi, ext)
+
+            base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
+                .format(roi_config_store, roi, ext)
+
             try:
                 from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
@@ -164,8 +165,9 @@ def run_local_extract(to_extract, params, prefix, skip_extracted, output_directo
                 print('Unexpected error:', e)
                 print('could not extract', to_extract[i])
 
+    return base_command
 
-def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted, output_directory):
+def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_extracted=False):
     '''
     Runs the extract command on given list of sessions to extract on SLURM platform.
     This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
@@ -178,7 +180,6 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
     prefix (str): prefix to CLI extraction command.
     escape_path (function): gets path to return to original base directory
     skip_extracted (bool): Whether to skip already extracted session.
-    output_directory (str): path to preferred output directory.
 
     Returns
     -------
@@ -195,6 +196,8 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
     with config_store.open('w') as f:
         yaml.safe_dump(params, f)
 
+    base_command = ''
+
     for i, ext in enumerate(to_extract):
 
         ext = escape_path(ext)
@@ -202,6 +205,9 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
             .format(params['cores'], params['memory'], partition, params['wall_time'])
         if prefix is not None:
             base_command += f'{prefix}; '
+
+        if isinstance(params['bg_roi_index'], int):
+            params['bg_roi_index'] = [params['bg_roi_index']]
 
         if len(params['bg_roi_index']) > 1:
             base_command += 'moseq2-extract find-roi --config-file {} {}; '.format(
@@ -215,12 +221,9 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
             with open(roi_config_store, 'w') as f:
                 yaml.safe_dump(roi_config, f)
 
-            if output_directory is None:
-                base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
-                    .format(roi_config_store, roi, ext)
-            else:
-                base_command += 'moseq2-extract extract --output-dir {} --config-file {} --bg-roi-index {:d} {}; ' \
-                    .format(output_directory, roi_config_store, roi, ext)
+            base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
+                .format(roi_config_store, roi, ext)
+
             try:
                 from moseq2_extract.gui import extract_command
                 extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
@@ -229,3 +232,5 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
                 print('could not extract', to_extract[i])
 
         base_command += '"'
+
+    return base_command

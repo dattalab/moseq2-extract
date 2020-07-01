@@ -1,13 +1,14 @@
 import os
 import sys
-import tqdm
 import click
 import pathlib
 import numpy as np
 import ruamel.yaml as yaml
+from tqdm.auto import tqdm
 from moseq2_extract.util import (gen_batch_sequence, command_with_config)
 from moseq2_extract.io.video import (get_movie_info, load_movie_data, write_frames)
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
+                                            generate_index_wrapper, aggregate_extract_results_wrapper
 
 orig_init = click.core.Option.__init__
 
@@ -23,6 +24,11 @@ click.core.Option.__init__ = new_init
 @click.group()
 def cli():
     pass
+
+@cli.command('version', help='Print version number')
+def version():
+    import moseq2_extract
+    click.echo(moseq2_extract.__version__)
 
 def common_roi_options(function):
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
@@ -46,7 +52,7 @@ def common_roi_options(function):
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
-    function = click.option('--dilate_iterations', default=1, type=int,
+    function = click.option('--dilate-iterations', default=1, type=int,
                             help='Number of dilation iterations to increase bucket floor size.')(function)
     function = click.option('--output-dir', default=None, help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
@@ -57,7 +63,6 @@ def common_roi_options(function):
 def common_avi_options(function):
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
-    function = click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
     function = click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')(function)
     function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
@@ -65,7 +70,7 @@ def common_avi_options(function):
 
 
 
-@cli.command(name="find-roi", cls=command_with_config('config_file'))
+@cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
@@ -76,7 +81,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
     click_data = click.get_current_context().params
     get_roi_wrapper(input_file, click_data, output_dir)
 
-@cli.command(name="extract", cls=command_with_config('config_file'))
+@cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\
+                                            video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_roi_options
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
@@ -130,7 +136,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 
 
 
-@cli.command(name="download-flip-file")
+@cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
               default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
@@ -139,7 +145,7 @@ def download_flip_file(config_file, output_dir):
     flip_file_wrapper(config_file, output_dir)
 
 
-@cli.command(name="generate-config")
+@cli.command(name="generate-config", help="Generates a configuration file that holds editable options for extraction parameters.")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
 def generate_config(output_file):
 
@@ -151,10 +157,33 @@ def generate_config(output_file):
 
     print('Successfully generated config file in base directory.')
 
+@cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--pca-file', '-p', type=click.Path(), default=os.path.join(os.getcwd(), '_pca/pca_scores.h5'), help='Path to PCA results')
+@click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
+@click.option('--filter', '-f', type=(str, str), default=None, help='Regex filter for metadata', multiple=True)
+@click.option('--all-uuids', '-a', type=bool, default=False, help='Use all uuids')
+@click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
+def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath):
 
-@cli.command(name="convert-raw-to-avi")
+    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
+
+    if output_file != None:
+        print(f'Index file: {output_file} was successfully generated.')
+
+@cli.command(name='aggregate-results', help='Copies all extracted results (h5, yaml, avi) files from all extracted sessions to a new directory,')
+@click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
+@click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
+@click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
+def aggregate_extract_results(input_dir, format, output_dir):
+
+    aggregate_extract_results_wrapper(input_dir, format, output_dir)
+
+
+@cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
+@click.option('-v', '--verbose', type=int, default=0, help='Verbosity level out batch encoding. [0-1]')
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, verbose):
 
     if output_file is None:
@@ -165,7 +194,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
     video_pipe = None
 
-    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+    for batch in tqdm(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)
         video_pipe = write_frames(output_file,
                                   frames,
@@ -178,7 +207,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         video_pipe.stdin.close()
         video_pipe.wait()
 
-    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+    for batch in tqdm(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch)
         encoded_frames = load_movie_data(output_file, batch)
 
@@ -192,9 +221,10 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
         os.remove(input_file)
 
 
-@cli.command(name="copy-slice")
+@cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
+@click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
 
     if output_file is None:
@@ -221,7 +251,7 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
         if overwrite != '':
             sys.exit(0)
 
-    for batch in tqdm.tqdm(frame_batches, desc='Encoding batches'):
+    for batch in tqdm(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)
         if avi_encode:
             video_pipe = write_frames(output_file,
@@ -238,7 +268,7 @@ def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, thr
         video_pipe.stdin.close()
         video_pipe.wait()
 
-    for batch in tqdm.tqdm(frame_batches, desc='Checking data integrity'):
+    for batch in tqdm(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch)
         encoded_frames = load_movie_data(output_file, batch)
 

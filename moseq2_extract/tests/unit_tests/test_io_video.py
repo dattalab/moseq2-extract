@@ -1,92 +1,98 @@
-import numpy.testing as npt
 import numpy as np
-import pytest
-import os
+import numpy.testing as npt
+from unittest import TestCase
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
     get_movie_info, load_movie_data
 
+class TestVideoIO(TestCase):
+    def test_read_frames_raw(self):
 
-@pytest.fixture(scope='function')
-def video_file(tmpdir):
-    f = tmpdir.mkdir('test_dir')
-    return str(f)
+        with TemporaryDirectory() as tmp:
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            test_data.tofile(data_path.name)
 
-def test_read_frames_raw(video_file):
-
-    test_path = os.path.join(video_file, 'test_data.data')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
-    test_data.tofile(test_path)
-
-    read_data = read_frames_raw(test_path)
-    npt.assert_array_equal(test_data, read_data)
+            read_data = read_frames_raw(data_path.name)
+            npt.assert_array_equal(test_data, read_data)
 
 
-def test_get_raw_info(video_file):
+    def test_get_raw_info(self):
 
-    test_path = os.path.join(video_file, 'test_data.data')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
-    test_data.tofile(test_path)
-
-    vid_info = get_raw_info(test_path)
-
-    npt.assert_equal(vid_info['bytes'], test_data.nbytes)
-    npt.assert_equal(vid_info['nframes'], test_data.shape[0])
-    npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
-    npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
+        with TemporaryDirectory() as tmp:
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
 
 
-def test_ffv1(video_file):
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            test_data.tofile(data_path.name)
 
-    test_path = os.path.join(video_file, 'test_data.avi')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            vid_info = get_raw_info(data_path.name)
 
-    write_frames(test_path, test_data, fps=30)
-    read_data = read_frames(test_path)
-
-    vid_info = get_video_info(test_path)
-
-    npt.assert_equal(test_data, read_data)
-    npt.assert_equal(vid_info['fps'], 30)
-    npt.assert_equal((vid_info['dims']), (test_data.shape[2], test_data.shape[1]))
-    npt.assert_equal(vid_info['nframes'], test_data.shape[0])
+            npt.assert_equal(vid_info['bytes'], test_data.nbytes)
+            npt.assert_equal(vid_info['nframes'], test_data.shape[0])
+            npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
+            npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
 
 
-def test_write_frames_preview(video_file):
+    def test_ffv1(self):
 
-    test_path = os.path.join(video_file, 'test_data.avi')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+        with TemporaryDirectory() as tmp:
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
-    write_frames_preview(test_path, test_data, fps=30)
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            test_data.tofile(data_path.name)
 
+            write_frames(data_path.name, test_data, fps=30)
+            read_data = read_frames(data_path.name)
 
-def test_get_movie_info(video_file):
+            vid_info = get_video_info(data_path.name)
 
-    test_path_vid = os.path.join(video_file, 'test_data.avi')
-    test_path_raw = os.path.join(video_file, 'test_data.dat')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
-
-    write_frames(test_path_vid, test_data, fps=30)
-    test_data.tofile(test_path_raw)
-
-    vid_info = get_movie_info(test_path_vid)
-    raw_info = get_movie_info(test_path_raw)
-
-    npt.assert_equal(vid_info['dims'], raw_info['dims'])
-    npt.assert_equal(vid_info['nframes'], raw_info['nframes'])
+            npt.assert_equal(test_data, read_data)
+            npt.assert_equal(vid_info['fps'], 30)
+            npt.assert_equal((vid_info['dims']), (test_data.shape[2], test_data.shape[1]))
+            npt.assert_equal(vid_info['nframes'], test_data.shape[0])
 
 
-def test_load_movie_data(video_file):
+    def test_write_frames_preview(self):
 
-    test_path_vid = os.path.join(video_file, 'test_data.avi')
-    test_path_raw = os.path.join(video_file, 'test_data.dat')
-    test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+        with TemporaryDirectory() as tmp:
+            data_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
 
-    write_frames(test_path_vid, test_data, fps=30)
-    test_data.tofile(test_path_raw)
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+            write_frames_preview(data_path.name, test_data, fps=30)
 
-    read_data_vid = load_movie_data(test_path_vid)
-    read_data_raw = load_movie_data(test_path_raw)
 
-    npt.assert_array_equal(read_data_vid, read_data_raw)
+    def test_get_movie_info(self):
+        with TemporaryDirectory() as tmp:
+            for suff in ['.avi', '.mkv']:
+                avi_path = NamedTemporaryFile(prefix=tmp+'/', suffix=suff)
+                dat_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+
+                test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+
+                write_frames(avi_path.name, test_data, fps=30)
+                test_data.tofile(dat_path.name)
+
+                vid_info = get_movie_info(avi_path.name)
+                raw_info = get_movie_info(dat_path.name)
+
+                npt.assert_equal(vid_info['dims'], raw_info['dims'])
+                npt.assert_equal(vid_info['nframes'], raw_info['nframes'])
+
+
+    def test_load_movie_data(self):
+        with TemporaryDirectory() as tmp:
+            avi_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".avi")
+            dat_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".dat")
+
+            test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+
+            write_frames(avi_path.name, test_data, fps=30)
+            test_data.tofile(dat_path.name)
+
+            read_data_vid = load_movie_data(avi_path.name)
+            read_data_raw = load_movie_data(dat_path.name)
+
+            npt.assert_array_equal(read_data_vid, read_data_raw)

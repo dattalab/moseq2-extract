@@ -2,6 +2,7 @@ import os
 import h5py
 import shutil
 import tarfile
+import warnings
 import numpy as np
 from cytoolz import keymap
 import ruamel.yaml as yaml
@@ -77,7 +78,7 @@ def get_selected_sessions(to_extract, extract_all):
             else:
                 print('Invalid input. Try again or press q to quit.')
     else:
-        print(f'Extracting {to_extract[0]}')
+        return to_extract
 
     return ret_extract
 
@@ -188,7 +189,7 @@ def build_manifest(loaded, format, snake_case=True):
                         'timestamps': timestamps
                     }
                 except:
-                    print('Did not load timestamps')
+                    warnings.warn('WARNING: Did not load timestamps! This may cause issues if total dropped frames > 2% of the session.')
 
     return manifest
 
@@ -206,6 +207,9 @@ def copy_manifest_results(manifest, output_dir):
     -------
     None
     '''
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     # now the key is the source h5 file and the value is the path to copy to
     for k, v in tqdm(manifest.items(), desc='Copying files'):
@@ -263,7 +267,7 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
     last_frame_idx (int): index number of last frame in extraction
     '''
 
-    if input_file.endswith('.tar.gz') or input_file.endswith('.tgz'):
+    if str(input_file).endswith('.tar.gz') or str(input_file).endswith('.tgz'):
         print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
