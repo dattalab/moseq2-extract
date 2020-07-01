@@ -29,7 +29,56 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
-                  verbose=0):
+                  verbose=0, **kwargs):
+    '''
+    This function looks for a mouse in background-subtracted frames from a chunk of depth video.
+    It is called from the moseq2_extract.helpers.extract module.
+
+    Parameters
+    ----------
+    chunk (3d np.ndarray): chunk to extract - (chunksize, height, width)
+    use_em_tracker (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
+        basis to the mouse's body and determine if pixels are mouse vs cable.
+    prefilter_space (tuple): spatial kernel size
+    prefilter_time (tuple): temporal kernel size
+    iters_tail (int): number of filtering iterations on mouse tail
+    iters_min (int): minimum tail filtering filter kernel size
+    strel_tail (cv2::StructuringElement - Ellipse): filtering kernel size to filter out mouse tail.
+    strel_min (cv2::StructuringElement - Rectangle): filtering kernel size to filter mouse body in cable recording cases.
+    min_height (int): minimum (mm) distance of mouse to floor.
+    max_height (int): maximum (mm) distance of mouse to floor.
+    mask_threshold (int): Threshold on log-likelihood to include pixels for centroid and angle calculation
+    use_cc (bool): boolean to use connected components in cv2 structuring elements
+    bground (np.ndarray): numpy array represented previously computed background
+    roi (np.ndarray): numpy array represented previously computed roi
+    rho_mean (int): smoothing parameter for the mean
+    rho_cov (int): smoothing parameter for the covariance
+    tracking_ll_threshold (float):  threshold for calling pixels a cable vs a mouse (usually between -16 to -12).
+        If the log-likelihood falls below this value, pixels are considered cable.
+    tracking_segment (bool): boolean for whether to use only the largest blob for EM updates.
+    tracking_init_mean (float): Initialized mean value for EM Tracking
+    tracking_init_cov (float): Initialized covariance value for EM Tracking
+    tracking_init_strel (cv2::StructuringElement - Ellipse):
+    flip_classifier (str): path to pre-selected flip classifier.
+    flip_smoothing (int): amount of smoothing to use for flip classifier.
+    frame_dtype (str): Data type for processed frames
+    save_path: (str): Path to save extracted results
+    progress_bar (bool): Display progress bar
+    crop_size (tuple): size of the cropped mouse image.
+    true_depth (float): previously computed detected true depth value.
+    centroid_hampel_span (int): Hampel filter span kernel size
+    centroid_hampel_sig (int):  Hampel filter standard deviation
+    angle_hampel_span (int): Angle filter span kernel size
+    angle_hampel_sig (int): Angle filter standard deviation
+    model_smoothing_clips (tuple): Model smoothing clips
+    tracking_model_init (str): Method for tracking model initialization
+    verbose (int): Level of verbosity during extraction process. [0-2]
+
+    Returns
+    -------
+    results: (3d np.ndarray) - (nframes, crop_height, crop_width)
+    extracted cropped, oriented and centered RGB video chunk to be written to file.
+    '''
 
     # if we pass bground or roi files, be sure to use 'em...
 
@@ -56,7 +105,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     # (for tracking in presence of occluders)
 
     if use_em_tracker:
-        # print('Computing EM parameters...')
         parameters = em_tracking(
             filtered_frames, chunk, rho_mean=rho_mean,
             rho_cov=rho_cov, progress_bar=progress_bar,
@@ -70,8 +118,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         parameters = None
 
     # now get the centroid and orientation of the mouse
-
-    # print('Getting centroid and orientation...')
     features, mask = get_frame_features(filtered_frames,
                                         frame_threshold=min_height, mask=ll,
                                         mask_threshold=mask_threshold,
@@ -94,8 +140,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                   clips=model_smoothing_clips)
 
     # crop and rotate the frames
-
-    # print('Cropping frames...')
     cropped_frames = crop_and_rotate_frames(
         chunk, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
     cropped_filtered_frames = crop_and_rotate_frames(
@@ -110,15 +154,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         mask = crop_and_rotate_frames(
             mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
-    #
-    # if use_em_tracker:
-    #     cropped_ll = crop_and_rotate_frames(
-    #             ll, features, crop_size=crop_size, progress_bar=progress_bar)
-    # else:
-    #     cropped_ll = None
-
     if flip_classifier:
-        # print('Fixing flips...')
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
         for flip in np.where(flips)[0]:
             cropped_frames[flip, ...] = np.rot90(cropped_frames[flip, ...], k=2)
@@ -126,8 +162,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             mask[flip, ...] = np.rot90(mask[flip, ...], k=2)
         features['orientation'][flips] += np.pi
 
-        # if use_em_tracker:
-        #     cropped_ll = np.flip(cropped_ll[flips, ...], axis=2)
     else:
         flips = None
 
@@ -144,7 +178,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         'mask_frames': mask,
         'scalars': scalars,
         'flips': flips,
-        # 'cropped_ll': cropped_ll
         'parameters': parameters
     }
 

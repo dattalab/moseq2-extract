@@ -1,34 +1,38 @@
-# import moseq2_extract.extract.proc
-import numpy as np
-import tqdm
-import subprocess
-import matplotlib.pyplot as plt
 import os
-import datetime
 import cv2
 import tarfile
+import datetime
+import subprocess
+import numpy as np
+from tqdm.auto import tqdm
+import matplotlib.pyplot as plt
 
 
 def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
-    """
-    Gets info from a raw data file with specified frame dimensions and bit depth
+    '''
+    Gets info from a raw data file with specified frame dimensions and bit depth.
 
-    Args:
-        filename (string): name of raw data file
-        bit_depth (int): bits per pixel (default: 16)
-        frame_dims (tuple): wxh or hxw of each frame
-    """
+    Parameters
+    ----------
+    filename (string): name of raw data file
+    bit_depth (int): bits per pixel (default: 16)
+    frame_dims (tuple): wxh or hxw of each frame
+
+    Returns
+    -------
+    file_info (dict): dictionary containing depth file metadata
+    '''
 
     bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
 
-    if type(filename) is str:
+    if type(filename) is not tarfile.TarInfo:
         file_info = {
             'bytes': os.stat(filename).st_size,
             'nframes': int(os.stat(filename).st_size / bytes_per_frame),
             'dims': frame_dims,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith('.mkv'):
+        if str(filename).endswith('.mkv'):
             try:
                 vid = cv2.VideoCapture(filename)
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
@@ -45,8 +49,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
                 }
             except:
                 pass
-
-    elif type(filename) is tarfile.TarInfo:
+    else:
         file_info = {
             'bytes': filename.size,
             'nframes': int(filename.size / bytes_per_frame),
@@ -57,19 +60,21 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
 
 
 def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
-    """
-    Reads in data from raw binary file
+    '''
+    Reads in data from raw binary file.
 
-    Args:
-        filename (string): name of raw data file
-        frames (list or range): frames to extract
-        frame_dims (tuple): wxh of frames in pixels
-        bit_depth (int): bits per pixel (default: 16)
-        tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
+    Parameters
+    ----------
+    filename (string): name of raw data file
+    frames (list or range): frames to extract
+    frame_dims (tuple): wxh of frames in pixels
+    bit_depth (int): bits per pixel (default: 16)
+    tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
 
-    Returns:
-        frames (numpy ndarray): frames x h x w
-    """
+    Returns
+    -------
+    chunk (numpy ndarray): nframes x h x w
+    '''
 
     vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
 
@@ -100,12 +105,18 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
 def get_video_info(filename):
-    """
-    Get dimensions of data compressed using ffv1, along with duration via ffmpeg
+    '''
+    Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
-    Args:
-        filename (string): name of file
-    """
+    Parameters
+    ----------
+    filename (string): name of file
+
+    Returns
+    -------
+    (dict): dictionary containing video file metadata
+    '''
+
     command = ['ffprobe',
                '-v', 'fatal',
                '-show_entries',
@@ -133,6 +144,17 @@ def get_video_info(filename):
             'nframes': out[3]}
 
 def convert_mkv_to_avi(filename):
+    '''
+    Converts Azure MKV video file format to AVI.
+
+    Parameters
+    ----------
+    filename (str) path to mkv file to convert
+
+    Returns
+    -------
+    outpath (str): path to converted AVI video file.
+    '''
 
     outpath = os.path.join(os.path.dirname(filename),'proc/depth.avi')
     command = ['ffmpeg',
@@ -151,9 +173,29 @@ def convert_mkv_to_avi(filename):
 def write_frames(filename, frames, threads=6, fps=30,
                  pixel_format='gray16le', codec='ffv1', close_pipe=True,
                  pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False, verbose=0):
-    """
+    '''
     Write frames to avi file using the ffv1 lossless encoder
-    """
+
+    Parameters
+    ----------
+    filename (str): path to file to write to.
+    frames (np.ndarray): frames to write
+    threads (int): number of threads to write video
+    fps (int): frames per second
+    pixel_format (str): format video color scheme
+    codec (str): ffmpeg encoding-writer method to use
+    close_pipe (bool): indicates to close the open pipe to video when done writing.
+    pipe (subProcess.Pipe): pipe to currently open video file.
+    slices (int): number of frame slices to write at a time.
+    slicecrc (int): check integrity of slices
+    frame_size (tuple): shape/dimensions of image.
+    get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing)
+    verbose (bool): output progress.
+
+    Returns
+    -------
+    pipe (subProcess.Pipe): indicates whether video writing is complete.
+    '''
 
     # we probably want to include a warning about multiples of 32 for videos
     # (then we can use pyav and some speedier tools)
@@ -189,7 +231,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     disable = False
     if verbose == 0:
         disable = True
-    for i in tqdm.tqdm(range(frames.shape[0]), disable=disable):
+    for i in tqdm(range(frames.shape[0]), disable=disable):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 
     if close_pipe:
@@ -202,22 +244,25 @@ def write_frames(filename, frames, threads=6, fps=30,
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
                 pixel_format='gray16le', frame_size=None,
                 slices=24, slicecrc=1, get_cmd=False):
-    """
+    '''
     Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
 
-    Args:
-        filename (str): filename to get frames from
-        frames (list or 1d numpy array): list of frames to grab
-        threads (int): number of threads to use for decode
-        fps (int): frame rate of camera in Hz
-        pixel_format (str): ffmpeg pixel format of data
-        frame_size (str): wxh frame size in pixels
-        slices (int): number of slices to use for decode
-        slicecrc (int): check integrity of slices
+    Parameters
+    ----------
+    filename (str): filename to get frames from
+    frames (list or 1d numpy array): list of frames to grab
+    threads (int): number of threads to use for decode
+    fps (int): frame rate of camera in Hz
+    pixel_format (str): ffmpeg pixel format of data
+    frame_size (str): wxh frame size in pixels
+    slices (int): number of slices to use for decode
+    slicecrc (int): check integrity of slices
+    get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
-    Returns:
-        3d numpy array:  frames x h x w
-    """
+    Returns
+    -------
+    video (3d numpy array):  frames x h x w
+    '''
 
     if not filename.endswith('.mkv'):
         try:
@@ -291,9 +336,33 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
                          pipe=None, close_pipe=True, frame_range=None):
-    """
-    Writes out a false-colored mp4 video
-    """
+    '''
+    Writes out a false-colored mp4 video.
+
+    Parameters
+    ----------
+    filename (str): path to file to write to.
+    frames (np.ndarray): frames to write
+    threads (int): number of threads to write video
+    fps (int): frames per second
+    pixel_format (str): format video color scheme
+    codec (str): ffmpeg encoding-writer method to use
+    slices (int): number of frame slices to write at a time.
+    slicecrc (int): check integrity of slices
+    frame_size (tuple): shape/dimensions of image.
+    depth_min (int): minimum mouse depth from floor in (mm)
+    depth_max (int): maximum mouse depth from floor in (mm)
+    get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing)
+    cmap (str): color map to use.
+    pipe (subProcess.Pipe): pipe to currently open video file.
+    close_pipe (bool): indicates to close the open pipe to video when done writing.
+    frame_range (range()): frame indices to write on video
+
+    Returns
+    -------
+    pipe (subProcess.Pipe): indicates whether video writing is complete.
+    '''
+
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     white = (255, 255, 255)
@@ -337,29 +406,18 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     # scale frames d00d
 
     use_cmap = plt.get_cmap(cmap)
-    try:
-        for i in tqdm.tqdm_notebook(range(frames.shape[0]), disable=True, desc="Writing frames"):
-            disp_img = frames[i, ...].copy().astype('float32')
-            disp_img = (disp_img-depth_min)/(depth_max-depth_min)
-            disp_img[disp_img < 0] = 0
-            disp_img[disp_img > 1] = 1
-            disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
-            if frame_range is not None:
-                try:
-                    cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-                except:
-                    pass
-            pipe.stdin.write(disp_img.astype('uint8').tostring())
-    except:
-        for i in tqdm.tqdm(range(frames.shape[0]), desc="Writing frames"):
-            disp_img = frames[i, ...].copy().astype('float32')
-            disp_img = (disp_img-depth_min)/(depth_max-depth_min)
-            disp_img[disp_img < 0] = 0
-            disp_img[disp_img > 1] = 1
-            disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
-            if frame_range is not None:
+    for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
+        disp_img = frames[i, ...].copy().astype('float32')
+        disp_img = (disp_img-depth_min)/(depth_max-depth_min)
+        disp_img[disp_img < 0] = 0
+        disp_img[disp_img > 1] = 1
+        disp_img = np.delete(use_cmap(disp_img), 3, 2)*255
+        if frame_range is not None:
+            try:
                 cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-            pipe.stdin.write(disp_img.astype('uint8').tostring())
+            except:
+                pass
+        pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:
         pipe.stdin.close()
@@ -367,6 +425,62 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
+def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
+    """
+    Reads in frames
+    """
+
+    try:
+        if filename.lower().endswith('.dat'):
+            frame_data = read_frames_raw(filename,
+                                         frames=frames,
+                                         frame_dims=frame_dims,
+                                         bit_depth=bit_depth)
+        elif filename.lower().endswith('.avi'):
+            if type(frames) is int:
+                frames = [frames]
+            frame_data = read_frames(filename,
+                                     frames)
+        elif filename.lower().endswith('.mkv'):
+            if type(frames) is int:
+                frames = [frames]
+            frame_data = read_frames(filename, frames)
+
+    except AttributeError as e:
+        frame_data = read_frames_raw(filename,
+                                     frames=frames,
+                                     frame_dims=frame_dims,
+                                     bit_depth=bit_depth,
+                                     **kwargs)
+    return frame_data
+
+
+def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
+    '''
+    Returns dict of movie metadata.
+
+    Parameters
+    ----------
+    filename (str): path to video file
+    frame_dims (tuple): video dimensions
+    bit_depth (int): integer indicating data type encoding
+
+    Returns
+    -------
+    metadata (dict): dictionary containing video file metadata
+    '''
+
+    try:
+        if filename.lower().endswith('.dat'):
+            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+        elif filename.lower().endswith('.avi'):
+            metadata = get_video_info(filename)
+        elif filename.lower().endswith('.mkv'):
+            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+    except AttributeError as e:
+        metadata = get_raw_info(filename)
+
+    return metadata
 
 # def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
 #                             chunk_size=1000, overlap=0, depth_min=5,
@@ -402,50 +516,3 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 #         write_frames(dest_filename[-1], chunk)
 #
 #     return dest_filename
-
-
-def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
-    """
-    Reads in frames
-    """
-
-    try:
-        if filename.lower().endswith('.dat'):
-            frame_data = read_frames_raw(filename,
-                                         frames=frames,
-                                         frame_dims=frame_dims,
-                                         bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
-            if type(frames) is int:
-                frames = [frames]
-            frame_data = read_frames(filename,
-                                     frames)
-        elif filename.lower().endswith('.mkv'):
-            if type(frames) is int:
-                frames = [frames]
-            frame_data = read_frames(filename, frames)
-
-    except AttributeError as e:
-        frame_data = read_frames_raw(filename,
-                                     frames=frames,
-                                     frame_dims=frame_dims,
-                                     bit_depth=bit_depth,
-                                     **kwargs)
-    return frame_data
-
-
-def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
-    """
-    Gets movie info
-    """
-    try:
-        if filename.lower().endswith('.dat'):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
-            metadata = get_video_info(filename)
-        elif filename.lower().endswith('.mkv'):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-    except AttributeError as e:
-        metadata = get_raw_info(filename)
-
-    return metadata

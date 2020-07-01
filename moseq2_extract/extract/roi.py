@@ -1,17 +1,20 @@
 import numpy as np
-import tqdm
+from tqdm.auto import tqdm
 
 
 def plane_fit3(points):
-    """Fit a plane to 3 points (min number of points for fitting a plane)
-    Args:
-        points (2d numpy array): each row is a group of points,
-        columns correspond to x,y,z
+    '''
+    Fit a plane to 3 points (min number of points for fitting a plane)
 
-    Returns:
-        plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
+    Parameters
+    ----------
+    points (2d numpy array): each row is a group of points, columns correspond to x,y,z.
 
-    """
+    Returns
+    -------
+    plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
+    '''
+
     a = points[1, :]-points[0, :]
     b = points[2, :]-points[0, :]
     # cross prod
@@ -33,17 +36,27 @@ def plane_fit3(points):
 def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
                  noise_tolerance=30, in_ratio=.1, progress_bar=True,
                  mask=None, gui=False, verbose=0):
-    """Naive RANSAC implementation for plane fitting
-    Args:
-        depth_image (2d numpy array): hxw, background image to fit plane to
-        depth_range (tuple): min/max depth (mm) to consider pixels for plane
-        iters (int): number of RANSAC iterations
-        noise_tolerance (float): dist. from plane to consider a point an inlier
-        in_ratio (float): frac. of points required to consider a plane fit good
+    '''
+    Naive RANSAC implementation for plane fitting
 
-    Returns:
-        best_plane (1d numpy array): plane fit to data
-    """
+    Parameters
+    ----------
+    depth_image (2d numpy array): hxw, background image to fit plane to
+    depth_range (tuple): min/max depth (mm) to consider pixels for plane
+    iters (int): number of RANSAC iterations
+    noise_tolerance (float): dist. from plane to consider a point an inlier
+    in_ratio (float): frac. of points required to consider a plane fit good
+    progress_bar (bool): display progress bar
+    mask (bool 2d np.array): boolean mask to find region to use
+    gui (bool): whether GUI is used.
+    verbose (int): 0 or 1; 1 to print all information.
+
+    Returns
+    -------
+    best_plane (1d numpy array): plane fit to data
+    dist (1d numpy array): distance of the calculated coordinates and "best plane"
+    '''
+
     use_points = np.logical_and(
         depth_image > depth_range[0], depth_image < depth_range[1])
 
@@ -63,47 +76,27 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     npoints = np.sum(use_points)
 
-    if gui:
-        for i in tqdm.tqdm_notebook(range(iters),
-                           disable=not progress_bar, desc='Finding plane'):
+    if verbose == 0:
+        progress_bar = False
+    for i in tqdm(range(iters),
+                       disable=not progress_bar, desc='Finding plane'):
 
-            sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
-            tmp_plane = plane_fit3(sel)
+        sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
+        tmp_plane = plane_fit3(sel)
 
-            if np.all(np.isnan(tmp_plane)):
-                continue
+        if np.all(np.isnan(tmp_plane)):
+            continue
 
-            dist = np.abs(np.dot(coords, tmp_plane[:3])+tmp_plane[3])
-            inliers = dist < noise_tolerance
-            ninliers = np.sum(inliers)
+        dist = np.abs(np.dot(coords, tmp_plane[:3])+tmp_plane[3])
+        inliers = dist < noise_tolerance
+        ninliers = np.sum(inliers)
 
-            if ((ninliers/npoints) > in_ratio
-                    and ninliers > best_num and np.mean(dist) < best_dist):
+        if ((ninliers/npoints) > in_ratio
+                and ninliers > best_num and np.mean(dist) < best_dist):
 
-                best_dist = np.mean(dist)
-                best_num = ninliers
-                best_plane = tmp_plane
-    else:
-        if verbose == 0:
-            progress_bar = False
-        for i in tqdm.tqdm(range(iters),
-                           disable=not progress_bar, desc='Finding plane'):
-
-            sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
-            tmp_plane = plane_fit3(sel)
-
-            if np.all(np.isnan(tmp_plane)):
-                continue
-
-            dist = np.abs(np.dot(coords, tmp_plane[:3]) + tmp_plane[3])
-            inliers = dist < noise_tolerance
-            ninliers = np.sum(inliers)
-
-            if ((ninliers / npoints) > in_ratio
-                    and ninliers > best_num and np.mean(dist) < best_dist):
-                best_dist = np.mean(dist)
-                best_num = ninliers
-                best_plane = tmp_plane
+            best_dist = np.mean(dist)
+            best_num = ninliers
+            best_plane = tmp_plane
 
             # use all consensus samples to fit a better model
 
