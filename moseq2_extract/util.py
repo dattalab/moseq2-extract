@@ -10,6 +10,7 @@ import numpy as np
 from copy import deepcopy
 import ruamel.yaml as yaml
 from typing import Pattern
+
 from cytoolz import valmap, assoc
 from moseq2_extract.io.image import write_image
 
@@ -665,7 +666,6 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                 proc_dirs.append(os.path.join(root, file))
 
     return proc_dirs
-
 
 def click_param_annot(click_cmd):
     '''
