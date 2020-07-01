@@ -1,14 +1,17 @@
-import numpy as np
 import os
-import json
-import cv2
-import click
-import ruamel.yaml as yaml
-import h5py
 import re
-from typing import Pattern
+import cv2
+import math
+import json
+import h5py
+import click
 import warnings
+import numpy as np
+from copy import deepcopy
+import ruamel.yaml as yaml
+from typing import Pattern
 from cytoolz import valmap, assoc
+from moseq2_extract.io.image import write_image
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -50,16 +53,39 @@ def command_with_config(config_file_param_name):
 
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
-    """Generate a sequence with overlap
-    """
+    '''
+    Generates batches used to chunk videos prior to extraction.
+
+    Parameters
+    ----------
+    nframes (int): total number of frames
+    chunk_size (int): desired chunk size
+    overlap (int): number of overlapping frames
+    offset (int): frame offset
+
+    Returns
+    -------
+    Yields list of batches
+    '''
+
     seq = range(offset, nframes)
     for i in range(offset, len(seq) - overlap, chunk_size - overlap):
         yield seq[i:i + chunk_size]
 
 
 def load_timestamps(timestamp_file, col=0):
-    """Read timestamps from space delimited text file
-    """
+    '''
+    Read timestamps from space delimited text file.
+
+    Parameters
+    ----------
+    timestamp_file (str): path to timestamp file
+    col (int): column in ts file read.
+
+    Returns
+    -------
+    ts (list): list of timestamps
+    '''
 
     ts = []
     try:
@@ -76,11 +102,26 @@ def load_timestamps(timestamp_file, col=0):
         ts = np.array(ts)
     except FileNotFoundError as e:
         ts = None
+        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named \
+            "depth_ts.txt" or "timestamps.csv".')
+        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
+            imputing missing data.')
 
     return ts
 
 
 def load_metadata(metadata_file):
+    '''
+    Loads metadata.
+
+    Parameters
+    ----------
+    metadata_file (str): path to metadata file
+
+    Returns
+    -------
+    metadata (dict)
+    '''
 
     metadata = {}
 
@@ -96,6 +137,19 @@ def load_metadata(metadata_file):
 
 
 def select_strel(string='e', size=(10, 10)):
+    '''
+    Returns structuring element of specified shape.
+
+    Parameters
+    ----------
+    string (str): indicates whether to use ellipse or rectangle
+    size (tuple): size of structuring element
+
+    Returns
+    -------
+    strel (cv2.StructuringElement)
+    '''
+
     if string[0].lower() == 'e':
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
     elif string[0].lower() == 'r':
@@ -106,12 +160,26 @@ def select_strel(string='e', size=(10, 10)):
     return strel
 
 
-# http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
-# http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
-# http://smeenk.com/kinect-field-of-view-comparison/
 def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), true_depth=673.1):
-    """Converts x, y coordinates in pixel space to mm
-    """
+    '''
+    Converts x, y coordinates in pixel space to mm.
+
+    http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
+    http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
+    http://smeenk.com/kinect-field-of-view-comparison/
+
+    Parameters
+    ----------
+    coords (list): list of x,y pixel coordinates
+    resolution (tuple): image dimensions
+    field_of_view (tuple): width and height scaling params
+    true_depth (float): detected true depth
+
+    Returns
+    -------
+    new_coords (list): x,y coordinates in mm
+    '''
+
     cx = resolution[0] // 2
     cy = resolution[1] // 2
 
@@ -129,6 +197,13 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
 
 
 def scalar_attributes():
+    '''
+    Gets scalar attributes
+
+    Returns
+    -------
+    attributes (dict): collection of metadata keys and descriptions.
+    '''
 
     attributes = {
         'centroid_x_px': 'X centroid (pixels)',
@@ -154,6 +229,21 @@ def scalar_attributes():
 
 
 def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
+    '''
+    Converts depth file to avi file.
+
+    Parameters
+    ----------
+    input_file (str): path to depth file
+    chunk_size (int): size of chunks to process at a time
+    fps (int): frames per second
+    delete (bool): whether to delete original depth file
+    threads (int): number of threads to write video.
+
+    Returns
+    -------
+    None
+    '''
 
     new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
     print('Converting {} to {}'.format(input_file, new_file))
@@ -180,25 +270,44 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     os.system(base_command)
 
 
-# from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
-# dang this is fast!
+
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
+    '''
+    from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
+
+    Parameters
+    ----------
+    a (np.ndarray) - array to get subarrarys from.
+    L (int) - Window Length
+    S (int) - Stride size
+
+    Returns
+    -------
+    (np.ndarray) - array of subarrays at stride S.
+    '''
+
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
     return np.lib.stride_tricks.as_strided(a, shape=(nrows, L), strides=(S*n, n))
 
 
-def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
-    """ Save an dict to an h5 file, mounting at root
+def dict_to_h5(h5, dic, root='/', annotations=None):
+    '''
+    Save an dict to an h5 file, mounting at root.
+    Keys are mapped to group names recursively.
 
-    Keys are mapped to group names recursivly
+    Parameters
+    ----------
+    h5 (h5py.File instance): h5py.file object to operate on
+    dic (dict): dictionary of data to write
+    root (string): group on which to add additional groups and datasets
+    annotations (dict): annotation data to add to corresponding h5 datasets. Should contain same keys as dic.
 
-    Parameters:
-        h5 (h5py.File instance): h5py.file object to operate on
-        dic (dict): dictionary of data to write
-        root (string): group on which to add additional groups and datasets
-        annotations (dict): annotation data to add to corresponding h5 datasets. Should contain same keys as dic.
-    """
+    Returns
+    -------
+    None
+    '''
+
     if not root.endswith('/'):
         root = root + '/'
 
@@ -217,7 +326,7 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
             elif item is None:
                 h5.create_dataset(dest, data=h5py.Empty(dtype=h5py.special_dtype(vlen=str)))
             elif isinstance(item, dict):
-                save_dict_contents_to_h5(h5, item, dest)
+                dict_to_h5(h5, item, dest)
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
         except:
@@ -233,47 +342,99 @@ def save_dict_contents_to_h5(h5, dic, root='/', annotations=None):
 def recursive_find_h5s(root_dir=os.getcwd(),
                        ext='.h5',
                        yaml_string='{}.yaml'):
-    """Recursively find h5 files, along with yaml files with the same basename
-    """
+    '''
+    Recursively find h5 files, along with yaml files with the same basename
+
+    Parameters
+    ----------
+    root_dir (str): path to base directory to begin recursive search in.
+    ext (str): extension to search for
+    yaml_string (str): string for filename formatting when saving data
+
+    Returns
+    -------
+    h5s (list): list of found h5 files
+    dicts (list): list of found metadata files
+    yamls (list): list of found yaml files
+    '''
+
     dicts = []
     h5s = []
     yamls = []
     for root, dirs, files in os.walk(root_dir):
-        for file in files:
-            yaml_file = yaml_string.format(os.path.splitext(file)[0])
-            if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
-                try:
-                    with h5py.File(os.path.join(root, file), 'r') as f:
-                        if 'frames' not in f.keys():
-                            continue
-                except OSError:
-                    warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
-                    continue
-                h5s.append(os.path.join(root, file))
-                yamls.append(os.path.join(root, yaml_file))
-                dicts.append(read_yaml(os.path.join(root, yaml_file)))
+        if 'sample' not in root:
+            for file in files:
+                yaml_file = yaml_string.format(os.path.splitext(file)[0])
+                if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
+                    try:
+                        with h5py.File(os.path.join(root, file), 'r') as f:
+                            if 'frames' not in f.keys():
+                                continue
+                    except OSError:
+                        warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
+                        continue
+                    h5s.append(os.path.join(root, file))
+                    yamls.append(os.path.join(root, yaml_file))
+                    dicts.append(read_yaml(os.path.join(root, yaml_file)))
 
     return h5s, dicts, yamls
 
 
 def escape_path(path):
+    '''
+    Given current path, will return a path to return to original base directory.
+    (Used in recursive h5 search, etc.)
+
+    Parameters
+    ----------
+    path (str): path to current working dir
+
+    Returns
+    -------
+    path (str): path to original base_dir
+    '''
+
     return re.sub(r'\s', '\ ', path)
 
 def clean_file_str(file_str: str, replace_with: str = '-') -> str:
-    '''removes invalid characters for a file name from a string
     '''
+    Removes invalid characters for a file name from a string.
+
+    Parameters
+    ----------
+    file_str (str): filename substring to replace
+    replace_with (str): value to replace str with
+
+    Returns
+    -------
+    out (str): cleaned file string
+    '''
+
     out = re.sub(r'[ <>:"/\\|?*\']', replace_with, file_str)
     # find any occurrences of `replace_with`, i.e. (--)
     return re.sub(replace_with * 2, replace_with, out)
 
 def load_textdata(data_file, dtype=np.float32):
+    '''
+    Loads timestamp from txt/csv file
+
+    Parameters
+    ----------
+    data_file (str): path to timestamp file
+    dtype (dtype): data type of timestamps
+
+    Returns
+    -------
+    data (np.ndarray): timestamp data
+    timestamps (np.array): time stamp keynames.
+    '''
 
     data = []
     timestamps = []
     with open(data_file, "r") as f:
         for line in f.readlines():
             tmp = line.split(' ', 1)
-            timestamps.append(int(tmp[0]))
+            timestamps.append(int(float(tmp[0])))
             clean_data = np.fromstring(tmp[1].replace(" ", "").strip(), sep=',', dtype=dtype)
             data.append(clean_data)
 
@@ -284,28 +445,39 @@ def load_textdata(data_file, dtype=np.float32):
 
 
 def time_str_for_filename(time_str: str) -> str:
-    '''Process the time string supplied by moseq to be used in a filename. This
-    removes colons, milliseconds, and timezones.
     '''
+    Process the time string supplied by moseq to be used in a filename. This
+    removes colons, milliseconds, and timezones.
+
+    Parameters
+    ----------
+    time_str (str): time str to format
+
+    Returns
+    -------
+    out (str): formatted timestamp str
+    '''
+
     out = time_str.split('.')[0]
     out = out.replace(':', '-').replace('T', '_')
     return out
 
 def build_path(keys: dict, format_string: str, snake_case=True) -> str:
-    '''Produce a new file name using keys collected from extraction h5 files. The format string
+    '''
+    Produce a new file name using keys collected from extraction h5 files. The format string
     must be using python's formatting specification, i.e. '{subject_name}_{session_name}'.
 
-    Args:
-        keys (dict): dictionary specifying which keys used to produce the new file name
-        format_string (str): the string to reformat using the `keys` dictionary
-    Returns:
-        a newly formatted filename useable with any operating system
+    Parameters
+    ----------
+    keys (dict): dictionary specifying which keys used to produce the new file name
+    format_string (str): the string to reformat using the `keys` dictionary
+    snake_case (bool): whether to save the files with snake_case
 
-    >>> build_path(dict(a='hello', b='world'), '{a}_{b}')
-    'hello_world'
-    >>> build_path(dict(a='hello', b='world'), '{a}/{b}')
-    'hello-world'
+    Returns
+    -------
+    out (str): a newly formatted filename useable with any operating system
     '''
+
     if 'start_time' in keys:
         # process the time value
         val = keys['start_time']
@@ -317,6 +489,18 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
     return clean_file_str(format_string.format(**keys))
 
 def read_yaml(yaml_file):
+    '''
+    Reads yaml file into dict object
+
+    Parameters
+    ----------
+    yaml_file (str): path to yaml file
+
+    Returns
+    -------
+    return_dict (dict): dict of yaml contents
+    '''
+
     with open(yaml_file, 'r') as f:
         dat = f.read()
         try:
@@ -327,12 +511,38 @@ def read_yaml(yaml_file):
     return return_dict
 
 def mouse_threshold_filter(h5file, thresh=0):
+    '''
+    Filters frames in h5 files by threshold value
+
+    Parameters
+    ----------
+    h5file (str): path to h5 file
+    thresh (int): threshold at which to apply filter
+
+    Returns
+    -------
+    (3d-np boolean array): array of regions to include after threshold filter.
+    '''
+
     with h5py.File(h5file, 'r') as f:
         # select 1st 1000 frames
         frames = f['frames'][:min(f['frames'].shape[0], 1000)]
     return np.nanmean(frames) > thresh
 
 def _load_h5_to_dict(file: h5py.File, path) -> dict:
+    '''
+    Loads h5 contents to dictionary object.
+
+    Parameters
+    ----------
+    h5file (h5py.File): file path to the given h5 file or the h5 file handle
+    path (str): path to the base dataset within the h5 file
+
+    Returns
+    -------
+    out (dict): a dict with h5 file contents with the same path structure
+    '''
+
     ans = {}
     for key, item in file[path].items():
         if isinstance(item, h5py._hl.dataset.Dataset):
@@ -343,13 +553,19 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 
 
 def h5_to_dict(h5file, path) -> dict:
-    """
-    Args:
-        h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
-        path: path to the base dataset within the h5 file
-    Returns:
-        a dict with h5 file contents with the same path structure
-    """
+    '''
+    Loads h5 contents to dictionary object.
+
+    Parameters
+    ----------
+    h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
+    path (str): path to the base dataset within the h5 file
+
+    Returns
+    -------
+    out (dict): a dict with h5 file contents with the same path structure
+    '''
+
     if isinstance(h5file, str):
         with h5py.File(h5file, 'r') as f:
             out = _load_h5_to_dict(f, path)
@@ -359,13 +575,48 @@ def h5_to_dict(h5file, path) -> dict:
         raise Exception('file input not understood - need h5 file path or file object')
     return out
 
+def clean_dict(dct):
+    '''
+    Standardizes types of dict value.
+
+    Parameters
+    ----------
+    dct (dict): dict object with mixed type value objects.
+
+    Returns
+    -------
+    dct (dict): dict object with list value objects.
+    '''
+
+    def clean_entry(e):
+        if isinstance(e, dict):
+            out = clean_dict(e)
+        elif isinstance(e, np.ndarray):
+            out = e.tolist()
+        elif isinstance(e, np.generic):
+            out = np.asscalar(e)
+        else:
+            out = e
+        return out
+
+    return valmap(clean_entry, dct)
 
 _underscorer1: Pattern[str] = re.compile(r'(.)([A-Z][a-z]+)')
 _underscorer2 = re.compile('([a-z0-9])([A-Z])')
 
 def camel_to_snake(s):
-    """Converts CamelCase to snake_case
-    """
+    '''
+    Converts CamelCase to snake_case
+
+    Parameters
+    ----------
+    s (str): CamelCase string to convert to snake_case.
+
+    Returns
+    -------
+    (str): string in snake_case
+    '''
+
     subbed = _underscorer1.sub(r'\1_\2', s)
     return _underscorer2.sub(r'\1_\2', subbed).lower()
 
@@ -376,8 +627,23 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     yaml_path='proc/results_00.yaml',
                                     metadata_path='metadata.json',
                                     skip_checks=True):
-    """Recursively find unextracted directories
-    """
+    '''
+    Recursively find unextracted (or incompletely extracted) directories
+
+    Parameters
+    ----------
+    root_dir (os Path-like): path to base directory to start recursive search from.
+    session_pattern (str): folder name pattern to search for
+    filename (str): file extension to search for
+    yaml_path (str): path to respective extracted metadata
+    metadata_path (str): path to relative metadata.json files
+    skip_checks (bool): indicates whether to check if the files exist at the given relative paths
+
+    Returns
+    -------
+    proc_dirs (1d-list): list of paths to each unextracted session's proc/ directory
+    '''
+
     session_archive_pattern = re.compile(session_pattern)
 
     proc_dirs = []
@@ -402,18 +668,144 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
 
 
 def click_param_annot(click_cmd):
-    """ Given a click.Command instance, return a dict that maps option names to help strings
+    '''
+    Given a click.Command instance, return a dict that maps option names to help strings.
+    Currently skips click.Arguments, as they do not have help strings.
 
-    Currently skips click.Arguments, as they do not have help strings
+    Parameters
+    ----------
+    click_cmd (click.Command): command to introspect
 
-    Parameters:
-        click_cmd (click.Command): command to introspect
+    Returns
+    -------
+    annotations (dict): click.Option.human_readable_name as keys; click.Option.help as values
+    '''
 
-    Returns:
-        dict: click.Option.human_readable_name as keys; click.Option.help as values
-    """
     annotations = {}
     for p in click_cmd.params:
         if isinstance(p, click.Option):
             annotations[p.human_readable_name] = p.help
     return annotations
+
+def get_bucket_center(img, true_depth, threshold=650):
+    '''
+    https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
+    Finds Centroid coordinates of circular bucket.
+
+    Parameters
+    ----------
+    img (2d np.ndaarray): original background image.
+    true_depth (float): distance value from camera to bucket floor (automatically pre-computed)
+    threshold (float): distance values to accept region into detected circle. (used to reduce fall noise interference)
+
+    Returns
+    -------
+    cX (int): x-coordinate of circle centroid
+    cY (int): y-coordinate of circle centroid
+    '''
+
+    # convert the grayscale image to binary image
+    ret, thresh = cv2.threshold(img, threshold, true_depth, 0)
+
+    # calculate moments of binary image
+    M = cv2.moments(thresh)
+
+    # calculate x,y coordinate of center
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+
+    return cX, cY
+
+def make_gradient(width, height, h, k, a, b, theta=0):
+    '''
+    https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
+    Creates gradient around bucket floor representing slanted wall values.
+    This is done by drawing an "ellipse" of equal x,y radii, resulting in a circle with weighted
+    depth values from highest to lowest surrounding the circumference of the circle
+
+    Parameters
+    ----------
+    width (int): bounding box width
+    height (int) bounding box height
+    h (int): centroid x coordinate
+    k (int): centroid y coordinate
+    a (int): x-radius of drawn ellipse
+    b (int): y-radius of drawn ellipse
+    theta (float): degree to rotate ellipse in radians. (has no effect if drawing a circle)
+
+    Returns
+    -------
+    (2d np.ndarray): numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
+    to create a gradient from. 0.8 being the proportioned values closest to the circle wall.
+    '''
+
+    # Precalculate constants
+    st, ct = math.sin(theta), math.cos(theta)
+    aa, bb = a ** 2, b ** 2
+
+    # Generate (x,y) coordinate arrays
+    y, x = np.mgrid[-k:height - k, -h:width - h]
+
+    # Calculate the weight for each pixel
+    weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
+
+    return np.clip(1 - weights, 0.08, 0.8)
+
+
+def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir):
+    '''
+    Creates a gradient to represent the dilated (now visible) bucket wall regions.
+    Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
+    This is done to handle noise attributed by bucket walls being slanted, and thus being picked
+    up as large noise depth values. Moreover, to appropriately subtract the background from input
+    images during extraction without obscuring the rodent, or including unwanted wall regions.
+    Parameters
+    ----------
+    bground_im (2d np.ndarray): the bucket floor image computed as the median distance throughout the session.
+    config_data (dict): dictionary containing helper user configuration parameters.
+    strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
+    true_depth (float): median distance computed throughout recording.
+    output_dir (str): path to save newly computed background to use.
+
+    Returns
+    -------
+    bground_im (2d np.ndarray): the new background image with a gradient around the floor from high to low depth values.
+    '''
+
+    # store old and new backgrounds
+    old_bg = deepcopy(bground_im)
+
+    # dilate background size to match ROI size and attribute wall noise to cancel out
+    bground_im = cv2.dilate(old_bg, strel_dilate, iterations=config_data.get('dilate_iterations', 5))
+
+    # determine center of bground roi
+    width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
+
+    # getting helper user parameters
+    xoffset = config_data.get('x_bg_offset', -2)
+    yoffset = config_data.get('y_offset', 2)
+    widen_radius = config_data.get('widen_radius', 0)
+    bg_threshold = config_data.get('bg_threshold', 650)
+
+    # getting bground centroid
+    cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
+
+    # set up gradient
+    h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
+    a, b = cx + widen_radius + 67, cy + widen_radius + 67 # x,y radii of gradient circle
+    theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
+
+    # create slant gradient
+    bground_im = np.float64((make_gradient(width, height, h, k, a, b, theta)) * 255)
+
+    # scale it back to depth
+    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
+
+    # overlay with actual bucket floor distance
+    mask = np.ma.equal(old_bg, old_bg.max())
+    bground_im = np.where(mask == True, old_bg, bground_im)
+    bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
+
+    write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
+
+    return bground_im
