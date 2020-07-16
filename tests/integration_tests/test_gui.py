@@ -5,7 +5,7 @@ from pathlib import Path
 import ruamel.yaml as yaml
 from unittest import TestCase
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
+from tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import update_progress, check_progress, generate_config_command, view_extraction, \
     generate_index_command, aggregate_extract_results_command, get_found_sessions, download_flip_command,\
     find_roi_command, sample_extract_command, extract_command, extract_found_sessions

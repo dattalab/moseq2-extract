@@ -12,7 +12,7 @@ from moseq2_extract.io.image import read_image
 from moseq2_extract.gui import generate_config_command
 from moseq2_extract.helpers.data import create_extract_h5
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
+from tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import escape_path, scalar_attributes, gen_batch_sequence, load_metadata
 from moseq2_extract.helpers.extract import run_slurm_extract, run_local_extract, process_extract_batches
 

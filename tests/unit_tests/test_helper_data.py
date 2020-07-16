@@ -7,9 +7,9 @@ import ruamel.yaml as yaml
 from unittest import TestCase
 from moseq2_extract.util import load_metadata
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
+from tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, \
-    build_manifest, copy_manifest_results, create_extract_h5, handle_extract_metadata
+    build_manifest, copy_manifest_results, handle_extract_metadata
 
 class TestHelperData(TestCase):
     def test_get_selected_sessions(self):

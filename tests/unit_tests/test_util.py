@@ -2,7 +2,6 @@ import os
 import cv2
 import h5py
 import json
-import shutil
 import numpy as np
 from pathlib import Path
 import ruamel.yaml as yaml
@@ -11,7 +10,7 @@ from unittest import TestCase
 from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
+from tests.integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
     select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
     get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
