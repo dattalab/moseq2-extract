@@ -64,9 +64,9 @@ def get_largest_cc(frames, progress_bar=False):
 
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
         nb_components, output, stats, centroids =\
-            cv2.connectedComponentsWithStats(frames[i, ...], connectivity=4)
+            cv2.connectedComponentsWithStats(frames[i, :], connectivity=4)
         szs = stats[:, -1]
-        foreground_obj[i, ...] = output == szs[1:].argmax()+1
+        foreground_obj[i, :] = output == szs[1:].argmax()+1
 
     return foreground_obj
 
@@ -128,7 +128,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
         except AttributeError as e:
             frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
 
-        frame_store[i, ...] = cv2.medianBlur(frs, med_scale)
+        frame_store[i, :] = cv2.medianBlur(frs, med_scale)
 
     return get_bground_im(frame_store)
 

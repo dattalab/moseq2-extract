@@ -146,9 +146,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     if flip_classifier:
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
         for flip in np.where(flips)[0]:
-            cropped_frames[flip, ...] = np.rot90(cropped_frames[flip, ...], k=2)
-            cropped_filtered_frames[flip, ...] = np.rot90(cropped_filtered_frames[flip, ...], k=2)
-            mask[flip, ...] = np.rot90(mask[flip, ...], k=2)
+            cropped_frames[flip, :] = np.rot90(cropped_frames[flip, :], k=2)
+            cropped_filtered_frames[flip, :] = np.rot90(cropped_filtered_frames[flip, :], k=2)
+            mask[flip, :] = np.rot90(mask[flip, :], k=2)
         features['orientation'][flips] += np.pi
 
     else:
