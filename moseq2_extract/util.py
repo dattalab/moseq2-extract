@@ -330,7 +330,8 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
         except:
-            print('h5py could not encode key:', key)
+            if key != 'inputs':
+                print('h5py could not encode key:', key)
 
         if key in annotations:
             if annotations[key] is None:

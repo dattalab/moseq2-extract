@@ -368,13 +368,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    bg_roi_file = input_file
-
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
     strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
     strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
 
-    roi, bground_im, first_frame = get_roi_wrapper(bg_roi_file, config_data, output_dir=output_dir, extract_helper=True)
+    roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir, extract_helper=True)
 
     if config_data.get('detected_true_depth', 'auto') == 'auto':
         true_depth = np.median(bground_im[roi > 0])

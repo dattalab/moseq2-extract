@@ -5,9 +5,7 @@ from pathlib import Path
 from skimage.external import tifffile
 
 
-def write_image(filename, image, scale=True,
-                scale_factor=None, dtype='uint16',
-                metadata={}, compress=0):
+def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', compress=0):
     '''
     Save image data, possibly with scale factor for easy display.
 
@@ -18,7 +16,6 @@ def write_image(filename, image, scale=True,
     scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
     dtype (str): array data type
-    metadata (dict): [UNUSED] dictionary object that contains scaling info
     compress (int): image compression level
 
     Returns
@@ -52,14 +49,13 @@ def write_image(filename, image, scale=True,
     tifffile.imsave(file.as_posix(), image.astype(dtype), compress=compress, metadata=metadata)
 
 
-def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
+def read_image(filename, scale=True, scale_key='scale_factor'):
     '''
     Load image data, possibly with scale factor...
 
     Parameters
     ----------
-   filename (str): path to file to write to.
-    image (2d numpy array): image to write
+    filename (str): path to file to write to.
     scale (bool): indicates whether to scale image
     scale_key (str): indicates scale factor.
 
