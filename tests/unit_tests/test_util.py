@@ -3,14 +3,12 @@ import cv2
 import h5py
 import json
 import numpy as np
-from pathlib import Path
 import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-from tests.integration_tests.test_cli import write_fake_movie
+from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
     select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
     get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
@@ -69,19 +67,19 @@ class testExtractUtils(TestCase):
 
         assert(gen_list == tmp_list)
 
-
     def test_load_timestamps(self):
 
-        with TemporaryDirectory() as tmp:
-            txt_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
 
-            tmp_timestamps = np.arange(0, 5, .05)
-            with open(txt_path.name, 'w') as f:
-                for timestamp in tmp_timestamps:
-                    print('{}'.format(str(timestamp)), file=f)
+        txt_path = 'data/tmp_timestamps.txt'
 
-            loaded_timestamps = load_timestamps(txt_path.name)
-            npt.assert_almost_equal(loaded_timestamps, tmp_timestamps, 10)
+        tmp_timestamps = np.arange(0, 5, .05)
+        with open(txt_path, 'w') as f:
+            for timestamp in tmp_timestamps:
+                print('{}'.format(str(timestamp)), file=f)
+
+        loaded_timestamps = load_timestamps(txt_path)
+        npt.assert_almost_equal(loaded_timestamps, tmp_timestamps, 10)
+        os.remove(txt_path)
 
     def test_load_metadata(self):
 
@@ -89,25 +87,26 @@ class testExtractUtils(TestCase):
             'test': 'test2'
         }
 
-        with TemporaryDirectory() as tmp:
-            json_file = NamedTemporaryFile(prefix=tmp+'/', suffix=".json")
-            with open(json_file.name, 'w') as f:
-                json.dump(tmp_dict, f)
+        json_file = 'data/test_metadata.json'
+        with open(json_file, 'w') as f:
+            json.dump(tmp_dict, f)
 
-            loaded_dict = load_metadata(json_file.name)
+        loaded_dict = load_metadata(json_file)
 
-            assert(loaded_dict == tmp_dict)
+        assert(loaded_dict == tmp_dict)
+        os.remove(json_file)
 
     def test_convert_raw_to_avi(self):
 
-        with TemporaryDirectory() as tmp:
-            # writing a file to test following pipeline
-            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
+        # writing a file to test following pipeline
+        data_path = 'data/fake_movie_to_convert.dat'
 
-            write_fake_movie(data_path)
+        write_fake_movie(data_path)
 
-            convert_raw_to_avi_function(str(data_path))
-            assert Path(str(data_path).replace('.dat', '.avi')).is_file()
+        convert_raw_to_avi_function(data_path)
+        assert os.path.isfile(data_path.replace('.dat', '.avi'))
+        os.remove(data_path)
+        os.remove(data_path.replace('.dat', '.avi'))
 
     def test_select_strel(self):
 
@@ -120,13 +119,11 @@ class testExtractUtils(TestCase):
         strel = select_strel('sdfdfsf', size=(9, 9))
         npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
 
-
     def test_scalar_attributes(self):
 
         dct = scalar_attributes()
 
         assert(dct is not None)
-
 
     def test_dict_to_h5(self):
 
@@ -146,25 +143,26 @@ class testExtractUtils(TestCase):
             'bool': False,
             'list': [1,2,3],
         }
-        with TemporaryDirectory() as tmp:
-            fpath = NamedTemporaryFile(prefix=tmp+'/', suffix=".h5")
-            with h5py.File(fpath.name, 'w') as f:
-                dict_to_h5(f, tmp_dic, tmp)
 
-            def h5_to_dict(h5file, path):
-                ans = {}
-                if not path.endswith('/'):
-                    path = path + '/'
-                for key, item in h5file[path].items():
-                    if type(item) is h5py.Dataset:
-                        ans[key] = item[()]
-                    elif type(item) is h5py.Group:
-                        ans[key] = h5_to_dict(h5file, path + key + '/')
-                return ans
+        fpath = 'data/fake_results.h5'
+        with h5py.File(fpath, 'w') as f:
+            dict_to_h5(f, tmp_dic, 'data/')
 
-            with h5py.File(fpath.name, 'r') as f:
-                result = h5_to_dict(f, tmp)
-            npt.assert_equal(result, tmp_dic)
+        def h5_to_dict(h5file, path):
+            ans = {}
+            if not path.endswith('/'):
+                path = path + '/'
+            for key, item in h5file[path].items():
+                if type(item) is h5py.Dataset:
+                    ans[key] = item[()]
+                elif type(item) is h5py.Group:
+                    ans[key] = h5_to_dict(h5file, path + key + '/')
+            return ans
+
+        with h5py.File(fpath, 'r') as f:
+            result = h5_to_dict(f, 'data/')
+        npt.assert_equal(result, tmp_dic)
+        os.remove(fpath)
 
     def test_get_bucket_center(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
@@ -178,7 +176,6 @@ class testExtractUtils(TestCase):
 
         assert x > 0 and x < img.shape[1]
         assert y > 0 and y < img.shape[0]
-
 
     def test_make_gradient(self):
         img = read_image('data/tiffs/bground_bucket.tiff')

@@ -2,12 +2,10 @@ import os
 import sys
 import shutil
 import tarfile
-from pathlib import Path
 import ruamel.yaml as yaml
 from unittest import TestCase
 from moseq2_extract.util import load_metadata
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-from tests.integration_tests.test_cli import write_fake_movie
+from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, \
     build_manifest, copy_manifest_results, handle_extract_metadata
 
@@ -16,22 +14,22 @@ class TestHelperData(TestCase):
 
         to_extract = ['test1', 'test2', 'test3', 'test4', 'test5']
 
-        with TemporaryDirectory() as tmp:
-            stdin = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
+        stdin = 'data/stdin.txt'
 
-            test_ext = get_selected_sessions(to_extract, True)
+        test_ext = get_selected_sessions(to_extract, True)
 
-            assert test_ext == to_extract
+        assert test_ext == to_extract
 
-            with open(stdin.name, 'w') as f:
-                f.write('1-4, e2')
-            f.close()
+        with open(stdin, 'w') as f:
+            f.write('1-4, e2')
+        f.close()
 
-            sys.stdin = open(stdin.name)
+        sys.stdin = open(stdin)
 
-            test_ext2 = get_selected_sessions(to_extract, False)
+        test_ext2 = get_selected_sessions(to_extract, False)
 
-            assert test_ext2 == ['test1', 'test3', 'test4']
+        assert test_ext2 == ['test1', 'test3', 'test4']
+        os.remove(stdin)
 
     def test_load_h5s(self):
 
@@ -84,7 +82,7 @@ class TestHelperData(TestCase):
         copy_manifest_results(manifest, output_dir)
 
         for p in os.listdir(output_dir):
-            assert Path(output_dir, p).is_file()
+            assert os.path.isfile(os.path.join(output_dir, p))
 
         shutil.rmtree(output_dir)
 
