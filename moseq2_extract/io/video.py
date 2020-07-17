@@ -172,7 +172,7 @@ def convert_mkv_to_avi(filename):
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
                  pixel_format='gray16le', codec='ffv1', close_pipe=True,
-                 pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False, verbose=0):
+                 pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     '''
     Write frames to avi file using the ffv1 lossless encoder
 
@@ -190,7 +190,6 @@ def write_frames(filename, frames, threads=6, fps=30,
     slicecrc (int): check integrity of slices
     frame_size (tuple): shape/dimensions of image.
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing)
-    verbose (bool): output progress.
 
     Returns
     -------
@@ -227,10 +226,7 @@ def write_frames(filename, frames, threads=6, fps=30,
         pipe = subprocess.Popen(
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    disable = False
-    if verbose == 0:
-        disable = True
-    for i in tqdm(range(frames.shape[0]), disable=disable):
+    for i in tqdm(range(frames.shape[0]), disable=True):
         pipe.stdin.write(frames[i, ...].astype('uint16').tostring())
 
     if close_pipe:

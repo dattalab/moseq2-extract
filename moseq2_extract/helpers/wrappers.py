@@ -240,7 +240,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
                                   gradient_filter=config_data['bg_roi_gradient_filter'],
                                   gradient_threshold=config_data['bg_roi_gradient_threshold'],
                                   gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                  fill_holes=config_data['bg_roi_fill_holes'], gui=gui)
+                                  fill_holes=config_data['bg_roi_fill_holes'])
 
     if config_data['use_plane_bground']:
         print('Using plane fit for background...')

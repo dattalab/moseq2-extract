@@ -151,7 +151,6 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False):
             with open(roi_config_store, 'w') as f:
                 yaml.safe_dump(roi_config, f)
 
-
             base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
                 .format(roi_config_store, roi, ext)
 

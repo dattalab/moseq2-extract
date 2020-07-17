@@ -34,8 +34,7 @@ def plane_fit3(points):
 
 
 def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
-                 noise_tolerance=30, in_ratio=.1, progress_bar=True,
-                 mask=None, gui=False, verbose=0):
+                 noise_tolerance=30, in_ratio=.1, progress_bar=False, mask=None):
     '''
     Naive RANSAC implementation for plane fitting
 
@@ -48,8 +47,6 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
     in_ratio (float): frac. of points required to consider a plane fit good
     progress_bar (bool): display progress bar
     mask (bool 2d np.array): boolean mask to find region to use
-    gui (bool): whether GUI is used.
-    verbose (int): 0 or 1; 1 to print all information.
 
     Returns
     -------
@@ -57,8 +54,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
     dist (1d numpy array): distance of the calculated coordinates and "best plane"
     '''
 
-    use_points = np.logical_and(
-        depth_image > depth_range[0], depth_image < depth_range[1])
+    use_points = np.logical_and(depth_image > depth_range[0], depth_image < depth_range[1])
 
     if mask is not None:
         use_points = np.logical_and(use_points, mask)
@@ -76,9 +72,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     npoints = np.sum(use_points)
 
-    if verbose == 0:
-        progress_bar = False
-    for i in tqdm(range(iters), disable=not progress_bar, desc='Finding plane'):
+    for _ in tqdm(range(iters), disable=not progress_bar, desc='Finding plane'):
 
         sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
         tmp_plane = plane_fit3(sel)

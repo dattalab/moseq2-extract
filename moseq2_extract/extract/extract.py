@@ -1,4 +1,3 @@
-import os
 import cv2
 import numpy as np
 from copy import deepcopy
@@ -27,7 +26,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
-                  verbose=0, **kwargs):
+                  **kwargs):
     '''
     This function looks for a mouse in background-subtracted frames from a chunk of depth video.
     It is called from the moseq2_extract.helpers.extract module.
@@ -70,7 +69,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     angle_hampel_sig (int): Angle filter standard deviation
     model_smoothing_clips (tuple): Model smoothing clips
     tracking_model_init (str): Method for tracking model initialization
-    verbose (int): Level of verbosity during extraction process. [0-2]
 
     Returns
     -------
@@ -94,8 +92,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                    iters_min=iters_min,
                                    strel_min=strel_min,
                                    frame_dtype=frame_dtype,
-                                   progress_bar=progress_bar,
-                                   verbose=verbose)
+                                   progress_bar=progress_bar)
 
     # if we need it, compute the em parameters (for tracking in presence of occluders)
     if use_em_tracker:
@@ -115,8 +112,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                         frame_threshold=min_height, mask=ll,
                                         mask_threshold=mask_threshold,
                                         use_cc=use_cc,
-                                        progress_bar=progress_bar,
-                                        verbose=verbose)
+                                        progress_bar=progress_bar)
 
     incl = ~np.isnan(features['orientation'])
     features['orientation'][incl] = np.unwrap(features['orientation'][incl] * 2) / 2
@@ -134,9 +130,9 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
 
     # crop and rotate the frames
     cropped_frames = crop_and_rotate_frames(
-        chunk, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
+        chunk, features, crop_size=crop_size, progress_bar=progress_bar)
     cropped_filtered_frames = crop_and_rotate_frames(
-        filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar, verbose=verbose)
+        filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar)
 
     if use_em_tracker:
         use_parameters = deepcopy(parameters)

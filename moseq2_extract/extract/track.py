@@ -256,7 +256,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     return model_parameters
 
 
-def em_get_ll(frames, mean, cov, progress_bar=True):
+def em_get_ll(frames, mean, cov, progress_bar=False):
     '''
     Returns likelihoods for each frame given tracker parameters
 

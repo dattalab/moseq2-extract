@@ -119,7 +119,6 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
-@click.option('--verbose', type=int, default=0, help='Level of verbosity during extraction process. [0-2]')
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, min_height, max_height,
@@ -129,7 +128,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
+            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads):
 
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data, extract=extract)
@@ -183,8 +182,7 @@ def aggregate_extract_results(input_dir, format, output_dir):
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
-@click.option('-v', '--verbose', type=int, default=0, help='Verbosity level out batch encoding. [0-1]')
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, verbose):
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
@@ -201,7 +199,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
                                   pipe=video_pipe,
                                   close_pipe=False,
                                   threads=threads,
-                                  fps=fps, verbose=verbose)
+                                  fps=fps)
 
     if video_pipe:
         video_pipe.stdin.close()

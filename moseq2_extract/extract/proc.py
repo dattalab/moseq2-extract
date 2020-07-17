@@ -166,8 +166,6 @@ def get_roi(depth_image,
             gradient_kernel=7,
             gradient_threshold=3000,
             fill_holes=True,
-            gui=False,
-            verbose=0,
             **kwargs):
     '''
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -186,7 +184,6 @@ def get_roi(depth_image,
     gradient_threshold (int): Threshold for noise gradient filtering
     fill_holes (bool): Boolean to fill any missing regions within the ROI.
     gui (bool): Boolean for whether function is running on GUI.
-    verbose (bool): Boolean for whether to display progress
     kwargs
 
     Returns
@@ -209,7 +206,7 @@ def get_roi(depth_image,
         mask = None
 
     roi_plane, dists = moseq2_extract.extract.roi.plane_ransac(
-        depth_image, noise_tolerance=noise_tolerance, mask=mask, gui=gui, verbose=verbose, **kwargs)
+        depth_image, noise_tolerance=noise_tolerance, mask=mask, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
 
     if gradient_filter:
@@ -334,7 +331,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
                  iters_tail=None, frame_dtype='uint8',
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-                 iters_min=None, progress_bar=True, gui=False, verbose=0):
+                 iters_min=None, progress_bar=False):
     '''
     Simple filtering, median filter and morphological opening.
 
@@ -349,8 +346,6 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     strel_min (int): minimum kernel size
     iters_min (int): minimum number of filtering iterations
     progress_bar (bool): display progress bar
-    gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -359,9 +354,6 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
     # seeing enormous speed gains w/ opencv
     filtered_frames = frames.copy().astype(frame_dtype)
-
-    if verbose == 0:
-        progress_bar = False
 
     for i in tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):
@@ -387,7 +379,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
 
 def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
-                       mask_threshold=-30, use_cc=False, progress_bar=True, gui=False, verbose=0):
+                       mask_threshold=-30, use_cc=False, progress_bar=False):
     '''
     Use image moments to compute features of the largest object in the frame
 
@@ -399,8 +391,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     mask_threshold (int): threshold to include regions into mask.
     use_cc (bool): Use connected components.
     progress_bar (bool): Display progress bar.
-    gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -422,8 +412,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         'axis_length': np.full((nframes, 2), np.nan)
     }
 
-    if verbose == 0:
-        progress_bar = False
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
         frame_mask = frames[i] > frame_threshold
@@ -453,8 +441,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     return features, mask
 
 
-def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
-                           progress_bar=True, gui=False, verbose=0):
+def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=False):
     '''
     Crops mouse from image and orients it s.t it is always facing east.
 
@@ -465,7 +452,6 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     crop_size (tuple): size of cropped image.
     progress_bar (bool): Display progress bar.
     gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -476,8 +462,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
     win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
     border = (crop_size[1], crop_size[1], crop_size[0], crop_size[0])
-    if verbose == 0:
-        progress_bar = False
+
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
         if np.any(np.isnan(features['centroid'][i, :])):
