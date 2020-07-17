@@ -1,7 +1,6 @@
 import os
 import datetime
 import numpy as np
-from pathlib import Path
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
@@ -118,13 +117,14 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False):
     '''
 
     # make the temporary directory if it doesn't already exist
-    temp_storage = Path('/tmp/')
-    temp_storage.mkdir(parents=True, exist_ok=True)
+    temp_storage = os.path.expanduser('~/tmp/')
+    if not os.path.exists(temp_storage):
+        os.makedirs(temp_storage)
 
     suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
-    config_store = temp_storage / f'job_config{suffix}.yaml'
+    config_store = os.path.join(temp_storage, f'job_config{suffix}.yaml')
 
-    with config_store.open('w') as f:
+    with open(config_store, 'w') as f:
         yaml.safe_dump(params, f)
 
     base_command = ''
@@ -183,13 +183,14 @@ def run_slurm_extract(to_extract, params, partition, prefix, escape_path, skip_e
     '''
 
     # make the temporary directory if it doesn't already exist
-    temp_storage = Path('/tmp/')
-    temp_storage.mkdir(parents=True, exist_ok=True)
+    temp_storage = os.path.expanduser('~/tmp/')
+    if not os.path.exists(temp_storage):
+        os.makedirs(temp_storage)
 
     suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
-    config_store = temp_storage / f'job_config{suffix}.yaml'
+    config_store = os.path.join(temp_storage, f'job_config{suffix}.yaml')
 
-    with config_store.open('w') as f:
+    with open(config_store, 'w') as f:
         yaml.safe_dump(params, f)
 
     base_command = ''

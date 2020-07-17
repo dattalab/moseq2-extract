@@ -1,7 +1,6 @@
 import os
 import sys
 import click
-import pathlib
 import numpy as np
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
@@ -138,7 +137,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
-              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
+              default=os.path.expanduser('~/moseq2'), help="Temp storage")
 def download_flip_file(config_file, output_dir):
 
     flip_file_wrapper(config_file, output_dir)

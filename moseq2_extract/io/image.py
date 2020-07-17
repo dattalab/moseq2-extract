@@ -1,7 +1,7 @@
+import os
 import ast
 import json
 import numpy as np
-from pathlib import Path
 from skimage.external import tifffile
 
 
@@ -23,7 +23,7 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
     None
     '''
 
-    file = Path(filename)
+    file = filename
 
     metadata = {}
 
@@ -42,11 +42,11 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
 
         metadata = {'scale_factor': str(scale_factor)}
 
-    directory = file.parent
-    if not directory.exists():
+    directory = os.path.dirname(file)
+    if not os.path.isdir(directory):
         directory.mkdir(parents=True, exist_ok=True)
 
-    tifffile.imsave(file.as_posix(), image.astype(dtype), compress=compress, metadata=metadata)
+    tifffile.imsave(file, image.astype(dtype), compress=compress, metadata=metadata)
 
 
 def read_image(filename, scale=True, scale_key='scale_factor'):

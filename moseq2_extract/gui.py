@@ -2,7 +2,6 @@ import json
 import warnings
 from .cli import *
 from glob import glob
-from pathlib import Path
 import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_image
 from moseq2_extract.helpers.data import get_selected_sessions
@@ -256,7 +255,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     # find directories with .dat files that either have incomplete or no extractions
     partition = 'short'
     skip_checks = True
-    config_file = Path(config_file)
+    config_file = config_file
 
     prefix = ''
     to_extract = []
@@ -281,7 +280,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     elif not os.path.exists(config_file):
         raise IOError(f'Config file {config_file} does not exist')
 
-    with config_file.open() as f:
+    with open(config_file, 'r') as f:
         params = yaml.safe_load(f)
 
     cluster_type = params.get('cluster_type', 'local')
