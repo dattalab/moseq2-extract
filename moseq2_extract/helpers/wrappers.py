@@ -218,9 +218,6 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
     if output_dir == None:
         output_dir = os.path.join(os.path.dirname(input_file), 'proc')
 
-    if type(config_data['bg_roi_index']) is int:
-        bg_roi_index = [config_data['bg_roi_index']]
-
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

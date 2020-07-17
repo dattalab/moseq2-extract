@@ -1,15 +1,15 @@
-from moseq2_extract.util import convert_pxs_to_mm, strided_app
+import cv2
+import joblib
+import scipy.stats
+import numpy as np
+import scipy.signal
+import skimage.measure
+import scipy.interpolate
+import skimage.morphology
+from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
-import numpy as np
-import skimage.measure
-import skimage.morphology
-import scipy.stats
-import scipy.signal
-import scipy.interpolate
-import cv2
-from tqdm.auto import tqdm
-import joblib
+from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
 
 def get_flips(frames, flip_file=None, smoothing=None):
@@ -218,7 +218,6 @@ def get_roi(depth_image,
     bin_im = dist_ims < noise_tolerance
 
     # anything < noise_tolerance from the plane is part of it
-
     label_im = skimage.measure.label(bin_im)
     region_properties = skimage.measure.regionprops(label_im)
 
@@ -227,7 +226,6 @@ def get_roi(depth_image,
     dists = np.zeros_like(extents)
 
     # get the max distance from the center, area and extent
-
     center = np.array(depth_image.shape)/2
 
     for i, props in enumerate(region_properties):
@@ -237,7 +235,6 @@ def get_roi(depth_image,
         dists[i] = tmp_dists.max()
 
     # rank features
-
     ranks = np.vstack((scipy.stats.rankdata(-areas, method='max'),
                        scipy.stats.rankdata(-extents, method='max'),
                        scipy.stats.rankdata(dists, method='max')))
@@ -245,7 +242,6 @@ def get_roi(depth_image,
     shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:, np.newaxis]), 0).argsort()
 
     # expansion microscopy on the roi
-
     rois = []
     bboxes = []
 
@@ -260,7 +256,6 @@ def get_roi(depth_image,
         if fill_holes:
             roi = scipy.ndimage.morphology.binary_fill_holes(roi)
 
-        # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
 
@@ -294,7 +289,7 @@ def apply_roi(frames, roi):
     # yeah so fancy indexing slows us down by 3-5x
     cropped_frames = frames*roi
     bbox = get_bbox(roi)
-    # cropped_frames[:,roi==0]=0
+
     cropped_frames = cropped_frames[:, bbox[0, 0]:bbox[1, 0], bbox[0, 1]:bbox[1, 1]]
     return cropped_frames
 
@@ -413,7 +408,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     mask (3d np.ndarray): input frame mask.
     '''
 
-    features = []
     nframes = frames.shape[0]
 
     if type(mask) is np.ndarray and mask.size > 0:

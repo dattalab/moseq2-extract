@@ -5,7 +5,6 @@ from pathlib import Path
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
-
 from moseq2_extract.extract.proc import apply_roi
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
@@ -44,7 +43,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
         raw_frames = bground_im - raw_frames
-        # raw_frames[np.logical_or(raw_frames < min_height, raw_frames > max_height)] = 0
+
         raw_frames[raw_frames < config_data['min_height']] = 0
         if config_data['dilate_iterations'] == 1:
             raw_frames[raw_frames > config_data['max_height']] = config_data['max_height']
@@ -61,8 +60,6 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
                                 strel_min=strel_min,
                                 true_depth=true_depth,
                                 progress_bar=False)
-
-        # if desired, write out a movie
 
         if i > 0:
             offset = config_data['chunk_overlap']

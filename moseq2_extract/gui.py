@@ -354,7 +354,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
 
     print(f'Index file path: {indexpath}')
 
-
     return indexpath
 
 def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
@@ -400,6 +399,7 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     sample_meta = {'SubjectName': 'default', 'SessionName': 'default',
                    'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
                    'ColorDataType': "Byte[]", "StartTime": ""}
+
     for sess in sessions:
         sess_dir = '/'.join(sess.split('/')[:-1])
         sess_name = sess.split('/')[-2]
@@ -572,7 +572,6 @@ def sample_extract_command(input_dir, config_file, nframes, select_session=False
         input_file = files[input_file_index - 1]
     else:
         input_file = files[default_session]
-
 
     output_dir = os.path.join(os.path.dirname(input_file), 'sample_proc')
 

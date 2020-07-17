@@ -199,7 +199,6 @@ def write_frames(filename, frames, threads=6, fps=30,
 
     # we probably want to include a warning about multiples of 32 for videos
     # (then we can use pyav and some speedier tools)
-
     if not frame_size and type(frames) is np.ndarray:
         frame_size = '{0:d}x{1:d}'.format(frames.shape[2], frames.shape[1])
     elif not frame_size and type(frames) is tuple:
@@ -327,9 +326,6 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
-# simple command to pipe frames to an ffv1 file
-
-
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          fps=30, pixel_format='rgb24',
                          codec='h264', slices=24, slicecrc=1,
@@ -337,6 +333,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          get_cmd=False, cmap='jet',
                          pipe=None, close_pipe=True, frame_range=None):
     '''
+    Simple command to pipe frames to an ffv1 file.
     Writes out a false-colored mp4 video.
 
     Parameters
@@ -403,8 +400,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         pipe = subprocess.Popen(
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    # scale frames d00d
-
+    # scale frames to appropriate depth ranges
     use_cmap = plt.get_cmap(cmap)
     for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
         disp_img = frames[i, ...].copy().astype('float32')
@@ -481,38 +477,3 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
         metadata = get_raw_info(filename)
 
     return metadata
-
-# def encode_raw_frames_chunk(src_filename, bground_im, roi, bbox,
-#                             chunk_size=1000, overlap=0, depth_min=5,
-#                             depth_max=100,
-#                             bytes_per_frame=int((424*512*16)/8)):
-#
-#     save_dir = os.path.join(os.path.dirname(src_filename), '_chunks')
-#
-#     if not os.path.exists(save_dir):
-#         os.makedirs(save_dir)
-#
-#     base_filename = os.path.splitext(os.path.basename(src_filename))[0]
-#
-#     file_bytes = os.stat(src_filename).st_size
-#     file_nframes = int(file_bytes/bytes_per_frame)
-#     steps = np.append(np.arange(0, file_nframes, chunk_size), file_nframes)
-#
-#     # need to write out a manifest so we know the location of every frame
-#     dest_filename = []
-#
-#     for i in tqdm.tqdm(range(steps.shape[0]-1)):
-#         if i == 1:
-#             chunk = read_frames_raw(src_filename, np.arange(steps[i], steps[i+1]))
-#         else:
-#             chunk = read_frames_raw(src_filename, np.arange(steps[i]-overlap, steps[i+1]))
-#
-#         chunk = (bground_im-chunk).astype('uint8')
-#         chunk[chunk < depth_min] = 0
-#         chunk[chunk > depth_max] = 0
-#         chunk = moseq2_extract.extract.proc.apply_roi(chunk, roi, bbox)
-#
-#         dest_filename.append(os.path.join(save_dir, base_filename+'chunk{:05d}.avi'.format(i)))
-#         write_frames(dest_filename[-1], chunk)
-#
-#     return dest_filename

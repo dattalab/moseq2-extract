@@ -78,8 +78,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     if verbose == 0:
         progress_bar = False
-    for i in tqdm(range(iters),
-                       disable=not progress_bar, desc='Finding plane'):
+    for i in tqdm(range(iters), disable=not progress_bar, desc='Finding plane'):
 
         sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
         tmp_plane = plane_fit3(sel)
@@ -98,28 +97,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
             best_num = ninliers
             best_plane = tmp_plane
 
-            # use all consensus samples to fit a better model
-
-            # all_data=coords[inliers.flatten(),:]
-            # mu=np.mean(all_data,0)
-            # u,s,v=np.linalg.svd(all_data-mu)
-            # v=v.conj().T
-            # best_plane=np.hstack((v[:,-1],np.dot(-mu,v[:,-1])))
-
     # fit the plane to our x,y,z coordinates
-
-    # if we have lots of datapoints this is unnecessarily expensive,
-    # could rsample here too
-    #
-    # dist=np.abs(np.dot(coords,best_plane[:3])+best_plane[3])
-    # inliers=dist<noise_tolerance
-    #
-    # all_data=coords[inliers.flatten(),:]
-    # mu=np.mean(all_data,0)
-    # u,s,v=np.linalg.svd(all_data-mu)
-    # v=v.conj().T
-    # best_plane=np.hstack((v[:,-1],np.dot(-mu,v[:,-1])))
-
     coords = np.vstack((xx.ravel(), yy.ravel(), depth_image.ravel())).T
     dist = np.abs(np.dot(coords, best_plane[:3])+best_plane[3])
 

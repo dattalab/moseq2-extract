@@ -1,16 +1,14 @@
+import os
+import cv2
+import numpy as np
+from copy import deepcopy
+from moseq2_extract.extract.track import em_tracking, em_get_ll
 from moseq2_extract.extract.proc import (crop_and_rotate_frames,
                                          clean_frames, apply_roi, get_frame_features,
                                          get_flips, compute_scalars, feature_hampel_filter,
                                          model_smoother)
-from moseq2_extract.extract.track import em_tracking, em_get_ll
-from copy import deepcopy
-import cv2
-import os
-import numpy as np
 
 # one stop shopping for taking some frames and doing stuff
-
-
 def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   prefilter_time=None,
                   iters_tail=1, iters_min=0,
@@ -24,7 +22,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   tracking_init_mean=None, tracking_init_cov=None,
                   tracking_init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
                   flip_classifier=None, flip_smoothing=51,
-                  frame_dtype='uint8', save_path=os.path.join(os.getcwd(), 'proc'),
+                  frame_dtype='uint8',
                   progress_bar=True, crop_size=(80, 80), true_depth=673.1,
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
@@ -81,7 +79,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     '''
 
     # if we pass bground or roi files, be sure to use 'em...
-
     if bground:
         chunk = (bground-chunk).astype(frame_dtype)
 
@@ -89,7 +86,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         chunk = apply_roi(chunk)
 
     # denoise the frames before we do anything else
-
     filtered_frames = clean_frames(chunk,
                                    prefilter_space=prefilter_space,
                                    prefilter_time=prefilter_time,
@@ -101,9 +97,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                    progress_bar=progress_bar,
                                    verbose=verbose)
 
-    # if we need it, compute the em parameters
-    # (for tracking in presence of occluders)
-
+    # if we need it, compute the em parameters (for tracking in presence of occluders)
     if use_em_tracker:
         parameters = em_tracking(
             filtered_frames, chunk, rho_mean=rho_mean,
@@ -112,7 +106,6 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,
             init_strel=tracking_init_strel, init_method=tracking_model_init)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
-        # ll_raw = em_get_ll(chunk, progress_bar=progress_bar, **parameters)
     else:
         ll = None
         parameters = None
