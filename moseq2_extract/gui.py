@@ -87,7 +87,7 @@ def check_progress(base_dir, progress_filepath):
         restore = ''
         while(restore != 'Y' or restore != 'N' or restore != 'q'):
             restore = input('Would you like to restore the above listed notebook variables? [Y -> restore variables, N -> overwrite progress file, q -> quit]')
-            if restore == "Y":
+            if restore.lower() == "y":
 
                 print('Updating notebook variables...')
 
@@ -98,7 +98,7 @@ def check_progress(base_dir, progress_filepath):
                 return config_filepath, index_filepath, train_data_dir, pca_dirname, \
                 scores_filename, model_path, scores_file, \
                 crowd_dir, plot_path
-            elif restore == "N":
+            elif restore.lower() == "n":
 
                 print('Overwriting progress file.')
 
@@ -116,7 +116,7 @@ def check_progress(base_dir, progress_filepath):
                         print(k, v)
                 return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
                        progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
-            elif restore == 'q':
+            elif restore.lower() == 'q':
                 return
     else:
         print('Progress file not found, creating new one.')
@@ -162,7 +162,7 @@ def generate_config_command(output_file):
     if os.path.exists(output_file):
         print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
         ow = input()
-        if ow == 'Y':
+        if ow.lower() == 'y':
             with open(output_file, 'w') as f:
                 yaml.safe_dump(params, f)
         else:
@@ -320,7 +320,6 @@ def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, 
     print('Index file successfully generated.')
     return output_file
 
-
 def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
@@ -370,8 +369,6 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
     found_sessions (int): number of found sessions with given extensions
     '''
 
-    data_dir = str(data_dir) # ensuring type for string manipulation
-
     warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
@@ -412,7 +409,6 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
         print(f'[{str(i+1)}] {sess}')
 
     return data_dir, found_sessions
-
 
 def download_flip_command(output_dir, config_file="", selection=1):
     '''

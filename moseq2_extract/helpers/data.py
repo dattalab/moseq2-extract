@@ -58,7 +58,7 @@ def get_selected_sessions(to_extract, extract_all):
         print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5"')
         while(len(ret_extract) == 0):
             sessions = input('Input your selected sessions to extract: ')
-            if 'q' in sessions:
+            if 'q' in sessions.lower():
                 return []
             if ',' in sessions:
                 selection = sessions.split(',')
