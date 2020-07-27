@@ -12,7 +12,7 @@ from moseq2_extract.helpers.data import create_extract_h5
 from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import generate_config_command, download_flip_command
 from moseq2_extract.util import escape_path, scalar_attributes, gen_batch_sequence, load_metadata
-from moseq2_extract.helpers.extract import run_slurm_extract, run_local_extract, process_extract_batches
+from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches
 
 class TestHelperExtract(TestCase):
 
@@ -105,32 +105,5 @@ class TestHelperExtract(TestCase):
         prefix = ''
 
         run_local_extract([str(data_path)], params, prefix)
-        os.remove(config_path)
-        shutil.rmtree(data_dir)
-
-    def test_run_slurm_extract(self):
-
-        config_path = 'data/test_local_ex_config.yaml'
-
-        data_dir = 'data/test_slurm_session/'
-        data_path = f'{data_dir}depth.dat'
-        if not os.path.isdir(data_dir):
-            os.makedirs(data_dir)
-
-        write_fake_movie(data_path)
-        assert os.path.isfile(data_path), "fake movie was not written correctly"
-
-        generate_config_command(config_path)
-
-        with open(config_path, 'r') as f:
-            params = yaml.safe_load(f)
-
-        params['cores'] = 1
-        params['memory'] = '4GB'
-        params['wall_time'] = '01:00:00'
-        partition = 'short'
-        prefix = ''
-
-        run_slurm_extract([str(data_path)], params, partition, prefix, escape_path)
         os.remove(config_path)
         shutil.rmtree(data_dir)
