@@ -38,6 +38,9 @@ def common_roi_options(function):
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
+    function = click.option('--camera-type', default=None, type=str,
+                            help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
+                             Possible types: ["kinect", "azure", "realsense"]')(function)
     function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
@@ -72,7 +75,7 @@ def common_avi_options(function):
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
-def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
              bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
              output_dir, use_plane_bground, config_file):
@@ -87,7 +90,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
-@click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. Either "auto" or a int value.')
+@click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
+            This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
@@ -118,10 +122,10 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
-def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
-            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
-            bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, min_height, max_height,
-            detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
+def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
+            bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
+            bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
+            min_height, max_height, detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
             use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
             tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,

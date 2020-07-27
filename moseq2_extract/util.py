@@ -109,6 +109,32 @@ def load_timestamps(timestamp_file, col=0):
 
     return ts
 
+def set_bg_roi_weights(config_data):
+    '''
+    Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
+    If no camera_type is inputted, program will assume a kinect camera is being used.
+
+    Parameters
+    ----------
+    config_data (dict): dictionary containing all input parameters to a CLI/GUI command.
+
+    Returns
+    -------
+    config_data (dict): updated dictionary with bg-roi-weights to use in extraction/ROI retrieval.
+    '''
+
+    # Auto-setting background weights
+    if config_data.get('camera_type', None) == 'kinect':
+        config_data['bg_roi_weights'] = (1, .1, 1)
+    elif config_data.get('camera_type', None) == 'azure':
+        config_data['bg_roi_weights'] = (10, 0.1, 1)
+    elif config_data.get('camera_type', None) == 'realsense':
+        config_data['bg_roi_weights'] = (10, 1, 4)
+    else:
+        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
+        config_data['bg_roi_weights'] = (1, .1, 1)
+
+    return config_data
 
 def load_metadata(metadata_file):
     '''

@@ -12,13 +12,39 @@ from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
     select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
     get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
-    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml
+    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, set_bg_roi_weights
 
 class testExtractUtils(TestCase):
 
     def test_build_path(self):
         out = build_path({'test1': 'value', 'test2': 'value2'}, '{test1}_{test2}')
         assert out == 'value_value2'
+
+    def test_set_bg_roi_weights(self):
+        test_config_data = {'camera_type': 'kinect',
+                            'bg_roi_weights': (1, .1, 1)}
+
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (1, .1, 1)
+
+        test_config_data['camera_type'] = 'azure'
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (10, .1, 1)
+
+        test_config_data['camera_type'] = 'realsense'
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (10, 1, 4)
+
+        test_config_data['camera_type'] = None
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (1, .1, 1)
+
+
+
 
     def test_read_yaml(self):
 
@@ -213,6 +239,8 @@ class testExtractUtils(TestCase):
             'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
             'bg_roi_index': 'Index of which background mask(s) to use',
             'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
+            'camera_type': 'Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
+                             Possible types: ["kinect", "azure", "realsense"]',
             'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
             'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
             'bg_roi_gradient_threshold': 'Gradient must be < this to include points',

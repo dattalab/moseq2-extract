@@ -21,7 +21,7 @@ from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_
                                         build_manifest, copy_manifest_results
 from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, load_timestamps, \
                                 convert_raw_to_avi_function, scalar_attributes, recursive_find_h5s, \
-                                clean_dict, h5_to_dict, graduate_dilated_wall_area
+                                clean_dict, h5_to_dict, graduate_dilated_wall_area, set_bg_roi_weights
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
@@ -221,6 +221,8 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    config_data = set_bg_roi_weights(config_data)
+
     print('Getting background...')
     bground_im = get_bground_im_file(input_file)
     write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
@@ -295,6 +297,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         config_data['spatial_filter_size'][0] += 1
     if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
         config_data['temporal_filter_size'][0] += 1
+    config_data = set_bg_roi_weights(config_data)
 
     print('Processing:', input_file)
     # get the basic metadata
