@@ -21,13 +21,9 @@ click.core.Option.__init__ = new_init
 
 
 @click.group()
+@click.version_option()
 def cli():
     pass
-
-@cli.command('version', help='Print version number')
-def version():
-    import moseq2_extract
-    click.echo(moseq2_extract.__version__)
 
 def common_roi_options(function):
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),

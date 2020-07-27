@@ -9,7 +9,7 @@ import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, \
-    convert_raw_to_avi, copy_slice, version, generate_index, aggregate_extract_results
+    convert_raw_to_avi, copy_slice, generate_index, aggregate_extract_results
 
 def write_fake_movie(data_path):
     edge_size = 40
@@ -52,13 +52,6 @@ def write_fake_movie(data_path):
 
 
 class CLITests(TestCase):
-
-    def test_version(self):
-        runner = CliRunner()
-        result = runner.invoke(version)
-
-        assert (result.exit_code == 0)
-        assert result.stdout == '0.5.0\n'
 
     def test_aggregate_extract_results(self):
 
