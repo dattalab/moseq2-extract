@@ -367,9 +367,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     else:
         # GUI FUNCTIONALITY
         if skip == True:
-            if os.path.exists(os.path.join(output_dir, 'done.txt')):
-                print('Skipping...')
-                return
+            if os.path.exists(status_filename):
+                with open(status_filename, 'r') as f:
+                    old_status_dict = yaml.safe_load(f)
+                    if old_status_dict['complete'] == True:
+                        print('Skipping...')
+                        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
