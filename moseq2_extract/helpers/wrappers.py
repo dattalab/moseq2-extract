@@ -294,9 +294,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
 
     if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
         config_data['spatial_filter_size'][0] += 1
     if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
         config_data['temporal_filter_size'][0] += 1
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+
     config_data = set_bg_roi_weights(config_data)
 
     print('Processing:', input_file)
