@@ -233,12 +233,17 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
 
     print('Getting roi...')
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
+    strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['strel_erode']))
 
     rois, plane, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
                                   dilate_iters=config_data['dilate_iterations'],
+                                  erode_iters=config_data['erode_iterations'],
+                                  strel_erode=strel_erode if config_data['erode_iterations'] > 0 else None,
+                                  noise_tolerance=config_data['noise_tolerance'],
                                   weights=config_data['bg_roi_weights'],
                                   depth_range=config_data['bg_roi_depth_range'],
+                                  overlap_roi=config_data.get('overlap_roi'),
                                   gradient_filter=config_data['bg_roi_gradient_filter'],
                                   gradient_threshold=config_data['bg_roi_gradient_threshold'],
                                   gradient_kernel=config_data['bg_roi_gradient_kernel'],

@@ -158,6 +158,7 @@ def get_bbox(roi):
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
             dilate_iters=1,
+            erode_iters=1,
             strel_erode=None,
             noise_tolerance=30,
             weights=(1, .1, 1),
@@ -249,7 +250,7 @@ def get_roi(depth_image,
         if strel_dilate is not None:
             roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters)
         if strel_erode is not None:
-            roi = cv2.erode(roi, strel_erode, iterations=1)
+            roi = cv2.erode(roi, strel_erode, iterations=erode_iters)
         if fill_holes:
             roi = scipy.ndimage.morphology.binary_fill_holes(roi)
 

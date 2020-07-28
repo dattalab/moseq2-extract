@@ -51,7 +51,13 @@ def common_roi_options(function):
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
     function = click.option('--dilate-iterations', default=1, type=int,
-                            help='Number of dilation iterations to increase bucket floor size.')(function)
+                            help='Number of dilation iterations to increase bucket floor size. (Special Cases Only)')(function)
+    function = click.option('--strel-erode', default=(1, 1), type=(int, int),
+                            help='Size of cv2 Structure Element to erode roi. (Special Cases Only)')(function)
+    function = click.option('--erode-iterations', default=0, type=int,
+                            help='Number of erosion iterations to decrease bucket floor size. (Special Cases Only)')(function)
+    function = click.option('--noise-tolerance', default=30, type=int,
+                            help='Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)')(function)
     function = click.option('--output-dir', default=None, help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
@@ -73,8 +79,8 @@ def common_avi_options(function):
 @common_roi_options
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
-             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
-             output_dir, use_plane_bground, config_file):
+             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, strel_erode,
+             erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file):
 
     click_data = click.get_current_context().params
     get_roi_wrapper(input_file, click_data, output_dir)
@@ -127,7 +133,8 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads):
+            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
+            strel_erode, erode_iterations, noise_tolerance):
 
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data, extract=extract)
