@@ -94,6 +94,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
             This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
+@click.option('--compute-raw-scalars', default=False, type=bool, help="Compute scalar values from raw cropped frames.")
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
@@ -134,7 +135,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            strel_erode, erode_iterations, noise_tolerance):
+            strel_erode, erode_iterations, noise_tolerance, compute_raw_scalars):
 
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data, extract=extract)

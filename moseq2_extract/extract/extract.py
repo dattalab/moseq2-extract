@@ -1,3 +1,15 @@
+'''
+Extraction helper utility for performing multiple cleaning, cropping and rotating operations.
+
+Given a "chunk" or segment of an input depth video, this function will first find and subtract the ROI, then
+optionally perform Expectation Maximization tracking for mouse tracking with occlusions such as
+photometry fibers. Next, it will apply some spatial/temporal filtering before cropping, and aligning the rodent
+such that it is always facing east (with the help of the flip classifier).
+
+It will store each chunk's extracted data and metadata in a dictionary that will be later written to the corresponding
+results_00.h5 file.
+
+'''
 import cv2
 import numpy as np
 from copy import deepcopy
@@ -26,6 +38,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
+                  compute_raw_scalars=False,
                   **kwargs):
     '''
     This function looks for a mouse in background-subtracted frames from a chunk of depth video.
@@ -69,6 +82,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     angle_hampel_sig (int): Angle filter standard deviation
     model_smoothing_clips (tuple): Model smoothing clips
     tracking_model_init (str): Method for tracking model initialization
+    compute_raw_scalars (bool): Compute scalars from unfiltered crop-rotated data.
 
     Returns
     -------
@@ -76,14 +90,14 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     extracted cropped, oriented and centered RGB video chunk to be written to file.
     '''
 
-    # if we pass bground or roi files, be sure to use 'em...
+    # If we pass bground or roi files, be sure to use them...
     if bground:
         chunk = (bground-chunk).astype(frame_dtype)
 
     if roi:
         chunk = apply_roi(chunk)
 
-    # denoise the frames before we do anything else
+    # Denoise the frames before we do anything else
     filtered_frames = clean_frames(chunk,
                                    prefilter_space=prefilter_space,
                                    prefilter_time=prefilter_time,
@@ -94,7 +108,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
                                    frame_dtype=frame_dtype,
                                    progress_bar=progress_bar)
 
-    # if we need it, compute the em parameters (for tracking in presence of occluders)
+    # If we need it, compute the EM parameters (for tracking in presence of occluders)
     if use_em_tracker:
         parameters = em_tracking(
             filtered_frames, chunk, rho_mean=rho_mean,
@@ -117,23 +131,28 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     incl = ~np.isnan(features['orientation'])
     features['orientation'][incl] = np.unwrap(features['orientation'][incl] * 2) / 2
 
+    # Detect and filter out any mouse-centering outlier frames
     features = feature_hampel_filter(features,
                                      centroid_hampel_span=centroid_hampel_span,
                                      centroid_hampel_sig=centroid_hampel_sig,
                                      angle_hampel_span=angle_hampel_span,
                                      angle_hampel_sig=angle_hampel_sig)
 
+    # Smooth EM tracker results if they exist
     if ll is not None:
         features = model_smoother(features,
                                   ll=ll,
                                   clips=model_smoothing_clips)
 
-    # crop and rotate the frames
+    # Crop and rotate the original frames
     cropped_frames = crop_and_rotate_frames(
         chunk, features, crop_size=crop_size, progress_bar=progress_bar)
+
+    # Crop and rotate the filtered frames to be returned and later written
     cropped_filtered_frames = crop_and_rotate_frames(
         filtered_frames, features, crop_size=crop_size, progress_bar=progress_bar)
 
+    # Compute crop-rotated frame mask
     if use_em_tracker:
         use_parameters = deepcopy(parameters)
         use_parameters['mean'][:, 0] = crop_size[1] // 2
@@ -143,6 +162,7 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         mask = crop_and_rotate_frames(
             mask, features, crop_size=crop_size, progress_bar=progress_bar)
 
+    # Orient mouse to face east
     if flip_classifier:
         flips = get_flips(cropped_frames, flip_classifier, flip_smoothing)
         for flip in np.where(flips)[0]:
@@ -154,13 +174,18 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
     else:
         flips = None
 
-    # todo: put in an option to compute scalars on raw or filtered
-
-    scalars = compute_scalars(cropped_filtered_frames,
-                              features,
-                              min_height=min_height,
-                              max_height=max_height,
-                              true_depth=true_depth)
+    if compute_raw_scalars:
+        scalars = compute_scalars(cropped_frames,
+                                  features,
+                                  min_height=min_height,
+                                  max_height=max_height,
+                                  true_depth=true_depth)
+    else:
+        scalars = compute_scalars(cropped_filtered_frames,
+                                  features,
+                                  min_height=min_height,
+                                  max_height=max_height,
+                                  true_depth=true_depth)
 
     results = {
         'depth_frames': cropped_frames,
