@@ -1,3 +1,7 @@
+'''
+General helper/convenience utilities that are implemented throughout the extract package.
+'''
+
 import os
 import re
 import cv2

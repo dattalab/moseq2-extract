@@ -1,3 +1,7 @@
+'''
+Video pre-processing utilities for detecting ROIs and extracting raw data.
+'''
+
 import cv2
 import joblib
 import scipy.stats
@@ -585,6 +589,7 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
                           angle_hampel_span=None, angle_hampel_sig=3):
     '''
     Filters computed extraction features using Hampel Filtering.
+    Used to detect and filter out outliers.
 
     Parameters
     ----------

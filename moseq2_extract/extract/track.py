@@ -1,3 +1,7 @@
+'''
+Expectation-Maximization mouse tracking utilities.
+'''
+
 import cv2
 import numpy as np
 import scipy.stats

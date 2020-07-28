@@ -1,3 +1,8 @@
+'''
+Extraction-helper utilities.
+These functions are primarily called from inside the extract_wrapper() function.
+'''
+
 import os
 import datetime
 import numpy as np
@@ -11,7 +16,9 @@ from moseq2_extract.io.video import load_movie_data, write_frames_preview
 def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars, frame_batches, first_frame_idx, \
                             true_depth, tar, strel_tail, strel_min, output_dir, output_filename):
     '''
-    Compute extracted frames and save them to h5 files and avi files.
+    Given an open h5 file, which is used to store extraction results, and some pre-computed input session data points
+    such as the background, ROI, etc. Compute extracted frames and save them to h5 files and avi files.
+    Called from extract_wrapper()
 
     Parameters
     ----------
@@ -101,7 +108,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 
 def run_local_extract(to_extract, params, prefix, skip_extracted=False):
     '''
-    Runs the extract command on given list of sessions to extract on local platform.
+    Runs the extract command on given list of sessions to extract on a local platform.
     This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
 
     Parameters

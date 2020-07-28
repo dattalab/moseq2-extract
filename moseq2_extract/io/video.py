@@ -1,3 +1,7 @@
+'''
+Video and video-metadata read/write functionality.
+'''
+
 import os
 import cv2
 import tarfile

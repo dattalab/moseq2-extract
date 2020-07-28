@@ -1,3 +1,7 @@
+'''
+ROI detection pre-processing utilities for fitting a plane to an input depth image.
+'''
+
 import numpy as np
 from tqdm.auto import tqdm
 

@@ -1,3 +1,11 @@
+'''
+GUI front-end operations accessible from a jupyter notebook.
+
+This module contains all operations included in the CLI module,
+with some additional preprocessing steps and state-retrieval functionality
+to facilitate Jupyter notebook usage.
+'''
+
 import json
 import warnings
 from .cli import *
@@ -6,9 +14,9 @@ import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_image
 from moseq2_extract.helpers.extract import run_local_extract
 from moseq2_extract.helpers.data import get_selected_sessions
-from moseq2_extract.util import escape_path, recursive_find_unextracted_dirs, set_bg_roi_weights
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, generate_index_wrapper, \
-                                            aggregate_extract_results_wrapper
+from moseq2_extract.util import escape_path, recursive_find_unextracted_dirs
+from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
+                                            generate_index_wrapper, aggregate_extract_results_wrapper
 
 def update_progress(progress_file, varK, varV):
     '''

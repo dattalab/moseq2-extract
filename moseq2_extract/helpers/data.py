@@ -1,3 +1,7 @@
+'''
+Data selection, writing, and loading utilities.
+'''
+
 import os
 import h5py
 import shutil
