@@ -433,7 +433,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
     None
     '''
 
-    flip_file_wrapper(config_file, output_dir, selected_flip=selection, gui=True)
+    flip_file_wrapper(config_file, output_dir, selected_flip=selection)
 
 
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):

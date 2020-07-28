@@ -2,7 +2,6 @@ import os
 import sys
 import shutil
 import tarfile
-import ruamel.yaml as yaml
 from unittest import TestCase
 from moseq2_extract.util import load_metadata
 from ..integration_tests.test_cli import write_fake_movie
@@ -89,23 +88,30 @@ class TestHelperData(TestCase):
     def test_handle_extract_metadata(self):
         dirname = 'data/'
         tmp_file = 'data/test_vid.tar.gz'
-        config_file = 'data/config.yaml'
         write_fake_movie(tmp_file)
 
         with tarfile.open(tmp_file, "w:gz") as tar:
             tar.add(dirname, arcname='test_vid.dat')
-            tar.add(dirname, arcname='metadata.json')
-            tar.add(dirname, arcname='depth_ts.txt')
+            tar.add(os.path.join(dirname, 'metadata.json'), arcname='metadata.json')
+            tar.add(os.path.join(dirname, 'depth_ts.txt'), arcname='depth_ts.txt')
 
-        with open(config_file, 'r') as f:
-            config_data = yaml.safe_load(f)
+        input_file, acq_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(tmp_file, dirname)
 
-        metadata_path, timestamp_path, alternate_correct, tar, nframes, first_frame_idx, last_frame_idx = \
-            handle_extract_metadata(tmp_file, dirname, config_data, 20)
-
+        assert isinstance(acq_metadata, dict)
+        assert len(timestamps.shape) == 1
         assert tar != None
-        assert nframes == 20
         assert alternate_correct == False
-        assert first_frame_idx == 0
-        assert last_frame_idx == 20
+
+        os.remove(tmp_file)
+
+        tmp_file = 'data/test_vid.dat'
+        write_fake_movie(tmp_file)
+
+        input_file, acq_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(tmp_file, dirname)
+
+        assert isinstance(acq_metadata, dict)
+        assert len(timestamps.shape) == 1
+        assert tar == None
+        assert alternate_correct == False
+
         os.remove(tmp_file)

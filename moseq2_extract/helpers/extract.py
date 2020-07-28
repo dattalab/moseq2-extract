@@ -5,6 +5,7 @@ These functions are primarily called from inside the extract_wrapper() function.
 
 import os
 import datetime
+import warnings
 import numpy as np
 from copy import deepcopy
 import ruamel.yaml as yaml
@@ -46,6 +47,14 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     tracking_init_mean = None
     tracking_init_cov = None
 
+    # Ensure filter kernel sizes are odd
+    if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+        config_data['spatial_filter_size'][0] += 1
+    if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
+        config_data['temporal_filter_size'][0] += 1
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_frames = load_movie_data(input_file, [f + first_frame_idx for f in frame_range], tar_object=tar)
         raw_frames = bground_im - raw_frames
@@ -60,6 +69,8 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
 
         results = extract_chunk(raw_frames,
                                 **config_data,
+                                prefilter_space=config_data['spatial_filter_size'],
+                                prefilter_time=config_data['temporal_filter_size'],
                                 tracking_init_mean=tracking_init_mean,
                                 tracking_init_cov=tracking_init_cov,
                                 strel_tail=strel_tail,

@@ -55,6 +55,63 @@ def command_with_config(config_file_param_name):
 
     return custom_command_class
 
+def set_bground_to_plane_fit(bground_im, plane, output_dir):
+    '''
+    Replaces median-computed background image with plane fit.
+    Only occurs if config_data['use_plane_bground'] == True.
+
+    Parameters
+    ----------
+    bground_im (2D numpy array): Background image computed via median value of depth video.
+    plane (2D numpy array): Computed ROI Plane using RANSAC.
+    output_dir (str): Path to write updated background image to.
+
+    Returns
+    -------
+    bground_im (2D numpy array): Plane fit version of the background image.
+    '''
+
+    xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
+    coords = np.vstack((xx.ravel(), yy.ravel()))
+
+    plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
+    plane_im = plane_im.reshape(bground_im.shape)
+
+    write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+    bground_im = plane_im
+
+    return bground_im
+
+def get_frame_range_indices(config_data, nframes):
+    '''
+    Computes the total number of frames to be extracted, given the total number of frames
+    and an initial frame index starting point.
+
+    Parameters
+    ----------
+    config_data (dict): dictionary holding all extraction parameters
+    nframes (int): total number of requested frames to extract
+
+    Returns
+    -------
+    nframes (int): total number of frames to extract
+    first_frame_idx (int): index of the frame to begin extraction from
+    last_frame_idx (int): index of the last frame in the extraction
+    '''
+
+    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
+        first_frame_idx = config_data['frame_trim'][0]
+    else:
+        first_frame_idx = 0
+
+    if nframes - config_data['frame_trim'][1] > first_frame_idx:
+        last_frame_idx = nframes - config_data['frame_trim'][1]
+    else:
+        last_frame_idx = nframes
+
+    nframes = last_frame_idx - first_frame_idx
+
+    return nframes, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -88,7 +145,7 @@ def load_timestamps(timestamp_file, col=0):
 
     Returns
     -------
-    ts (list): list of timestamps
+    ts (1D array): list of timestamps
     '''
 
     ts = []
@@ -142,7 +199,7 @@ def set_bg_roi_weights(config_data):
 
 def load_metadata(metadata_file):
     '''
-    Loads metadata.
+    Loads metadata from session metadata.json file.
 
     Parameters
     ----------
@@ -150,7 +207,7 @@ def load_metadata(metadata_file):
 
     Returns
     -------
-    metadata (dict)
+    metadata (dict): key-value pairs of JSON contents
     '''
 
     metadata = {}

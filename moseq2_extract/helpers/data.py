@@ -1,20 +1,44 @@
 '''
 Data selection, writing, and loading utilities.
+Contains helper functions to aid mostly in handling/storing data during extraction.
+Remainder of functions are used in the data aggregation process.
 '''
 
 import os
+import re
 import h5py
 import shutil
 import tarfile
 import warnings
 import numpy as np
-from cytoolz import keymap
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from ast import literal_eval
+from cytoolz import keymap, pluck
 from pkg_resources import get_distribution
-from moseq2_extract.util import h5_to_dict, load_timestamps, camel_to_snake, \
-    load_textdata, build_path, dict_to_h5, click_param_annot
+from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
+    camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
+
+# extract_wrapper helper function
+def check_completion_status(status_filename):
+    '''
+    Returns a boolean indicating whether the session has been fully extracted
+
+    Parameters
+    ----------
+    status_filename (str): path to results_00.yaml containing extraction status
+
+    Returns
+    -------
+    complete (bool): If True, data has been extracted to completion.
+    '''
+
+    if os.path.exists(status_filename):
+        with open(status_filename, 'r') as f:
+            old_status_dict = yaml.safe_load(f)
+            return old_status_dict['complete']
+    else:
+        return False
 
 # extract all helper function
 def get_selected_sessions(to_extract, extract_all):
@@ -85,6 +109,88 @@ def get_selected_sessions(to_extract, extract_all):
         return to_extract
 
     return ret_extract
+
+# Next two functions are index_file helper functions
+
+def get_pca_uuids(dicts, pca_file, all_uuids):
+    '''
+    Checks for pre-existing PCA Scores file to load given uuids from.
+    If file is not found, then uuids to use in later PCA step will come from
+    the loaded results_00.yaml files in dicts.
+
+    Parameters
+    ----------
+    dicts (list): list of dictionaries containing extraction results metadata
+    pca_file (str): path to pca_scores.h5 file
+    all_uuids (list): list of all extracted session uuids
+
+    Returns
+    -------
+    pca_uuids (list): list of uuids to include in index-file
+    '''
+
+    if not os.path.exists(pca_file) or all_uuids:
+        warnings.warn('Will include all files')
+        pca_uuids = [dct['uuid'] for dct in dicts]
+    else:
+        if not os.path.exists(pca_file) or all_uuids:
+            warnings.warn('Will include all files')
+            pca_uuids = pluck('uuid', dicts)
+        else:
+            with h5py.File(pca_file, 'r') as f:
+                pca_uuids = list(f['scores'])
+
+    return pca_uuids
+
+def build_index_dict(filter, files_to_use, pca_file):
+    '''
+    Given a list of files and respective metadatas to include in an index file,
+    creates a dictionary that will be saved later as the index file.
+    It will contain all the inputted file paths with their respective uuids, group names, and metadata.
+
+    Parameters
+    ----------
+    filter (list): list of metadata keys to conditionally filter.
+    files_to_use (list): list of paths to extracted h5 files.
+    pca_file (str): path to pca scores file.
+
+    Returns
+    -------
+    output_dict (dict): index-file dictionary containing all aggregated extractions.
+    '''
+
+    output_dict = {
+        'files': [],
+        'pca_path': pca_file
+    }
+
+    index_uuids = []
+    for i, file_tup in enumerate(files_to_use):
+        if file_tup[2]['uuid'] not in index_uuids:
+            # appending file with default information
+            output_dict['files'].append({
+                'path': (file_tup[0], file_tup[1]),
+                'uuid': file_tup[2]['uuid'],
+                'group': 'default',
+                'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'}
+            })
+
+            index_uuids.append(file_tup[2]['uuid'])
+
+            # handling metadata sub-dictionary values
+            if 'metadata' in file_tup[2].keys():
+                for k, v in file_tup[2]['metadata'].items():
+                    for filt in filter:
+                        if k == filt[0]:
+                            tmp = re.match(filt[1], v)
+                            if tmp is not None:
+                                v = tmp[0]
+
+                    output_dict['files'][i]['metadata'][k] = v
+            else:
+                print('skipping', file_tup[0])
+
+    return output_dict
 
 def load_h5s(to_load, snake_case=True):
     '''
@@ -181,6 +287,7 @@ def build_manifest(loaded, format, snake_case=True):
                 copy_path = fallback.format(fallback_count)
                 fallback_count += 1
                 pass
+
         # add a bonus dictionary here to be copied to h5 file itself
         manifest[_h5f] = {'copy_path': copy_path, 'yaml_dict': _dict, 'additional_metadata': {}}
         for meta in additional_meta:
@@ -196,7 +303,6 @@ def build_manifest(loaded, format, snake_case=True):
                     warnings.warn('WARNING: Did not load timestamps! This may cause issues if total dropped frames > 2% of the session.')
 
     return manifest
-
 
 def copy_manifest_results(manifest, output_dir):
     '''
@@ -248,29 +354,27 @@ def copy_manifest_results(manifest, output_dir):
         with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
             yaml.safe_dump(v['yaml_dict'], f)
 
-
-def handle_extract_metadata(input_file, dirname, config_data, nframes):
+def handle_extract_metadata(input_file, dirname):
     '''
     Extracts metadata from input depth files, either raw or compressed.
+    Locates metadata JSON file, and timestamps.txt file, then loads them into variables
+    to be used to extract_wrapper.
 
     Parameters
     ----------
     input_file (str): path to input file to extract
     dirname (str): path to directory where extraction files reside.
-    config_data (dict): dictionary object containing all required extraction parameters. (auto generated)
-    nframes (int): number of frames to extract.
 
     Returns
     -------
-    metadata_path (str): path to respective metadata.json
-    timestamp_path (str): path to respective depth_ts.txt or similar
+    input_file (str): path to decompressed input file (if input_file was originally a tarfile
+    acquisition_metadata (dict): key-value pairs of JSON contents
+    timestamps (1D array): list of loaded timestamps
     alternate_correct (bool): indicator for whether an alternate timestamp file was used
     tar (bool): indicator for whether the file is compressed.
-    nframes (int): number of frames to extract
-    first_frame_idx (int): index number of first frame in extraction.
-    last_frame_idx (int): index number of last frame in extraction
     '''
 
+    # Handle TAR files
     if str(input_file).endswith('.tar.gz') or str(input_file).endswith('.tgz'):
         print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
@@ -284,20 +388,10 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
         tar = None
         tar_members = None
 
-    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
-        first_frame_idx = config_data['frame_trim'][0]
-    else:
-        first_frame_idx = 0
-
-    if nframes - config_data['frame_trim'][1] > first_frame_idx:
-        last_frame_idx = nframes - config_data['frame_trim'][1]
-    else:
-        last_frame_idx = nframes
-
-    nframes = last_frame_idx - first_frame_idx
     alternate_correct = False
 
     if tar is not None:
+        # Handling tar paths
         metadata_path = tar.extractfile(tar_members[tar_names.index('metadata.json')])
         if "depth_ts.txt" in tar_names:
             timestamp_path = tar.extractfile(tar_members[tar_names.index('depth_ts.txt')])
@@ -305,21 +399,28 @@ def handle_extract_metadata(input_file, dirname, config_data, nframes):
             timestamp_path = tar.extractfile(tar_members[tar_names.index('timestamps.csv')])
             alternate_correct = True
     else:
+        # Handling non-compressed session paths
         metadata_path = os.path.join(dirname, 'metadata.json')
         timestamp_path = os.path.join(dirname, 'depth_ts.txt')
         alternate_timestamp_path = os.path.join(dirname, 'timestamps.csv')
+        # Checks for alternative timestamp file if original .txt extension does not exist
         if not os.path.exists(timestamp_path) and os.path.exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
 
-    return metadata_path, timestamp_path, alternate_correct, tar, nframes, first_frame_idx, last_frame_idx
+    acquisition_metadata = load_metadata(metadata_path)
+    timestamps = load_timestamps(timestamp_path, col=0)
+
+    return input_file, acquisition_metadata, timestamps, alternate_correct, tar
 
 
 # extract h5 helper function
 def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
                       nframes, true_depth, roi, bground_im, first_frame, timestamps, extract=None):
     '''
-    Creates h5 file that holds all extracted frames and other metadata (such as scalars).
+    This is a helper function for extract_wrapper(); handles writing the following metadata
+    to an open results_00.h5 file:
+    Acquisition metadata, extraction metadata, computed scalars, timestamps, and original frames/frames_mask.
 
     Parameters
     ----------
