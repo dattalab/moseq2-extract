@@ -143,7 +143,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             strel_erode, erode_iterations, noise_tolerance, compute_raw_scalars):
 
     click_data = click.get_current_context().params
-    extract_wrapper(input_file, output_dir, click_data, extract=extract)
+    extract_wrapper(input_file, output_dir, click_data)
 
 
 

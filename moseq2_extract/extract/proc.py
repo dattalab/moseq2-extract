@@ -247,20 +247,22 @@ def get_roi(depth_image,
     rois = []
     bboxes = []
 
+    # Perform image processing on each found ROI
     for shape in shape_index:
         roi = np.zeros_like(depth_image)
         roi[region_properties[shape].coords[:, 0],
             region_properties[shape].coords[:, 1]] = 1
         if strel_dilate is not None:
-            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters)
+            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters) # Dilate
         if strel_erode is not None:
-            roi = cv2.erode(roi, strel_erode, iterations=erode_iters)
+            roi = cv2.erode(roi, strel_erode, iterations=erode_iters) # Erode
         if fill_holes:
-            roi = scipy.ndimage.morphology.binary_fill_holes(roi)
+            roi = scipy.ndimage.morphology.binary_fill_holes(roi) # Fill Holes
 
         rois.append(roi)
         bboxes.append(get_bbox(roi))
 
+    # Remove largest overlapping found ROI
     if overlap_roi is not None:
         overlaps = np.zeros_like(areas)
 

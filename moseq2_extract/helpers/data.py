@@ -22,7 +22,8 @@ from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
 # extract_wrapper helper function
 def check_completion_status(status_filename):
     '''
-    Returns a boolean indicating whether the session has been fully extracted
+    Reads a results_00.yaml (status file) and checks whether the session has been
+    fully extracted. Returns True if yes, and False if not and if the file doesn't exist.
 
     Parameters
     ----------
@@ -58,6 +59,21 @@ def get_selected_sessions(to_extract, extract_all):
     selected_sess_idx, excluded_sess_idx, ret_extract = [], [], []
 
     def parse_input(s):
+        '''
+        Parses user input, looking for specifically numbered sessions, ranges of sessions,
+        and/or sessions to exclude.
+
+        Function will alter the parent functions variables {selected_sess_idx, excluded_sess_idx} according to the
+        user input.
+        Parameters
+        ----------
+        s (str): User input session indices.
+        Examples: "1", or "1,2,3" == "1-3", or "e 1-3" to exclude sessions 1-3.
+
+        Returns
+        -------
+
+        '''
         if 'e' not in s and '-' not in s:
             if isinstance(literal_eval(s), int):
                 selected_sess_idx.append(int(s))
@@ -118,6 +134,8 @@ def get_pca_uuids(dicts, pca_file, all_uuids):
     If file is not found, then uuids to use in later PCA step will come from
     the loaded results_00.yaml files in dicts.
 
+    Note: This is a direct helper function for generate_index_wrapper().
+
     Parameters
     ----------
     dicts (list): list of dictionaries containing extraction results metadata
@@ -148,6 +166,8 @@ def build_index_dict(filter, files_to_use, pca_file):
     creates a dictionary that will be saved later as the index file.
     It will contain all the inputted file paths with their respective uuids, group names, and metadata.
 
+    Note: This is a direct helper function for generate_index_wrapper().
+
     Parameters
     ----------
     filter (list): list of metadata keys to conditionally filter.
@@ -172,7 +192,7 @@ def build_index_dict(filter, files_to_use, pca_file):
                 'path': (file_tup[0], file_tup[1]),
                 'uuid': file_tup[2]['uuid'],
                 'group': 'default',
-                'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'}
+                'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'} # fallback metadata
             })
 
             index_uuids.append(file_tup[2]['uuid'])
@@ -185,10 +205,11 @@ def build_index_dict(filter, files_to_use, pca_file):
                             tmp = re.match(filt[1], v)
                             if tmp is not None:
                                 v = tmp[0]
-
+                    # setting metadata values in a nested dict
                     output_dict['files'][i]['metadata'][k] = v
             else:
                 print('skipping', file_tup[0])
+                warnings.warn('Could not locate file metadata! File will be listed with minimal default metadata.')
 
     return output_dict
 
@@ -224,6 +245,7 @@ def load_h5s(to_load, snake_case=True):
         if snake_case:
             tmp = keymap(camel_to_snake, tmp)
 
+        # Specific use case block: Behavior reinforcement experiments
         feedback_file = os.path.join(os.path.dirname(_h5f), '..', 'feedback_ts.txt')
         if os.path.exists(feedback_file):
             timestamps = map(int, load_timestamps(feedback_file, 0))
@@ -256,18 +278,24 @@ def build_manifest(loaded, format, snake_case=True):
     fallback = 'session_{:03d}'
     fallback_count = 0
 
-    # you know, bonus internal only stuff for the time being...
+    # Additional metadata for certain use cases
     additional_meta = []
+
+    # Behavior reinforcement metadata
     additional_meta.append({
         'filename': 'feedback_ts.txt',
         'var_name': 'realtime_feedback',
         'dtype': np.bool,
     })
+
+    # Pre-trained model real-time syllable classification results
     additional_meta.append({
         'filename': 'predictions.txt',
         'var_name': 'realtime_predictions',
         'dtype': np.int,
     })
+
+    # Real-Time Recorded/Computed PC Scores
     additional_meta.append({
         'filename': 'pc_scores.txt',
         'var_name': 'realtime_pc_scores',
@@ -306,7 +334,7 @@ def build_manifest(loaded, format, snake_case=True):
 
 def copy_manifest_results(manifest, output_dir):
     '''
-    Copies all considated manifest results to their respective output files.
+    Copies all consolidated manifest results to their respective output files.
 
     Parameters
     ----------
@@ -332,7 +360,6 @@ def copy_manifest_results(manifest, output_dir):
 
         h5_path = k
         mp4_path = os.path.join(dirname, '{}.mp4'.format(basename))
-        # yaml_path = os.path.join(dirname, '{}.yaml'.format(basename))
 
         if os.path.exists(h5_path):
             new_h5_path = os.path.join(output_dir, '{}.h5'.format(v['copy_path']))
@@ -416,7 +443,7 @@ def handle_extract_metadata(input_file, dirname):
 
 # extract h5 helper function
 def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
-                      nframes, true_depth, roi, bground_im, first_frame, timestamps, extract=None):
+                      nframes, true_depth, roi, bground_im, first_frame, timestamps):
     '''
     This is a helper function for extract_wrapper(); handles writing the following metadata
     to an open results_00.h5 file:
@@ -444,18 +471,23 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
     '''
 
     f.create_dataset('metadata/uuid', data=status_dict['uuid'])
+
+    # Creating scalar dataset
     for scalar in scalars:
         f.create_dataset(f'scalars/{scalar}', (nframes,), 'float32', compression='gzip')
         f[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
+    # Timestamps
     if timestamps is not None:
         f.create_dataset('timestamps', compression='gzip', data=timestamps)
         f['timestamps'].attrs['description'] = "Depth video timestamps"
 
+    # Cropped Frames
     f.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
                      config_data['frame_dtype'], compression='gzip')
     f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
+    # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:
         f.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'float32',
                          compression='gzip')
@@ -465,31 +497,37 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
                          compression='gzip')
         f['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
 
+    # Flip Classifier
     if config_data['flip_classifier'] is not None:
         f.create_dataset('metadata/extraction/flips', (nframes,), 'bool', compression='gzip')
         f['metadata/extraction/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
 
+    # True Depth
     f.create_dataset('metadata/extraction/true_depth', data=true_depth)
     f['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
 
+    # ROI
     f.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
     f['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
 
+    # First Frame
     f.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
     f['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
 
+    # Background
     f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
     f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
 
+    # Extract Version
     extract_version = np.string_(get_distribution('moseq2-extract').version)
     f.create_dataset('metadata/extraction/extract_version', data=extract_version)
     f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
-    if extract is not None:
-        dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
-    else:
-        dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters')
+    # Extraction Parameters
+    from moseq2_extract.cli import extract
+    dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
 
+    # Acquisition Metadata
     for key, value in acquisition_metadata.items():
         if type(value) is list and len(value) > 0 and type(value[0]) is str:
             value = [n.encode('utf8') for n in value]

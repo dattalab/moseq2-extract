@@ -11,7 +11,12 @@ import statsmodels.stats.correlation_tools as stats_tools
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     '''
-    Single iteration of EM tracker
+    EM tracker iteration function. Function will iteratively update the mean
+    and covariance variables using Expectation Maximization up to the max inputted number
+    of iterations.
+
+    Note: the rate/probability at which the mean and cov are updated are dependent on the tolerance
+    variable epsilon.
 
     Parameters
     ----------
@@ -45,8 +50,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
         ll = np.sum(np.log(pxtheta_raw+1e-300))
         delta_likelihood = (ll-prev_likelihood)
 
-        if (delta_likelihood >= 0 and
-                delta_likelihood < epsilon*abs(prev_likelihood)):
+        if delta_likelihood >= 0 and delta_likelihood < epsilon * abs(prev_likelihood):
             break
 
         prev_likelihood = ll
@@ -58,6 +62,8 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
     '''
     Initialize EM Mask.
+
+    Estimates depth frame contours using OpenCV, and selects the largest chosen contour to create a mask.
 
     Parameters
     ----------
@@ -77,6 +83,7 @@ def em_init(depth_frame, depth_floor, depth_ceiling,
 
     cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     tmp = np.array([cv2.contourArea(x) for x in cnts])
+
     try:
         use_cnt = tmp.argmax()
         mouse_mask = np.zeros_like(mask)

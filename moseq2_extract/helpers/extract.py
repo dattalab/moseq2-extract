@@ -4,11 +4,8 @@ These functions are primarily called from inside the extract_wrapper() function.
 '''
 
 import os
-import datetime
 import warnings
 import numpy as np
-from copy import deepcopy
-import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from moseq2_extract.extract.proc import apply_roi
 from moseq2_extract.extract.extract import extract_chunk

@@ -11,7 +11,7 @@ from moseq2_extract.io.image import read_image
 from moseq2_extract.helpers.data import create_extract_h5
 from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import generate_config_command, download_flip_command
-from moseq2_extract.util import escape_path, scalar_attributes, gen_batch_sequence, load_metadata
+from moseq2_extract.util import scalar_attributes, gen_batch_sequence, load_metadata
 from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches
 
 class TestHelperExtract(TestCase):
@@ -70,7 +70,7 @@ class TestHelperExtract(TestCase):
 
         with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as g:
             create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
-                              true_depth, roi, bground_im, first_frame, None, extract=None)
+                              true_depth, roi, bground_im, first_frame, None)
             video_pipe = process_extract_batches(g, data_file, config_data, bground_im, roi, scalars, frame_batches,
                                                  first_frame_idx, true_depth, tar, strel_tail, strel_min, output_dir,
                                                  output_filename)

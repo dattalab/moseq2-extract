@@ -20,11 +20,11 @@ from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.util import select_strel, gen_batch_sequence, load_metadata, load_timestamps, scalar_attributes, \
-                        convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, clean_dict, \
-                        h5_to_dict, graduate_dilated_wall_area, set_bg_roi_weights, get_frame_range_indices
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
                             copy_manifest_results, build_index_dict, check_completion_status, get_pca_uuids
+from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
+                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
+                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices
 
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
@@ -88,7 +88,9 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
 
-    # Checking for a pre-existing PCA scores file to load only the files that the PCA was trained on.
+    # Checking for a pre-existing PCA scores file to load
+    # only the files that the PCA was trained on.
+    # If pca doesn't exist, then all_uuids is returned.
     pca_uuids = get_pca_uuids(dicts, pca_file, all_uuids)
 
     try:
@@ -116,6 +118,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
 
     print(f'Number of sessions included in index file: {len(files_to_use)}')
 
+    # Create index file in dict form
     output_dict = build_index_dict(filter, files_to_use, pca_file)
 
     # write out index yaml
@@ -229,6 +232,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
         print('Using plane fit for background...')
         bground_im = set_bground_to_plane_fit(bground_im, plane, output_dir)
 
+    # Sort ROIs by largest mean area to later select largest one (bg_roi_index)
     if config_data['bg_sort_roi_by_position']:
         rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
         rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
@@ -241,15 +245,14 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
 
     for idx in bg_roi_index:
         roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(os.path.join(output_dir, roi_filename),
-                    rois[idx], scale=True, dtype='uint8')
+        write_image(os.path.join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
 
     if gui:
         return output_dir # GUI
     if extract_helper:
         return roi, bground_im, first_frame # HELPER
 
-def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, extract=None, gui=False):
+def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, gui=False):
     '''
     Wrapper function to run extract function for both GUI and CLI.
 
@@ -293,7 +296,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
             warnings.warn('Requested more frames than video includes, extracting whole recording...')
             nframes = int(video_metadata['nframes'])
 
-
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
     input_file, acquisition_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(input_file, dirname)
@@ -331,7 +333,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
     if check_completion_status(status_filename):
-        if gui and skip:
+        if gui and skip: # Skipping already extracted session
             print('Skipping...')
             return
         elif not gui:
@@ -364,7 +366,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:
         # Write scalars, roi, acquisition metadata, etc. to h5 file
         create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
-                          true_depth, roi, bground_im, first_frame, timestamps, extract=extract)
+                          true_depth, roi, bground_im, first_frame, timestamps)
 
         # Generate crop-rotated result
         video_pipe = process_extract_batches(f, input_file, config_data, bground_im, roi, scalars, frame_batches,

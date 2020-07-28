@@ -175,18 +175,21 @@ def extract_chunk(chunk, use_em_tracker=False, prefilter_space=(3,),
         flips = None
 
     if compute_raw_scalars:
+        # Computing scalars from raw data
         scalars = compute_scalars(cropped_frames,
                                   features,
                                   min_height=min_height,
                                   max_height=max_height,
                                   true_depth=true_depth)
     else:
+        # Computing scalars from filtered data
         scalars = compute_scalars(cropped_filtered_frames,
                                   features,
                                   min_height=min_height,
                                   max_height=max_height,
                                   true_depth=true_depth)
 
+    # Store all results in a dictionary
     results = {
         'depth_frames': cropped_frames,
         'mask_frames': mask,
