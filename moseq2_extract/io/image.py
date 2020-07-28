@@ -10,6 +10,33 @@ import json
 import numpy as np
 from skimage.external import tifffile
 
+def read_tiff_files(input_dir):
+    '''
+    Reads ROI output results (Tiff files) located in the given input_directory
+     into array variables to be graphed in a jupyter notebook.
+
+    Parameters
+    ----------
+    input_dir (str): path to directory containing ROI files AKA tiff files.
+
+    Returns
+    -------
+    images (list): list of 2d arrays read from each located tiff file.
+    filenames (list): list of corresponding filenames to each read image.
+    '''
+
+    images = []
+    filenames = []
+    for infile in os.listdir(input_dir):
+        if infile[-4:] == "tiff":
+            im = read_image(os.path.join(input_dir, infile))
+            if len(im.shape) == 2:
+                images.append(im)
+            elif len(im.shape) == 3:
+                images.append(im[0])
+            filenames.append(infile)
+
+    return images, filenames
 
 def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', compress=0):
     '''

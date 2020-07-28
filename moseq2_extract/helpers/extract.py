@@ -117,7 +117,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
     return video_pipe
 
 
-def run_local_extract(to_extract, params, prefix, skip_extracted=False):
+def run_local_extract(to_extract, config_file, skip_extracted=False):
     '''
     Runs the extract command on given list of sessions to extract on a local platform.
     This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
@@ -125,8 +125,7 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False):
     Parameters
     ----------
     to_extract (list): list of paths to files to extract
-    params (dict): dictionary of ROI metadata from config file.
-    prefix (str): prefix to CLI extraction command.
+    config_file (str): path to configuration file containing pre-configured extract and ROI
     skip_extracted (bool): Whether to skip already extracted session.
 
     Returns
@@ -134,49 +133,10 @@ def run_local_extract(to_extract, params, prefix, skip_extracted=False):
     None
     '''
 
-    # make the temporary directory if it doesn't already exist
-    temp_storage = os.path.expanduser('~/tmp/')
-    if not os.path.exists(temp_storage):
-        os.makedirs(temp_storage)
-
-    suffix = '_{:%Y-%m-%d_%H-%M-%S}'.format(datetime.datetime.now())
-    config_store = os.path.join(temp_storage, f'job_config{suffix}.yaml')
-
-    with open(config_store, 'w') as f:
-        yaml.safe_dump(params, f)
-
-    base_command = ''
-
     for i, ext in tqdm(enumerate(to_extract), total=len(to_extract), desc='Extracting Sessions'):
-
-        base_command = ''
-
-        if prefix is not None:
-            base_command += '{}; '.format(prefix)
-
-        if isinstance(params['bg_roi_index'], int):
-            params['bg_roi_index'] = [params['bg_roi_index']]
-
-        if len(params['bg_roi_index']) > 1:
-            base_command += 'moseq2-extract find-roi --config-file {} {}; '.format(
-                config_store, ext)
-
-        for roi in params['bg_roi_index']:
-            roi_config = deepcopy(params)
-            roi_config['bg_roi_index'] = roi
-            roi_config_store = os.path.join(
-                temp_storage, 'job_config{}_roi{:d}.yaml'.format(suffix, roi))
-            with open(roi_config_store, 'w') as f:
-                yaml.safe_dump(roi_config, f)
-
-            base_command += 'moseq2-extract extract --config-file {} --bg-roi-index {:d} {}; ' \
-                .format(roi_config_store, roi, ext)
-
-            try:
-                from moseq2_extract.gui import extract_command
-                extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), roi_config_store, skip=skip_extracted)
-            except Exception as e:
-                print('Unexpected error:', e)
-                print('could not extract', to_extract[i])
-
-    return base_command
+        try:
+            from moseq2_extract.gui import extract_command
+            extract_command(ext, str(to_extract[i].replace(ext, 'proc/')), config_file=config_file, skip=skip_extracted)
+        except Exception as e:
+            print('Unexpected error:', e)
+            print('could not extract', to_extract[i])

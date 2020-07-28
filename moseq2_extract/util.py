@@ -11,6 +11,7 @@ import h5py
 import click
 import warnings
 import numpy as np
+from glob import glob
 from copy import deepcopy
 import ruamel.yaml as yaml
 from typing import Pattern
@@ -221,6 +222,30 @@ def load_metadata(metadata_file):
         metadata = json.load(metadata_file)
 
     return metadata
+
+def load_found_session_paths(input_dir, exts):
+    '''
+    Given an input directory and file extensions, this function will return all
+    depth file paths found in the inputted parent (input) directory.
+    Parameters
+    ----------
+    input_dir (str): path to parent directory holding all the session folders.
+    exts (list or str): list of extensions to search for, or a single extension in string form.
+
+    Returns
+    -------
+    files (list): sorted list of all paths to found depth files
+    '''
+
+    files = []
+    if isinstance(exts, list):
+        for ext in exts:
+            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
+    else:
+        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
+
+    files = sorted(files)
+    return files
 
 
 def select_strel(string='e', size=(10, 10)):
