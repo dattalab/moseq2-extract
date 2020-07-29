@@ -38,7 +38,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
         }
         if str(filename).endswith('.mkv'):
             try:
-                vid = cv2.VideoCapture(filename)
+                vid = cv2.VideoCapture(filename).read()
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
                                 vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
                                 vid.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -147,32 +147,6 @@ def get_video_info(filename):
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
             'nframes': out[3]}
 
-def convert_mkv_to_avi(filename):
-    '''
-    Converts Azure MKV video file format to AVI.
-
-    Parameters
-    ----------
-    filename (str) path to mkv file to convert
-
-    Returns
-    -------
-    outpath (str): path to converted AVI video file.
-    '''
-
-    outpath = os.path.join(os.path.dirname(filename),'proc/depth.avi')
-    command = ['ffmpeg',
-               '-i', filename,
-               '-map', '0:0',
-               '-vsync', '0',
-               outpath]
-
-    pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = pipe.communicate()
-
-    return outpath
-
-
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
                  pixel_format='gray16le', codec='ffv1', close_pipe=True,
@@ -270,8 +244,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
             finfo = get_raw_info(filename)
     else:
         finfo = get_raw_info(filename)
-        tmp = get_video_info(filename)
-        frame_size = tmp['dims']
+        frame_size = finfo['dims']
 
     if frames is None or len(frames) == 0:
         finfo = get_video_info(filename)
@@ -280,40 +253,26 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     if not frame_size:
         frame_size = finfo['dims']
 
-    if not filename.endswith('.mkv'):
-        command = [
-            'ffmpeg',
-            '-loglevel', 'fatal',
-            '-ss', str(datetime.timedelta(seconds=frames[0]/fps)),
-            '-i', filename,
-            '-vframes', str(len(frames)),
-            '-f', 'image2pipe',
-            '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
-            '-pix_fmt', pixel_format,
-            '-threads', str(threads),
-            '-slices', str(slices),
-            '-slicecrc', str(slicecrc),
-            '-vcodec', 'rawvideo',
-            '-'
-        ]
-    else:
-        command = [
-            'ffmpeg',
-            '-loglevel', 'fatal',
-            '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
-            '-i', filename,
-            '-map', '0:0',
-            '-vframes', str(len(frames)),
-            '-f', 'image2pipe',
-            '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
-            '-pix_fmt', pixel_format,
-            '-threads', str(threads),
-            '-slices', str(slices),
-            '-slicecrc', str(slicecrc),
-            '-vsync', '0',
-            '-vcodec', 'rawvideo',
-            '-'
-        ]
+    command = [
+        'ffmpeg',
+        '-loglevel', 'fatal',
+        '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
+        '-i', filename,
+        '-vframes', str(len(frames)),
+        '-f', 'image2pipe',
+        '-s', '{:d}x{:d}'.format(frame_size[0], frame_size[1]),
+        '-pix_fmt', pixel_format,
+        '-threads', str(threads),
+        '-slices', str(slices),
+        '-slicecrc', str(slicecrc),
+        '-vcodec', 'rawvideo',
+    ]
+
+    if filename.endswith('.mkv'):
+        command += ['-map', '0:0']
+        command += ['-vsync', '0']
+
+    command += ['-']
 
     if get_cmd:
         return command
@@ -390,7 +349,6 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                '-slices', str(slices),
                '-slicecrc', str(slicecrc),
                '-r', str(fps),
-               '-pix_fmt', 'yuv420p',
                filename]
 
     if get_cmd:

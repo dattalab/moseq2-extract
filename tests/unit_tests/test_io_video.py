@@ -53,11 +53,10 @@ class TestVideoIO(TestCase):
 
     def test_write_frames_preview(self):
 
-
         data_path = 'data/fake_preview_depth.avi'
 
         test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
-        write_frames_preview(data_path, test_data, fps=30)
+        write_frames_preview(data_path, test_data, fps=30, frame_range=range(len(test_data)))
         os.remove(data_path)
 
     def test_get_movie_info(self):
