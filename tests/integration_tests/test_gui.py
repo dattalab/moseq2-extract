@@ -4,6 +4,7 @@ import shutil
 import ruamel.yaml as yaml
 from unittest import TestCase
 from .test_cli import write_fake_movie
+from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
 from moseq2_extract.gui import update_progress, check_progress, generate_config_command, view_extraction, \
     generate_index_command, aggregate_extract_results_command, get_found_sessions, download_flip_command,\
     find_roi_command, sample_extract_command, extract_command, extract_found_sessions
@@ -287,6 +288,7 @@ class GUITests(TestCase):
             config_data = yaml.safe_load(f)
 
         config_data['flip_classifier'] = flip_file
+        config_data['use_plane_bground'] = True
 
         with open(configfile, 'w') as f:
             yaml.safe_dump(config_data, f)
@@ -334,3 +336,10 @@ class GUITests(TestCase):
         extract_found_sessions(data_filepath, config_path, '.dat', skip_extracted=True)
         os.remove(data_filepath)
         os.remove(config_path)
+
+    def test_copy_h5_metadata_to_yaml(self):
+        input_dir = 'data/proc/'
+        h5_metadata_path = '/metadata/acquisition/'
+
+        # Functionality check
+        copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path)

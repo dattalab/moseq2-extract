@@ -68,6 +68,7 @@ def process_extract_batches(f, input_file, config_data, bground_im, roi, scalars
                                 **config_data,
                                 prefilter_space=config_data['spatial_filter_size'],
                                 prefilter_time=config_data['temporal_filter_size'],
+                                use_em_tracker=config_data['use_tracking_model'],
                                 tracking_init_mean=tracking_init_mean,
                                 tracking_init_cov=tracking_init_cov,
                                 strel_tail=strel_tail,

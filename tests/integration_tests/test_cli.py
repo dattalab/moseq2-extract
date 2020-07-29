@@ -95,7 +95,8 @@ class CLITests(TestCase):
         assert os.path.isfile(data_path), "fake movie was not written"
 
         runner = CliRunner()
-        result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/'],
+        result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
+                                         '--use-tracking-model', True],
                                catch_exceptions=False)
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
@@ -122,7 +123,6 @@ class CLITests(TestCase):
         os.remove(data_path)
 
     def test_download_flip_file(self):
-
 
         data_path = 'data/config.yaml'
         out_path = 'data/flip/'

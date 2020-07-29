@@ -1,6 +1,9 @@
 '''
 CLI front-end operations. This module contains all the functionality and configurable parameters
 users can alter to most accurately process their data.
+
+Note: These functions simply read all the parameters into a dictionary,
+ and then call the corresponding wrapper function with the given input parameters.
 '''
 
 import os
@@ -31,6 +34,19 @@ def cli():
     pass
 
 def common_roi_options(function):
+    '''
+    Decorator function for grouping shared ROI related parameters.
+    The parameters included in this function are shared between the find_roi and extract CLI commands.
+
+    Parameters
+    ----------
+    function: Function to add enclosed parameters to as click options.
+
+    Returns
+    -------
+    function: Updated function including shared parameters.
+    '''
+
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
                             help='Size of strel to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
@@ -70,6 +86,19 @@ def common_roi_options(function):
     return function
 
 def common_avi_options(function):
+    '''
+    Decorator function for grouping shared video processing parameters.
+    The included parameters are shared between convert_raw_to_avi() and copy_slice()
+
+    Parameters
+    ----------
+    function: Function to add enclosed parameters to as click options.
+
+    Returns
+    -------
+    function: Updated function including shared parameters.
+    '''
+
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
@@ -99,7 +128,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
             This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
-@click.option('--compute-raw-scalars', default=False, type=bool, help="Compute scalar values from raw cropped frames.")
+@click.option('--compute-raw-scalars', default=False, type=bool, is_flag=True, help="Compute scalar values from raw cropped frames.")
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
@@ -145,8 +174,6 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data)
 
-
-
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
@@ -189,7 +216,6 @@ def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath)
 def aggregate_extract_results(input_dir, format, output_dir):
 
     aggregate_extract_results_wrapper(input_dir, format, output_dir)
-
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
