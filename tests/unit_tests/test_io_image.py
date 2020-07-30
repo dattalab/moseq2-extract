@@ -3,7 +3,7 @@ import numpy as np
 import numpy.testing as npt
 from unittest import TestCase
 from skimage.external import tifffile
-from moseq2_extract.io.image import write_image, read_image
+from moseq2_extract.io.image import write_image, read_image, read_tiff_files
 
 class TestImageIO(TestCase):
     def test_write_image(self):
@@ -43,3 +43,9 @@ class TestImageIO(TestCase):
 
         npt.assert_almost_equal(rnd_img, image, 3)
         os.remove(data_path)
+
+    def test_read_tiff_files(self):
+        tiff_dir = 'data/tiffs/'
+
+        images, paths = read_tiff_files(tiff_dir)
+        assert len(images) == len(paths) == 10

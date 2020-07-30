@@ -2,13 +2,57 @@ import os
 import sys
 import shutil
 import tarfile
+import ruamel.yaml as yaml
 from unittest import TestCase
 from moseq2_extract.util import load_metadata
 from ..integration_tests.test_cli import write_fake_movie
-from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, \
-    build_manifest, copy_manifest_results, handle_extract_metadata
+from moseq2_extract.helpers.data import get_selected_sessions, load_h5s, check_completion_status, \
+                build_manifest, copy_manifest_results, handle_extract_metadata, get_pca_uuids, build_index_dict
 
 class TestHelperData(TestCase):
+
+    def test_check_completion_status(self):
+        test_file = 'data/proc/results_00.yaml'
+        assert check_completion_status(test_file) == True
+
+        tmp_file = 'data/test_file.yaml' # non-existent
+        assert check_completion_status(tmp_file) == False
+
+    def test_get_pca_uuids(self):
+        test_file = 'data/proc/results_00.yaml'
+
+        with open(test_file, 'r') as f:
+            dict = yaml.safe_load(f)
+
+        uuids = get_pca_uuids([dict], '', [dict['uuid']])
+        print(uuids)
+
+        assert len(uuids) == 1
+        assert uuids[0] == dict['uuid']
+
+        uuids = get_pca_uuids([dict], '', None)
+        assert len(uuids) == 1
+        assert uuids[0] == dict['uuid']
+
+    def test_build_index_dict(self):
+        pca_file = ''
+        filter = ('SessionName')
+
+        test_file = 'data/proc/results_00.yaml'
+
+        with open(test_file, 'r') as f:
+            dict = yaml.safe_load(f)
+
+        test_files = [('data/proc/results_00.h5',
+                       'data/proc/results_00.yaml',
+                       dict)]
+
+        index = build_index_dict(test_files, pca_file, filter)
+
+        assert len(index['files']) == 1
+        assert index['pca_path'] == ''
+        assert index['files'][0]['uuid'] == dict['uuid']
+
     def test_get_selected_sessions(self):
 
         to_extract = ['test1', 'test2', 'test3', 'test4', 'test5']

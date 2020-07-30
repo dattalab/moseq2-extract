@@ -10,8 +10,8 @@ from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
 from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
-    get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
+    select_strel, scalar_attributes, dict_to_h5, click_param_annot, strided_app, \
+    get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, command_with_config, \
     recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, set_bg_roi_weights
 
 class testExtractUtils(TestCase):
@@ -91,7 +91,6 @@ class testExtractUtils(TestCase):
         assert(gen_list == tmp_list)
 
     def test_load_timestamps(self):
-
 
         txt_path = 'data/tmp_timestamps.txt'
 
@@ -230,6 +229,16 @@ class testExtractUtils(TestCase):
         assert os.path.exists('data/tiffs/new_bg.tiff')
         os.remove('data/tiffs/new_bg.tiff')
 
+    def test_strided_app(self):
+        test_in = np.array([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
+
+        test_out = strided_app(test_in, L=5, S=3)
+        expected_out = np.array([[ 1,  2,  3,  4,  5],
+                                 [ 4,  5,  6,  7,  8],
+                                 [ 7,  8,  9, 10, 11]])
+
+        npt.assert_array_equal(test_out, expected_out)
+
     def test_click_param_annot(self):
         ref_dict = {
             'bg_roi_dilate': 'Size of strel to dilate roi',
@@ -255,3 +264,6 @@ class testExtractUtils(TestCase):
         }
         test_dict = click_param_annot(find_roi)
         npt.assert_equal(ref_dict, test_dict)
+
+    def test_command_with_config(self):
+        command_with_config(find_roi)

@@ -119,7 +119,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     print(f'Number of sessions included in index file: {len(files_to_use)}')
 
     # Create index file in dict form
-    output_dict = build_index_dict(filter, files_to_use, pca_file)
+    output_dict = build_index_dict(files_to_use, pca_file, filter)
 
     # write out index yaml
     with open(output_file, 'w') as f:

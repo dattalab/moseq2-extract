@@ -160,7 +160,7 @@ def get_pca_uuids(dicts, pca_file, all_uuids):
 
     return pca_uuids
 
-def build_index_dict(filter, files_to_use, pca_file):
+def build_index_dict(files_to_use, pca_file, filter=[]):
     '''
     Given a list of files and respective metadatas to include in an index file,
     creates a dictionary that will be saved later as the index file.
@@ -170,9 +170,9 @@ def build_index_dict(filter, files_to_use, pca_file):
 
     Parameters
     ----------
-    filter (list): list of metadata keys to conditionally filter.
     files_to_use (list): list of paths to extracted h5 files.
     pca_file (str): path to pca scores file.
+    filter (list or tuple): list of metadata keys to conditionally filter. (Empty in most cases)
 
     Returns
     -------
