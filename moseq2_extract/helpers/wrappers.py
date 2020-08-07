@@ -4,7 +4,6 @@ These functions perform all the data processing from start to finish, and are sh
 '''
 
 import os
-import sys
 import uuid
 import h5py
 import shutil
@@ -83,7 +82,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-    # gather than h5s and the pca scores file
+    # gather the h5s and the pca scores file
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
 
@@ -284,13 +283,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     video_metadata = get_movie_info(input_file)
 
     # Getting number of frames to extract
-    if num_frames == None:
+    if num_frames is None:
         nframes = int(video_metadata['nframes'])
-    else:
-        nframes = num_frames
-        if nframes > int(video_metadata['nframes']):
-            warnings.warn('Requested more frames than video includes, extracting whole recording...')
-            nframes = int(video_metadata['nframes'])
+    elif num_frames > video_metadata['nframes']:
+        warnings.warn('Requested more frames than video includes, extracting whole recording...')
+        nframes = int(video_metadata['nframes'])
 
     config_data = check_filter_sizes(config_data)
 
@@ -315,7 +312,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     scalars = list(scalars_attrs.keys())
 
     # Get frame chunks to extract
-    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap']))
+    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap'], offset=first_frame_idx))
 
     # set up the output directory
     if output_dir is None:
@@ -330,14 +327,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     output_filename = f'results_{config_data["bg_roi_index"]:02d}'
     status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
-    if check_completion_status(status_filename):
-        if gui and skip: # Skipping already extracted session
-            print('Skipping...')
-            return
-        elif not gui:
-            overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
-            if overwrite != '':
-                sys.exit(0)
+    # Check if session has already been extracted
+    if check_completion_status(status_filename) and skip:
+        print('Skipping...')
+        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
@@ -350,7 +343,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
     }
 
-    roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir, extract_helper=True)
+    # Compute ROIs
+    roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir)
 
     # Debugging option: DTD has no effect on extraction results unless dilate iterations > 1
     if config_data.get('detected_true_depth', 'auto') == 'auto':
@@ -452,9 +446,13 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
 
     # prompt for user selection if not already inputted
     while selected_flip is None:
-        selected_flip = int(input('Enter a selection '))
-        if selected_flip > len(flip_files.keys()):
-            selected_flip = None
+        try:
+            selected_flip = int(input('Enter a selection '))
+            if selected_flip > len(flip_files.keys()):
+                selected_flip = None
+        except ValueError:
+            print('Please enter a number')
+            continue
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -475,7 +473,6 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
 
         with open(config_file, 'w') as f:
             yaml.safe_dump(config_data, f)
-
-    except:
-        print('Unexpected error:', sys.exc_info()[0])
+    except Exception as e:
+        print('Unexpected error:', e)
         return 'Could not update configuration file flip classifier path'
