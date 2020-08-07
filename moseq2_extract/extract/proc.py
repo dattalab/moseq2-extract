@@ -158,6 +158,29 @@ def get_bbox(roi):
         bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
         return bbox
 
+def threshold_chunk(chunk, min_height, max_height, dilate_iterations):
+    '''
+    Thresholds out depth values that are less than min_height and larger than
+    max_height.
+
+    Parameters
+    ----------
+    chunk (3D np.ndarray): Chunk of frames to threshold (nframes, width, height)
+    min_height (int): Minimum depth values to include after thresholding.
+    max_height (int): Maximum depth values to include after thresholding.
+    dilate_iterations (int): Number of iterations the ROI was dilated.
+
+    Returns
+    -------
+    chunk (3D np.ndarray): Updated frame chunk.
+    '''
+
+    chunk[chunk < min_height] = 0
+    if dilate_iterations <= 1:
+        chunk[chunk > max_height] = max_height
+    else:
+        chunk[chunk > max_height] = 0
+
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),

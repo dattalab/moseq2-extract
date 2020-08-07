@@ -24,8 +24,7 @@ from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_
                             copy_manifest_results, build_index_dict, check_completion_status, get_pca_uuids
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices
-
+                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -212,13 +211,13 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
 
     print('Getting roi...')
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
-    strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['strel_erode']))
+    strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
     rois, plane, _, _, _, _ = get_roi(bground_im,
                                   strel_dilate=strel_dilate,
+                                  strel_erode=strel_erode,
                                   dilate_iters=config_data['dilate_iterations'],
                                   erode_iters=config_data['erode_iterations'],
-                                  strel_erode=strel_erode if config_data['erode_iterations'] > 0 else None,
                                   noise_tolerance=config_data['noise_tolerance'],
                                   weights=config_data['bg_roi_weights'],
                                   depth_range=config_data['bg_roi_depth_range'],
@@ -296,9 +295,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
             warnings.warn('Requested more frames than video includes, extracting whole recording...')
             nframes = int(video_metadata['nframes'])
 
+    config_data = check_filter_sizes(config_data)
+
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    input_file, acquisition_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(input_file, dirname)
+    input_file, acquisition_metadata, timestamps, alternate_correct, config_data['tar'] = handle_extract_metadata(input_file, dirname)
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -344,37 +345,57 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
-    strel_tail = select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size']))
-    strel_min = select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
+    # Get Structuring Elements for extraction
+    str_els = {
+        'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
+        'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
+        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
+        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
+    }
 
     roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir, extract_helper=True)
 
     # Debugging option: DTD has no effect on extraction results unless dilate iterations > 1
     if config_data.get('detected_true_depth', 'auto') == 'auto':
-        true_depth = np.median(bground_im[roi > 0])
+        config_data['true_depth'] = np.median(bground_im[roi > 0])
     else:
-        true_depth = int(config_data['detected_true_depth'])
+        config_data['true_depth'] = int(config_data['detected_true_depth'])
 
-    print('Detected true depth:', true_depth)
+    print('Detected true depth:', config_data['true_depth'])
 
     if config_data.get('dilate_iterations', 0) > 1:
         print('Dilating background')
-        bground_im = graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir)
+        bground_im = graduate_dilated_wall_area(bground_im, config_data, str_els['strel_dilate'], output_dir)
+
+    extraction_data = {
+        'bground_im': bground_im,
+        'roi': roi,
+        'first_frame': first_frame,
+        'first_frame_idx': first_frame_idx,
+        'nframes': nframes,
+        'frame_batches': frame_batches
+    }
 
     # farm out the batches and write to an hdf5 file
     with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:
         # Write scalars, roi, acquisition metadata, etc. to h5 file
-        create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
-                          true_depth, roi, bground_im, first_frame, timestamps)
+        create_extract_h5(**extraction_data,
+                          h5_file=f,
+                          acquisition_metadata=acquisition_metadata,
+                          config_data=config_data,
+                          status_dict=status_dict,
+                          scalars_attrs=scalars_attrs,
+                          timestamps=timestamps)
 
-        # Generate crop-rotated result
-        video_pipe = process_extract_batches(f, input_file, config_data, bground_im, roi, scalars, frame_batches,
-                                 first_frame_idx, true_depth, tar, strel_tail, strel_min, output_dir, output_filename)
-
-        if video_pipe:
-            video_pipe.stdin.close()
-            video_pipe.wait()
+        # Write crop-rotated results to h5 file and write video preview mp4 file
+        process_extract_batches(**extraction_data,
+                                h5_file=f,
+                                input_file=input_file,
+                                config_data=config_data,
+                                scalars=scalars,
+                                str_els=str_els,
+                                output_dir=output_dir,
+                                output_filename=output_filename)
 
     print('\n')
 
