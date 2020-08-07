@@ -181,6 +181,7 @@ def threshold_chunk(chunk, min_height, max_height, dilate_iterations):
     else:
         chunk[chunk > max_height] = 0
 
+    return chunk
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
