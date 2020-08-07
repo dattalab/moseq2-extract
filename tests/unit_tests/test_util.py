@@ -218,11 +218,11 @@ class testExtractUtils(TestCase):
         roi = read_image('data/tiffs/roi_bucket_01.tiff')
         true_depth = np.median(img[roi > 0])
 
-        config_data = {}
+        config_data = {'true_depth': true_depth}
         strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
         output_dir = 'data/tiffs/'
 
-        new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, true_depth, output_dir)
+        new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, output_dir)
 
         assert new_bg.all() != img.all()
         assert np.median(new_bg) > np.median(img)
@@ -255,7 +255,7 @@ class testExtractUtils(TestCase):
             'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
             'bg_roi_fill_holes': 'Fill holes in ROI',
             'dilate_iterations': 'Number of dilation iterations to increase bucket floor size. (Special Cases Only)',
-            'strel_erode': 'Size of cv2 Structure Element to erode roi. (Special Cases Only)',
+            'bg_roi_erode': 'Size of cv2 Structure Element to erode roi. (Special Cases Only)',
             'erode_iterations': 'Number of erosion iterations to decrease bucket floor size. (Special Cases Only)',
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
