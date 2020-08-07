@@ -380,9 +380,23 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         return pipe
 
 def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
-    """
-    Reads in frames
-    """
+    '''
+
+    Parses file extension to check whether to read the data using ffmpeg (read_frames)
+    or to read the frames directly from the file into a numpy array (read_frames_raw).
+
+    Parameters
+    ----------
+    filename (str): Path to file to read video from.
+    frames (int or list): Frame indices to read in to output array.
+    frame_dims (tuple): Video dimensions (nrows, ncols)
+    bit_depth (int): Number of bits per pixel, corresponds to image resolution.
+    kwargs (dict): Any additional parameters that could be required in read_frames_raw().
+
+    Returns
+    -------
+    frame_data (3D np.ndarray): Read video as numpy array. (nframes, nrows, ncols)
+    '''
 
     try:
         if filename.lower().endswith('.dat'):

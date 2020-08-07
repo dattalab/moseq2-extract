@@ -6,9 +6,9 @@ with some additional preprocessing steps and state-retrieval functionality
 to facilitate Jupyter notebook usage.
 '''
 
+import os
 import json
 import warnings
-from .cli import *
 import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
@@ -157,6 +157,7 @@ def generate_config_command(output_file):
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
+    from .cli import extract
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
