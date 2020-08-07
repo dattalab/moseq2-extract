@@ -170,7 +170,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
     print('Results successfully aggregated in', output_dir)
 
 
-def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract_helper=False):
+def get_roi_wrapper(input_file, config_data, output_dir=None):
     '''
     Wrapper function to compute ROI given depth file.
 
@@ -246,12 +246,9 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
         roi_filename = f'roi_{idx:02d}.tiff'
         write_image(os.path.join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
 
-    if gui:
-        return output_dir # GUI
-    if extract_helper:
-        return roi, bground_im, first_frame # HELPER
+    return roi, bground_im, first_frame
 
-def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, gui=False):
+def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False):
     '''
     Wrapper function to run extract function for both GUI and CLI.
 
@@ -420,8 +417,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(os.path.join(output_dir, 'done.txt'), 'w') as f:
         f.write('done')
 
-    if gui:
-        return output_dir
+    return output_dir
 
 def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     '''

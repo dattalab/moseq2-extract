@@ -411,7 +411,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    output_dir = get_roi_wrapper(input_file, config_data, gui=True)
+    output_dir = get_roi_wrapper(input_file, config_data)
 
     with open(config_file, 'w') as g:
         yaml.safe_dump(config_data, g)
@@ -487,6 +487,6 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip, gui=True)
+    extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
 
     return 'Extraction completed.'
