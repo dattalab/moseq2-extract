@@ -262,15 +262,14 @@ def load_found_session_paths(input_dir, exts):
     files (list): sorted list of all paths to found depth files
     '''
 
-    files = []
-    if isinstance(exts, list):
-        for ext in exts:
-            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
-    else:
-        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
+    if not isinstance(exts, (tuple, list)):
+        exts = [exts]
 
-    files = sorted(files)
-    return files
+    files = []
+    for ext in exts:
+        files.extend(glob(os.path.join(input_dir, '*/*' + ext), recursive=True))
+
+    return sorted(files)
 
 
 def select_strel(string='e', size=(10, 10)):
