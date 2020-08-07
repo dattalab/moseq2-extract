@@ -132,6 +132,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
+@click.option('--use-cc', default=False, type=bool, help="Extract features using largest connected components.")
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
 @click.option('--tracking-model-ll-threshold', default=-100, type=float, help="Threshold on log-likelihood for pixels to use for update during tracking")
 @click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
@@ -163,7 +164,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
             bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
             min_height, max_height, detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
-            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
+            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold, use_cc,
             tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
