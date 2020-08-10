@@ -102,7 +102,7 @@ def common_avi_options(function):
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
-    function = click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')(function)
+    function = click.option('--delete', is_flag=True, help='Delete raw file if encoding is sucessful')(function)
     function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
     return function
 
@@ -128,7 +128,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
             This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
-@click.option('--compute-raw-scalars', default=False, type=bool, is_flag=True, help="Compute scalar values from raw cropped frames.")
+@click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
