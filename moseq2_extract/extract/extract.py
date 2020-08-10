@@ -90,7 +90,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     extracted cropped, oriented and centered RGB video chunk to be written to file.
     '''
 
-    if isinstance(bground, np.ndarray) and (bground.shape == chunk.shape):
+    if isinstance(bground, np.ndarray) and (bground.shape == chunk[0].shape):
         # Perform background subtraction
         chunk = (bground-chunk).astype(frame_dtype)
 
