@@ -185,16 +185,16 @@ def threshold_chunk(chunk, min_height, max_height, dilate_iterations):
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
-            dilate_iters=0,
-            erode_iters=0,
+            dilate_iterations=0,
+            erode_iterations=0,
             strel_erode=None,
             noise_tolerance=30,
-            weights=(1, .1, 1),
+            bg_roi_weights=(1, .1, 1),
             overlap_roi=None,
-            gradient_filter=False,
-            gradient_kernel=7,
-            gradient_threshold=3000,
-            fill_holes=True,
+            bg_roi_gradient_filter=False,
+            bg_roi_gradient_kernel=7,
+            bg_roi_gradient_threshold=3000,
+            bg_roi_fill_holes=True,
             **kwargs):
     '''
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -203,17 +203,17 @@ def get_roi(depth_image,
     ----------
     depth_image (2d np.ndarray): Singular depth image frame.
     strel_dilate (cv2.StructuringElement - Rectangle): dilation shape to use.
-    dilate_iters (int): number of dilation iterations.
+    dilate_iterations (int): number of dilation iterations.
+    erode_iterations (int): number of erosion iterations.
     strel_erode (int): image erosion kernel size.
     noise_tolerance (int): threshold to use for noise filtering.
-    weights (tuple): weights describing threshold to accept ROI.
+    bg_roi_weights (tuple): weights describing threshold to accept ROI.
     overlap_roi (np.ndarray): list of ROI boolean arrays to possibly combine.
-    gradient_filter (bool): Boolean for whether to use a gradient filter.
-    gradient_kernel (tuple): Kernel size of length 2, e.g. (1, 1.5)
-    gradient_threshold (int): Threshold for noise gradient filtering
-    fill_holes (bool): Boolean to fill any missing regions within the ROI.
-    gui (bool): Boolean for whether function is running on GUI.
-    kwargs
+    bg_roi_gradient_filter (bool): Boolean for whether to use a gradient filter.
+    bg_roi_gradient_kernel (tuple): Kernel size of length 2, e.g. (1, 1.5)
+    bg_roi_gradient_threshold (int): Threshold for noise gradient filtering
+    bg_roi_fill_holes (bool): Boolean to fill any missing regions within the ROI.
+    kwargs (dict) Dictionary containing `bg_roi_depth_range` parameter for plane_ransac()
 
     Returns
     -------
@@ -225,12 +225,12 @@ def get_roi(depth_image,
     shape_index (list): list of rank means.
     '''
 
-    if gradient_filter:
+    if bg_roi_gradient_filter:
         gradient_x = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
-                                      1, 0, ksize=gradient_kernel))
+                                      1, 0, ksize=bg_roi_gradient_kernel))
         gradient_y = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
-                                      0, 1, ksize=gradient_kernel))
-        mask = np.logical_and(gradient_x < gradient_threshold, gradient_y < gradient_threshold)
+                                      0, 1, ksize=bg_roi_gradient_kernel))
+        mask = np.logical_and(gradient_x < bg_roi_gradient_threshold, gradient_y < bg_roi_gradient_threshold)
     else:
         mask = None
 
@@ -238,7 +238,7 @@ def get_roi(depth_image,
         depth_image, noise_tolerance=noise_tolerance, mask=mask, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
 
-    if gradient_filter:
+    if bg_roi_gradient_filter:
         dist_ims[~mask] = np.inf
 
     bin_im = dist_ims < noise_tolerance
@@ -264,7 +264,7 @@ def get_roi(depth_image,
     ranks = np.vstack((scipy.stats.rankdata(-areas, method='max'),
                        scipy.stats.rankdata(-extents, method='max'),
                        scipy.stats.rankdata(dists, method='max')))
-    weight_array = np.array(weights, 'float32')
+    weight_array = np.array(bg_roi_weights, 'float32')
     shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:, np.newaxis]), 0).argsort()
 
     # expansion microscopy on the roi
@@ -277,10 +277,10 @@ def get_roi(depth_image,
         roi[region_properties[shape].coords[:, 0],
             region_properties[shape].coords[:, 1]] = 1
         if strel_dilate is not None:
-            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters) # Dilate
+            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iterations) # Dilate
         if strel_erode is not None:
-            roi = cv2.erode(roi, strel_erode, iterations=erode_iters) # Erode
-        if fill_holes:
+            roi = cv2.erode(roi, strel_erode, iterations=erode_iterations) # Erode
+        if bg_roi_fill_holes:
             roi = scipy.ndimage.morphology.binary_fill_holes(roi) # Fill Holes
 
         rois.append(roi)
