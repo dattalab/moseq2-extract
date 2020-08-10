@@ -205,7 +205,7 @@ def write_frames(filename, frames, threads=6, fps=30,
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for i in tqdm(range(frames.shape[0]), disable=True):
-        pipe.stdin.write(frames[i, :].astype('uint16').tostring())
+        pipe.stdin.write(frames[i].astype('uint16').tostring())
 
     if close_pipe:
         pipe.stdin.close()
@@ -361,7 +361,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     # scale frames to appropriate depth ranges
     use_cmap = plt.get_cmap(cmap)
     for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
-        disp_img = frames[i, :].copy().astype('float32')
+        disp_img = frames[i].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img < 0] = 0
         disp_img[disp_img > 1] = 1

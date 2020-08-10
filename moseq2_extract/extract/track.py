@@ -130,15 +130,15 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     nframes, r, c = frames.shape
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
-    xyz = np.vstack((coords, frames[0, :].ravel()))
+    xyz = np.vstack((coords, frames[0].ravel()))
 
     if init_mean is None or init_cov is None:
         if init_method == 'min':
-            use_frame = np.min(frames[:init_frames, :], axis=0)
+            use_frame = np.min(frames[:init_frames], axis=0)
         elif init_method == 'med':
-            use_frame = np.median(frames[:init_frames, :], axis=0)
+            use_frame = np.median(frames[:init_frames], axis=0)
         elif init_method == 'raw':
-            use_frame = frames[0, :]
+            use_frame = frames[0]
 
         mouse_mask = em_init(use_frame,
                              depth_floor=depth_floor,
@@ -179,9 +179,9 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     while i < nframes:
 
         if repeat:
-            xyz = np.vstack((coords, raw_frames[i, :].ravel()))
+            xyz = np.vstack((coords, raw_frames[i].ravel()))
         else:
-            xyz = np.vstack((coords, frames[i, :].ravel()))
+            xyz = np.vstack((coords, frames[i].ravel()))
 
         pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
@@ -209,12 +209,12 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             # basically try each step in succession, first try to get contours
             # if that fails try re-initialization, if that fails try re-initialization
             # with raw data, if that fails give up and use all of the pixels
-            mask = em_init(frames[i, :],
+            mask = em_init(frames[i],
                            depth_floor=depth_floor,
                            depth_ceiling=depth_ceiling,
                            init_strel=init_strel)
             if np.all(mask == 0):
-                mask = em_init(raw_frames[i, :],
+                mask = em_init(raw_frames[i],
                                depth_floor=depth_floor,
                                depth_ceiling=depth_ceiling,
                                init_strel=init_strel)
@@ -224,7 +224,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
-        tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
+        tmp[np.logical_or(xyz[2] <= depth_floor, xyz[2] >= depth_ceiling)] = 0
 
         try:
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
@@ -252,8 +252,8 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         mean = (1-rho_mean)*mean_update+rho_mean*mean
         cov = (1-rho_cov)*cov_update+rho_cov*cov
 
-        model_parameters['mean'][i, :] = mean
-        model_parameters['cov'][i, :] = cov
+        model_parameters['mean'][i] = mean
+        model_parameters['cov'][i] = cov
 
         # TODO: add the walk-back where we use the
         # raw frames in case our update craps out...
@@ -291,7 +291,7 @@ def em_get_ll(frames, mean, cov, progress_bar=False):
     ll = np.zeros(frames.shape, dtype='float64')
 
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
-        xyz = np.vstack((coords, frames[i, :].ravel()))
-        ll[i, :] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i, :], cov[i, :]).reshape((r, c))
+        xyz = np.vstack((coords, frames[i].ravel()))
+        ll[i] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i], cov[i]).reshape((r, c))
 
     return ll

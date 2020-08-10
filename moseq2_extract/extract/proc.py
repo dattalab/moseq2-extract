@@ -68,9 +68,9 @@ def get_largest_cc(frames, progress_bar=False):
 
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
         nb_components, output, stats, centroids =\
-            cv2.connectedComponentsWithStats(frames[i, :], connectivity=4)
+            cv2.connectedComponentsWithStats(frames[i], connectivity=4)
         szs = stats[:, -1]
-        foreground_obj[i, :] = output == szs[1:].argmax()+1
+        foreground_obj[i] = output == szs[1:].argmax()+1
 
     return foreground_obj
 
@@ -132,7 +132,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
         except AttributeError as e:
             frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
 
-        frame_store[i, :] = cv2.medianBlur(frs, med_scale)
+        frame_store[i] = cv2.medianBlur(frs, med_scale)
 
     return get_bground_im(frame_store)
 
@@ -496,7 +496,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
 
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
-        if np.any(np.isnan(features['centroid'][i, :])):
+        if np.any(np.isnan(features['centroid'][i])):
             continue
 
         use_frame = cv2.copyMakeBorder(frames[i], *border, cv2.BORDER_CONSTANT, 0)
@@ -515,7 +515,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
 
         rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
                                           -np.rad2deg(features['orientation'][i]), 1)
-        cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
+        cropped_frames[i] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
                                                  rot_mat, (crop_size[0], crop_size[1]))
 
     return cropped_frames

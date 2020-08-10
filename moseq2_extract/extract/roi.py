@@ -19,8 +19,8 @@ def plane_fit3(points):
     plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
     '''
 
-    a = points[1, :]-points[0, :]
-    b = points[2, :]-points[0, :]
+    a = points[1]-points[0]
+    b = points[2]-points[0]
     # cross prod
     normal = np.array([[a[1]*b[2]-a[2]*b[1]],
                        [a[2]*b[0]-a[0]*b[2]],
@@ -31,7 +31,7 @@ def plane_fit3(points):
         plane[:] = np.nan
     else:
         normal /= np.sqrt(denom)
-        d = np.dot(-points[0, :], normal)
+        d = np.dot(-points[0], normal)
         plane = np.hstack((normal.flatten(), d))
 
     return plane
@@ -78,7 +78,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
 
     for _ in tqdm(range(iters), disable=not progress_bar, desc='Finding plane'):
 
-        sel = coords[np.random.choice(coords.shape[0], 3, replace=True), :]
+        sel = coords[np.random.choice(coords.shape[0], 3, replace=True)]
         tmp_plane = plane_fit3(sel)
 
         if np.all(np.isnan(tmp_plane)):
