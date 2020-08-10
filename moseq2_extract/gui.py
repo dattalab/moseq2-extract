@@ -254,28 +254,26 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/'):
+def generate_index_command(input_dir, output_file, subpath='/proc/'):
     '''
     Generates Index File based on aggregated sessions
 
     Parameters
     ----------
     input_dir (str): path to aggregated_results/ dir
-    pca_file (str): path to pca file
     output_file (str): index file name
-    filter (list): keys to filter through
-    all_uuids (list): all extracted session uuids
+    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
     output_file (str): path to index file.
     '''
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
     print('Index file successfully generated.')
     return output_file
 
-def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'):
+def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/proc/', mouse_threshold=0.0):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -286,6 +284,8 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
+    subpath (str): subdirectory that all sessions must exist within
+    mouse_threshold (float): threshold value of mean frame depth to include session frames
 
     Returns
     -------
@@ -301,11 +301,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir)
-
-    indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
-
-    print(f'Index file path: {indexpath}')
+    indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath, mouse_threshold)
 
     return indexpath
 

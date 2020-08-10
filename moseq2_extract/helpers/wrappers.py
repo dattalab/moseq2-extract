@@ -20,7 +20,7 @@ from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                            copy_manifest_results, build_index_dict, check_completion_status, get_pca_uuids
+                            copy_manifest_results, build_index_dict, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
                         h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
@@ -60,18 +60,15 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             raise Exception
 
 
-def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath='/proc/'):
+def generate_index_wrapper(input_dir, output_file, subpath='/proc/'):
     '''
     Generates index file containing a summary of all extracted sessions.
 
     Parameters
     ----------
     input_dir (str): directory to search for extracted sessions.
-    pca_file (str): path to pca_scores file.
     output_file (str): preferred name of the index file.
-    filter (list): list of metadata keys to conditionally filter.
-    all_uuids (list): list of all extracted session uuids.
-    subpath (str): subdirectory that aggregated files must contain.
+    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
@@ -86,28 +83,17 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
 
-    # Checking for a pre-existing PCA scores file to load
-    # only the files that the PCA was trained on.
-    # If pca doesn't exist, then all_uuids is returned.
-    pca_uuids = get_pca_uuids(dicts, pca_file, all_uuids)
-
-    try:
-        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                           zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
-    except:
-        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                           zip(h5s, yamls, dicts)]
+    file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in zip(h5s, yamls, dicts)]
 
     # Ensuring all retrieved extracted session h5s have the appropriate metadata
     # included in their results_00.h5 file
     try:
-        if 'metadata' not in file_with_uuids[0][2]:
-            for h5 in h5s:
-                copy_h5_metadata_to_yaml_wrapper(input_dir, h5)
-            file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                               zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+        for file in file_with_uuids:
+            if 'metadata' not in file[2]:
+                copy_h5_metadata_to_yaml_wrapper(input_dir, file[0])
     except:
-        print('Metadata not found, creating minimal Index file.')
+        warnings.warn(f'Metadata for session {file[0]} not found. \
+        File may be listed with minimal/defaulted metadata in index file.')
 
     # Filtering out sessions that do not contain the required subpath in their paths.
     # Ensures that there are no sample extractions included in the index file.
@@ -117,7 +103,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     print(f'Number of sessions included in index file: {len(files_to_use)}')
 
     # Create index file in dict form
-    output_dict = build_index_dict(files_to_use, pca_file, filter)
+    output_dict = build_index_dict(files_to_use)
 
     # write out index yaml
     with open(output_file, 'w') as f:
@@ -125,7 +111,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
 
     return output_file
 
-def aggregate_extract_results_wrapper(input_dir, format, output_dir):
+def aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath='/proc/', mouse_threshold=0.0):
     '''
     Copies all the h5, yaml and avi files generated from all successful extractions to
     a new directory to hold all the necessary data to continue down the moseq pipeline.
@@ -135,13 +121,13 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
     input_dir (str): path to base directory containing all session folders
     format (str): string format for metadata to use as the new aggregated filename
     output_dir (str): name of the directory to create and store all results in
-
+    subpath (str): subdirectory that all sessions must exist within
+    mouse_threshold (float): threshold value of mean frame depth to include session frames
     Returns
     -------
-    None
+    indexpath (str): path to generated index file including all aggregated session information.
     '''
 
-    mouse_threshold = 0 # defaulting this for now
     h5s, dicts, _ = recursive_find_h5s(input_dir)
 
     not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
@@ -167,6 +153,11 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
     copy_manifest_results(manifest, output_dir)
 
     print('Results successfully aggregated in', output_dir)
+
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=subpath)
+
+    print(f'Index file path: {indexpath}')
+    return indexpath
 
 
 def get_roi_wrapper(input_file, config_data, output_dir=None):
@@ -416,6 +407,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     config_file (str): path to config file
     output_dir (str): path to directory to save classifier in.
     selected_flip (int): index of desired flip classifier.
+
     Returns
     -------
     None

@@ -198,14 +198,11 @@ def generate_config(output_file):
 
 @cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
-@click.option('--pca-file', '-p', type=click.Path(), default=os.path.join(os.getcwd(), '_pca/pca_scores.h5'), help='Path to PCA results')
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
-@click.option('--filter', '-f', type=(str, str), default=None, help='Regex filter for metadata', multiple=True)
-@click.option('--all-uuids', '-a', type=bool, default=False, help='Use all uuids')
 @click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
-def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath):
+def generate_index(input_dir, output_file, subpath):
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
 
     if output_file != None:
         print(f'Index file: {output_file} was successfully generated.')
@@ -214,9 +211,11 @@ def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath)
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
 @click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
-def aggregate_extract_results(input_dir, format, output_dir):
+@click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
+@click.option('--mouse-threshold', default=0, type=float, help='Threshold value for mean depth to include frames in aggregated results')
+def aggregate_extract_results(input_dir, format, output_dir, subpath, mouse_threshold):
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir)
+    aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath, mouse_threshold)
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
