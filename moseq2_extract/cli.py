@@ -160,6 +160,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
+@click.option('--skip', is_flag=True, help='Will skip the extraction if it is already completed.')
 def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
             bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
             bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
@@ -170,10 +171,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars):
+            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip):
 
     click_data = click.get_current_context().params
-    extract_wrapper(input_file, output_dir, click_data)
+    extract_wrapper(input_file, output_dir, click_data, skip=skip)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
