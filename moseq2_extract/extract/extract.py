@@ -97,7 +97,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
         # Threshold chunk depth values at min and max heights
         chunk = threshold_chunk(chunk, min_height, max_height, kwargs['dilate_iterations']).astype(frame_dtype)
 
-    if isinstance(roi, np.ndarray) and (roi.shape == chunk.shape):
+    if isinstance(roi, np.ndarray) and (roi.shape == chunk[0].shape):
         chunk = apply_roi(chunk, roi)
 
     # Denoise the frames before we do anything else
