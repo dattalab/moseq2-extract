@@ -111,10 +111,11 @@ def generate_index_wrapper(input_dir, output_file, subpath='/proc/'):
 
     return output_file
 
-def aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath='/proc/', mouse_threshold=0.0):
+def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold=0.0):
     '''
     Copies all the h5, yaml and avi files generated from all successful extractions to
-    a new directory to hold all the necessary data to continue down the moseq pipeline.
+    a new directory to hold all the necessary data to continue down the MoSeq pipeline.
+    Then generates an index file in the base directory/input_dir.
 
     Parameters
     ----------
@@ -123,6 +124,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath='/p
     output_dir (str): name of the directory to create and store all results in
     subpath (str): subdirectory that all sessions must exist within
     mouse_threshold (float): threshold value of mean frame depth to include session frames
+
     Returns
     -------
     indexpath (str): path to generated index file including all aggregated session information.
@@ -154,7 +156,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath='/p
 
     print('Results successfully aggregated in', output_dir)
 
-    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=subpath)
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=os.path.dirname(output_dir))
 
     print(f'Index file path: {indexpath}')
     return indexpath

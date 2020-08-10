@@ -211,11 +211,10 @@ def generate_index(input_dir, output_file, subpath):
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
 @click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
-@click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
 @click.option('--mouse-threshold', default=0, type=float, help='Threshold value for mean depth to include frames in aggregated results')
-def aggregate_extract_results(input_dir, format, output_dir, subpath, mouse_threshold):
+def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath, mouse_threshold)
+    aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))

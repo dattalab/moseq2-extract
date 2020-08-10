@@ -273,7 +273,7 @@ def generate_index_command(input_dir, output_file, subpath='/proc/'):
     print('Index file successfully generated.')
     return output_file
 
-def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/proc/', mouse_threshold=0.0):
+def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold=0.0):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -301,7 +301,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/p
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, subpath, mouse_threshold)
+    indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
     return indexpath
 
