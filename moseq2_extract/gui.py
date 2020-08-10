@@ -412,7 +412,8 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    output_dir = get_roi_wrapper(input_file, config_data)
+    output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+    get_roi_wrapper(input_file, config_data, output_dir)
 
     with open(config_file, 'w') as g:
         yaml.safe_dump(config_data, g)

@@ -55,7 +55,7 @@ def common_roi_options(function):
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
-    function = click.option('--camera-type', default=None, type=str,
+    function = click.option('--camera-type', default='kinect', type=click.Choice(["kinect", "azure", "realsense"]),
                             help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
                              Possible types: ["kinect", "azure", "realsense"]')(function)
     function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),

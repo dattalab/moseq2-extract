@@ -178,17 +178,12 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     input_file (str): path to depth file.
     config_data (dict): dictionary of ROI extraction parameters.
     output_dir (str): path to desired directory to save results in.
-    gui (bool): indicate whether GUI is running.
-    extract_helper (bool): indicate whether this is being run independently or by extract function
 
     Returns
     -------
-    if gui:
-        output_dir (str): path to saved ROI results
-    elif extract_helper:
-        roi (2d array): ROI image to plot in GUI
-        bground_im (2d array): Background image to plot in GUI
-        first_frame (2d array): First frame image to plot in GUI
+    roi (2d array): ROI image to plot in GUI
+    bground_im (2d array): Background image to plot in GUI
+    first_frame (2d array): First frame image to plot in GUI
     '''
 
     if output_dir == None:
@@ -259,7 +254,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     num_frames (int): number of frames to extract. All if None.
     skip (bool): indicates whether to skip file if already extracted
     extract (function): extraction function state (Only passed by CLI)
-    gui (bool): indicates if GUI is running.
 
     Returns
     -------

@@ -185,8 +185,8 @@ def threshold_chunk(chunk, min_height, max_height, dilate_iterations):
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
-            dilate_iters=1,
-            erode_iters=1,
+            dilate_iters=0,
+            erode_iters=0,
             strel_erode=None,
             noise_tolerance=30,
             weights=(1, .1, 1),
