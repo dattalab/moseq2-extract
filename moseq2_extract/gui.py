@@ -236,11 +236,11 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     # find directories with .dat files that either have incomplete or no extractions
     if isinstance(ext, str):
-        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=True)
+        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext)
         to_extract = [e for e in to_extract if e.endswith(ext)]
     elif isinstance(ext, list):
         for ex in ext:
-            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=True)
+            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
             to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
