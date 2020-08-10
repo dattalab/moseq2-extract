@@ -71,7 +71,7 @@ def common_roi_options(function):
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
-    function = click.option('--dilate-iterations', default=1, type=int,
+    function = click.option('--dilate-iterations', default=0, type=int,
                             help='Number of dilation iterations to increase bucket floor size. (Special Cases Only)')(function)
     function = click.option('--bg-roi-erode', default=(1, 1), type=(int, int),
                             help='Size of cv2 Structure Element to erode roi. (Special Cases Only)')(function)
