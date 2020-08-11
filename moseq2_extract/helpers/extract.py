@@ -52,7 +52,7 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
                                 bground=bground_im,
                                 tracking_init_mean=tracking_init_mean,
                                 tracking_init_cov=tracking_init_cov,
-                                progress_bar=False)
+                                )
 
         if i > 0:
             offset = config_data['chunk_overlap']
@@ -88,7 +88,8 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
             os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
             pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
             frame_range=[f + first_frame_idx for f in frame_range],
-            depth_max=config_data['max_height'], depth_min=config_data['min_height'])
+            depth_max=config_data['max_height'], depth_min=config_data['min_height'],
+            progress_bar=config_data.get('progress_bar', False))
 
         if video_pipe:
             video_pipe.stdin.close()

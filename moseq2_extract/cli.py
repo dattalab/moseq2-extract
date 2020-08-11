@@ -83,6 +83,7 @@ def common_roi_options(function):
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
     function = click.option("--config-file", type=click.Path())(function)
+    function = click.option('--progress-bar', '-p', is_flag=True, help='Show verbose progress bars.')(function)
     return function
 
 def common_avi_options(function):
@@ -114,7 +115,7 @@ def common_avi_options(function):
 def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
              bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, bg_roi_erode,
-             erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file):
+             erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file, progress_bar):
 
     click_data = click.get_current_context().params
     get_roi_wrapper(input_file, click_data, output_dir)
@@ -171,7 +172,7 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip):
+            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip, progress_bar):
 
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data, skip=skip)

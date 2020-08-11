@@ -290,7 +290,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          codec='h264', slices=24, slicecrc=1,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
-                         pipe=None, close_pipe=True, frame_range=None):
+                         pipe=None, close_pipe=True, frame_range=None,
+                         progress_bar=False):
     '''
     Simple command to pipe frames to an ffv1 file.
     Writes out a false-colored mp4 video.
@@ -360,8 +361,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 
     # scale frames to appropriate depth ranges
     use_cmap = plt.get_cmap(cmap)
-    for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
-        disp_img = frames[i].copy().astype('float32')
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc="Writing frames"):
+        disp_img = frames[i, :].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img < 0] = 0
         disp_img[disp_img > 1] = 1
