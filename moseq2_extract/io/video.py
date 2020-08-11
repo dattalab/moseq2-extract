@@ -36,7 +36,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
             'dims': frame_dims,
             'bytes_per_frame': bytes_per_frame
         }
-        if str(filename).endswith('.mkv'):
+        if filename.endswith('.mkv'):
             try:
                 vid = cv2.VideoCapture(filename).read()
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
@@ -51,7 +51,8 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
                     'dims': (int(w), int(h)),
                     'bytes_per_frame': int(bytes_per_frame)
                 }
-            except:
+            except AttributeError as e:
+                print(e)
                 pass
     else:
         file_info = {
@@ -237,14 +238,8 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video (3d numpy array):  frames x h x w
     '''
 
-    if not filename.endswith('.mkv'):
-        try:
-            finfo = get_video_info(filename)
-        except:
-            finfo = get_raw_info(filename)
-    else:
-        finfo = get_raw_info(filename)
-        frame_size = finfo['dims']
+    finfo = get_raw_info(filename)
+    frame_size = finfo['dims']
 
     if frames is None or len(frames) == 0:
         finfo = get_video_info(filename)
@@ -279,9 +274,11 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
 
     pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
+
     if(err):
-        print('error', err)
+        print('Error:', err)
         return None
+
     video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
@@ -399,23 +396,20 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     frame_data (3D np.ndarray): Read video as numpy array. (nframes, nrows, ncols)
     '''
 
+    if type(frames) is int:
+        frames = [frames]
+
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.lower().endswith('.dat') or filename.lower().endswith('.mkv'):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
                                          bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
-            if type(frames) is int:
-                frames = [frames]
-            frame_data = read_frames(filename,
-                                     frames)
-        elif filename.lower().endswith('.mkv'):
-            if type(frames) is int:
-                frames = [frames]
             frame_data = read_frames(filename, frames)
 
     except AttributeError as e:
+        print('Error:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
                                      frame_dims=frame_dims,
@@ -439,14 +433,15 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     metadata (dict): dictionary containing video file metadata
     '''
 
+    filename = filename.lower()
+
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.endswith('.dat') or filename.endswith('.mkv'):
             metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
+        elif filename.endswith('.avi'):
             metadata = get_video_info(filename)
-        elif filename.lower().endswith('.mkv'):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
     except AttributeError as e:
+        print('Error:', e)
         metadata = get_raw_info(filename)
 
     return metadata
