@@ -238,11 +238,12 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video (3d numpy array):  frames x h x w
     '''
 
-    finfo = get_raw_info(filename)
-    frame_size = finfo['dims']
+    try:
+        finfo = get_video_info(filename)
+    except AttributeError as e:
+        finfo = get_raw_info(filename)
 
     if frames is None or len(frames) == 0:
-        finfo = get_video_info(filename)
         frames = np.arange(finfo['nframes']).astype('int16')
 
     if not frame_size:
