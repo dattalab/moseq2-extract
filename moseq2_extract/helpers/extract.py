@@ -43,6 +43,7 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
         chunk_frames = [f + first_frame_idx for f in frame_range]
         raw_chunk = load_movie_data(input_file, chunk_frames, tar_object=config_data['tar'])
 
+        # Get crop-rotated frame batch
         results = extract_chunk(**config_data,
                                 **str_els,
                                 chunk=raw_chunk,
@@ -56,36 +57,47 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
             offset = 0
 
         if config_data['use_tracking_model']:
+            # Thresholding and clipping EM-tracked frame mask data
             results['mask_frames'][results['depth_frames'] < config_data['min_height']] = config_data[
                 'tracking_model_ll_clip']
             results['mask_frames'][results['mask_frames'] < config_data['tracking_model_ll_clip']] = config_data[
                 'tracking_model_ll_clip']
-            tracking_init_mean = results['parameters']['mean'][-(config_data['chunk_overlap'] + 1)]
-            tracking_init_cov = results['parameters']['cov'][-(config_data['chunk_overlap'] + 1)]
+            # Updating EM tracking estimators
+            config_data['tracking_init_mean'] = results['parameters']['mean'][-(config_data['chunk_overlap'] + 1)]
+            config_data['tracking_init_cov'] = results['parameters']['cov'][-(config_data['chunk_overlap'] + 1)]
 
+        # Offsetting frame chunk by CLI parameter defined option: chunk_overlap
         frame_range = frame_range[offset:]
 
+        # Writing computed scalars to h5 file
         for scalar in scalars:
             h5_file[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
 
+        # Writing frames and mask to h5
         h5_file['frames'][frame_range] = results['depth_frames'][offset:]
         h5_file['frames_mask'][frame_range] = results['mask_frames'][offset:]
 
+        # Writing flip classifier results to h5
         if config_data['flip_classifier']:
             h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
+        # Create empty array for output movie with filtered video and cropped mouse on the top left
         nframes, rows, cols = raw_chunk[offset:].shape
         output_movie = np.zeros((nframes, rows + config_data['crop_size'][0], cols + config_data['crop_size'][1]),
                                 'uint16')
+
+        # Populating array with filtered and cropped videos
         output_movie[:, :config_data['crop_size'][0], :config_data['crop_size'][1]] = results['depth_frames'][offset:]
         output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = raw_chunk[offset:]
 
+        # Writing frame batch to mp4 file
         video_pipe = write_frames_preview(
             os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
             pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
             frame_range=[f + first_frame_idx for f in frame_range],
             depth_max=config_data['max_height'], depth_min=config_data['min_height'])
 
+        # Check if video is done writing. If not, wait.
         if video_pipe:
             video_pipe.stdin.close()
             video_pipe.wait()
