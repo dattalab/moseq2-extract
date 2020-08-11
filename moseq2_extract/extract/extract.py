@@ -118,6 +118,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
             rho_cov=rho_cov, progress_bar=progress_bar,
             ll_threshold=tracking_ll_threshold, segment=tracking_model_segment,
             init_mean=tracking_init_mean, init_cov=tracking_init_cov,
+            depth_floor=min_height, depth_ceiling=max_height,
             init_strel=tracking_init_strel, init_method=tracking_model_init)
         ll = em_get_ll(filtered_frames, progress_bar=progress_bar, **parameters)
     else:

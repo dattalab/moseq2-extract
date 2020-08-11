@@ -38,8 +38,6 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
     '''
 
     video_pipe = None
-    tracking_init_mean = None
-    tracking_init_cov = None
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         chunk_frames = [f + first_frame_idx for f in frame_range]
@@ -50,8 +48,6 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
                                 chunk=raw_chunk,
                                 roi=roi,
                                 bground=bground_im,
-                                tracking_init_mean=tracking_init_mean,
-                                tracking_init_cov=tracking_init_cov,
                                 progress_bar=False)
 
         if i > 0:
