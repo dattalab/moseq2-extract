@@ -140,6 +140,8 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tracking-model-ll-clip', default=-100, type=float, help="Clip log-likelihoods below this value")
 @click.option('--tracking-model-segment', default=True, type=bool, help="Segment likelihood mask from tracking model")
 @click.option('--tracking-model-init', default='raw', type=str, help="Method for tracking model initialization")
+@click.option('--tracking-init-mean', default=None, type=float, help="EM tracking initial mean.")
+@click.option('--tracking-init-cov', default=None, type=float, help="EM tracking initial covariance.")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -172,7 +174,9 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip, progress_bar):
+            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, tracking_init_mean, tracking_init_cov,
+            skip, progress_bar):
+
 
     click_data = click.get_current_context().params
     extract_wrapper(input_file, output_dir, click_data, skip=skip)
