@@ -37,20 +37,21 @@ def plane_fit3(points):
     return plane
 
 
-def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
-                 noise_tolerance=30, in_ratio=.1, progress_bar=False, mask=None):
+def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
+                 noise_tolerance=30, in_ratio=.1, progress_bar=False, mask=None, **kwargs):
     '''
     Naive RANSAC implementation for plane fitting
 
     Parameters
     ----------
     depth_image (2d numpy array): hxw, background image to fit plane to
-    depth_range (tuple): min/max depth (mm) to consider pixels for plane
+    bg_roi_depth_range (tuple): min/max depth (mm) to consider pixels for plane
     iters (int): number of RANSAC iterations
     noise_tolerance (float): dist. from plane to consider a point an inlier
     in_ratio (float): frac. of points required to consider a plane fit good
     progress_bar (bool): display progress bar
     mask (bool 2d np.array): boolean mask to find region to use
+    kwargs (dict): dictionary containing extra keyword arguments from moseq2_extract.proc.get_roi()
 
     Returns
     -------
@@ -58,7 +59,7 @@ def plane_ransac(depth_image, depth_range=(650, 750), iters=1000,
     dist (1d numpy array): distance of the calculated coordinates and "best plane"
     '''
 
-    use_points = np.logical_and(depth_image > depth_range[0], depth_image < depth_range[1])
+    use_points = np.logical_and(depth_image > bg_roi_depth_range[0], depth_image < bg_roi_depth_range[1])
 
     if mask is not None:
         use_points = np.logical_and(use_points, mask)

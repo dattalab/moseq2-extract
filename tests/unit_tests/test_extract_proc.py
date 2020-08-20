@@ -19,7 +19,7 @@ class TestExtractProc(TestCase):
 
             if re.search(r'gradient', bground) is not None:
                 roi = get_roi(tmp.astype('float32'), depth_range=(750, 900),
-                              iters=5000, noise_tolerance=30, gradient_filter=True)
+                              iters=5000, noise_tolerance=30, bg_roi_gradient_filter=True)
             else:
                 roi = get_roi(tmp.astype('float32'), depth_range=(650, 750),
                               iters=5000, noise_tolerance=30)
