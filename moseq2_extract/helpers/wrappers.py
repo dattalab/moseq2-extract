@@ -4,7 +4,6 @@ These functions perform all the data processing from start to finish, and are sh
 '''
 
 import os
-import sys
 import uuid
 import h5py
 import shutil
@@ -21,7 +20,7 @@ from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                            copy_manifest_results, build_index_dict, check_completion_status, get_pca_uuids
+                            copy_manifest_results, build_index_dict, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
                         h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
@@ -61,18 +60,15 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             raise Exception
 
 
-def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath='/proc/'):
+def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
     Generates index file containing a summary of all extracted sessions.
 
     Parameters
     ----------
     input_dir (str): directory to search for extracted sessions.
-    pca_file (str): path to pca_scores file.
     output_file (str): preferred name of the index file.
-    filter (list): list of metadata keys to conditionally filter.
-    all_uuids (list): list of all extracted session uuids.
-    subpath (str): subdirectory that aggregated files must contain.
+    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
@@ -83,32 +79,21 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
-    # gather than h5s and the pca scores file
+    # gather the h5s and the pca scores file
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
 
-    # Checking for a pre-existing PCA scores file to load
-    # only the files that the PCA was trained on.
-    # If pca doesn't exist, then all_uuids is returned.
-    pca_uuids = get_pca_uuids(dicts, pca_file, all_uuids)
-
-    try:
-        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                           zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
-    except:
-        file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                           zip(h5s, yamls, dicts)]
+    file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in zip(h5s, yamls, dicts)]
 
     # Ensuring all retrieved extracted session h5s have the appropriate metadata
     # included in their results_00.h5 file
     try:
-        if 'metadata' not in file_with_uuids[0][2]:
-            for h5 in h5s:
-                copy_h5_metadata_to_yaml_wrapper(input_dir, h5)
-            file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in
-                               zip(h5s, yamls, dicts) if meta['uuid'] in pca_uuids]
+        for file in file_with_uuids:
+            if 'metadata' not in file[2]:
+                copy_h5_metadata_to_yaml_wrapper(input_dir, file[0])
     except:
-        print('Metadata not found, creating minimal Index file.')
+        warnings.warn(f'Metadata for session {file[0]} not found. \
+        File may be listed with minimal/defaulted metadata in index file.')
 
     # Filtering out sessions that do not contain the required subpath in their paths.
     # Ensures that there are no sample extractions included in the index file.
@@ -118,7 +103,7 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
     print(f'Number of sessions included in index file: {len(files_to_use)}')
 
     # Create index file in dict form
-    output_dict = build_index_dict(files_to_use, pca_file, filter)
+    output_dict = build_index_dict(files_to_use)
 
     # write out index yaml
     with open(output_file, 'w') as f:
@@ -126,23 +111,25 @@ def generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, 
 
     return output_file
 
-def aggregate_extract_results_wrapper(input_dir, format, output_dir):
+def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold=0.0):
     '''
     Copies all the h5, yaml and avi files generated from all successful extractions to
-    a new directory to hold all the necessary data to continue down the moseq pipeline.
+    a new directory to hold all the necessary data to continue down the MoSeq pipeline.
+    Then generates an index file in the base directory/input_dir.
 
     Parameters
     ----------
     input_dir (str): path to base directory containing all session folders
     format (str): string format for metadata to use as the new aggregated filename
     output_dir (str): name of the directory to create and store all results in
+    subpath (str): subdirectory that all sessions must exist within
+    mouse_threshold (float): threshold value of mean frame depth to include session frames
 
     Returns
     -------
-    None
+    indexpath (str): path to generated index file including all aggregated session information.
     '''
 
-    mouse_threshold = 0 # defaulting this for now
     h5s, dicts, _ = recursive_find_h5s(input_dir)
 
     not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
@@ -169,8 +156,13 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir):
 
     print('Results successfully aggregated in', output_dir)
 
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=os.path.dirname(output_dir))
 
-def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract_helper=False):
+    print(f'Index file path: {indexpath}')
+    return indexpath
+
+
+def get_roi_wrapper(input_file, config_data, output_dir=None):
     '''
     Wrapper function to compute ROI given depth file.
 
@@ -179,17 +171,12 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
     input_file (str): path to depth file.
     config_data (dict): dictionary of ROI extraction parameters.
     output_dir (str): path to desired directory to save results in.
-    gui (bool): indicate whether GUI is running.
-    extract_helper (bool): indicate whether this is being run independently or by extract function
 
     Returns
     -------
-    if gui:
-        output_dir (str): path to saved ROI results
-    elif extract_helper:
-        roi (2d array): ROI image to plot in GUI
-        bground_im (2d array): Background image to plot in GUI
-        first_frame (2d array): First frame image to plot in GUI
+    roi (2d array): ROI image to plot in GUI
+    bground_im (2d array): Background image to plot in GUI
+    first_frame (2d array): First frame image to plot in GUI
     '''
 
     if output_dir == None:
@@ -214,18 +201,10 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
     strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
     rois, plane, _, _, _, _ = get_roi(bground_im,
-                                  strel_dilate=strel_dilate,
-                                  strel_erode=strel_erode,
-                                  dilate_iters=config_data['dilate_iterations'],
-                                  erode_iters=config_data['erode_iterations'],
-                                  noise_tolerance=config_data['noise_tolerance'],
-                                  weights=config_data['bg_roi_weights'],
-                                  depth_range=config_data['bg_roi_depth_range'],
-                                  overlap_roi=config_data.get('overlap_roi'),
-                                  gradient_filter=config_data['bg_roi_gradient_filter'],
-                                  gradient_threshold=config_data['bg_roi_gradient_threshold'],
-                                  gradient_kernel=config_data['bg_roi_gradient_kernel'],
-                                  fill_holes=config_data['bg_roi_fill_holes'])
+                                      **config_data,
+                                      strel_dilate=strel_dilate,
+                                      strel_erode=strel_erode
+                                      )
 
     if config_data['use_plane_bground']:
         print('Using plane fit for background...')
@@ -246,12 +225,9 @@ def get_roi_wrapper(input_file, config_data, output_dir=None, gui=False, extract
         roi_filename = f'roi_{idx:02d}.tiff'
         write_image(os.path.join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
 
-    if gui:
-        return output_dir # GUI
-    if extract_helper:
-        return roi, bground_im, first_frame # HELPER
+    return roi, bground_im, first_frame
 
-def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False, gui=False):
+def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False):
     '''
     Wrapper function to run extract function for both GUI and CLI.
 
@@ -263,7 +239,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     num_frames (int): number of frames to extract. All if None.
     skip (bool): indicates whether to skip file if already extracted
     extract (function): extraction function state (Only passed by CLI)
-    gui (bool): indicates if GUI is running.
 
     Returns
     -------
@@ -287,13 +262,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     video_metadata = get_movie_info(input_file)
 
     # Getting number of frames to extract
-    if num_frames == None:
+    if num_frames is None:
         nframes = int(video_metadata['nframes'])
-    else:
-        nframes = num_frames
-        if nframes > int(video_metadata['nframes']):
-            warnings.warn('Requested more frames than video includes, extracting whole recording...')
-            nframes = int(video_metadata['nframes'])
+    elif num_frames > video_metadata['nframes']:
+        warnings.warn('Requested more frames than video includes, extracting whole recording...')
+        nframes = int(video_metadata['nframes'])
 
     config_data = check_filter_sizes(config_data)
 
@@ -318,7 +291,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     scalars = list(scalars_attrs.keys())
 
     # Get frame chunks to extract
-    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap']))
+    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap'], offset=first_frame_idx))
 
     # set up the output directory
     if output_dir is None:
@@ -333,14 +306,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     output_filename = f'results_{config_data["bg_roi_index"]:02d}'
     status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
-    if check_completion_status(status_filename):
-        if gui and skip: # Skipping already extracted session
-            print('Skipping...')
-            return
-        elif not gui:
-            overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
-            if overwrite != '':
-                sys.exit(0)
+    # Check if session has already been extracted
+    if check_completion_status(status_filename) and skip:
+        print('Skipping...')
+        return
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
@@ -353,7 +322,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
     }
 
-    roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir, extract_helper=True)
+    # Compute ROIs
+    roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir)
 
     # Debugging option: DTD has no effect on extraction results unless dilate iterations > 1
     if config_data.get('detected_true_depth', 'auto') == 'auto':
@@ -420,8 +390,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(os.path.join(output_dir, 'done.txt'), 'w') as f:
         f.write('done')
 
-    if gui:
-        return output_dir
+    return output_dir
 
 def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     '''
@@ -432,6 +401,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     config_file (str): path to config file
     output_dir (str): path to directory to save classifier in.
     selected_flip (int): index of desired flip classifier.
+
     Returns
     -------
     None
@@ -456,9 +426,13 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
 
     # prompt for user selection if not already inputted
     while selected_flip is None:
-        selected_flip = int(input('Enter a selection '))
-        if selected_flip > len(flip_files.keys()):
-            selected_flip = None
+        try:
+            selected_flip = int(input('Enter a selection '))
+            if selected_flip > len(flip_files.keys()):
+                selected_flip = None
+        except ValueError:
+            print('Please enter a number')
+            continue
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -479,7 +453,6 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
 
         with open(config_file, 'w') as f:
             yaml.safe_dump(config_data, f)
-
-    except:
-        print('Unexpected error:', sys.exc_info()[0])
+    except Exception as e:
+        print('Unexpected error:', e)
         return 'Could not update configuration file flip classifier path'

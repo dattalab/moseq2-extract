@@ -76,8 +76,8 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
         metadata = {'scale_factor': str(scale_factor)}
 
     directory = os.path.dirname(file)
-    if not os.path.isdir(directory):
-        directory.mkdir(parents=True, exist_ok=True)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
     tifffile.imsave(file, image.astype(dtype), compress=compress, metadata=metadata)
 

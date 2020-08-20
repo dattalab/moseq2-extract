@@ -48,8 +48,8 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
                                 **str_els,
                                 chunk=raw_chunk,
                                 roi=roi,
-                                bground=bground_im,
-                                progress_bar=False)
+                                bground=bground_im
+                                )
 
         if i > 0:
             offset = config_data['chunk_overlap']
@@ -95,7 +95,8 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
             os.path.join(output_dir, f'{output_filename}.mp4'), output_movie,
             pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
             frame_range=[f + first_frame_idx for f in frame_range],
-            depth_max=config_data['max_height'], depth_min=config_data['min_height'])
+            depth_max=config_data['max_height'], depth_min=config_data['min_height'],
+            progress_bar=config_data.get('progress_bar', False))
 
         # Check if video is done writing. If not, wait.
         if video_pipe:

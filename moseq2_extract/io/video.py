@@ -36,7 +36,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
             'dims': frame_dims,
             'bytes_per_frame': bytes_per_frame
         }
-        if str(filename).endswith('.mkv'):
+        if filename.endswith('.mkv'):
             try:
                 vid = cv2.VideoCapture(filename).read()
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
@@ -51,7 +51,8 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
                     'dims': (int(w), int(h)),
                     'bytes_per_frame': int(bytes_per_frame)
                 }
-            except:
+            except AttributeError as e:
+                print(e)
                 pass
     else:
         file_info = {
@@ -205,7 +206,7 @@ def write_frames(filename, frames, threads=6, fps=30,
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for i in tqdm(range(frames.shape[0]), disable=True):
-        pipe.stdin.write(frames[i, :].astype('uint16').tostring())
+        pipe.stdin.write(frames[i].astype('uint16').tostring())
 
     if close_pipe:
         pipe.stdin.close()
@@ -237,17 +238,12 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video (3d numpy array):  frames x h x w
     '''
 
-    if not filename.endswith('.mkv'):
-        try:
-            finfo = get_video_info(filename)
-        except:
-            finfo = get_raw_info(filename)
-    else:
+    try:
+        finfo = get_video_info(filename)
+    except AttributeError as e:
         finfo = get_raw_info(filename)
-        frame_size = finfo['dims']
 
     if frames is None or len(frames) == 0:
-        finfo = get_video_info(filename)
         frames = np.arange(finfo['nframes']).astype('int16')
 
     if not frame_size:
@@ -279,9 +275,11 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
 
     pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
+
     if(err):
-        print('error', err)
+        print('Error:', err)
         return None
+
     video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
@@ -290,7 +288,8 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          codec='h264', slices=24, slicecrc=1,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
-                         pipe=None, close_pipe=True, frame_range=None):
+                         pipe=None, close_pipe=True, frame_range=None,
+                         progress_bar=False):
     '''
     Simple command to pipe frames to an ffv1 file.
     Writes out a false-colored mp4 video.
@@ -360,7 +359,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 
     # scale frames to appropriate depth ranges
     use_cmap = plt.get_cmap(cmap)
-    for i in tqdm(range(frames.shape[0]), disable=True, desc="Writing frames"):
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc="Writing frames"):
         disp_img = frames[i, :].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img < 0] = 0
@@ -380,27 +379,38 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         return pipe
 
 def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
-    """
-    Reads in frames
-    """
+    '''
+
+    Parses file extension to check whether to read the data using ffmpeg (read_frames)
+    or to read the frames directly from the file into a numpy array (read_frames_raw).
+
+    Parameters
+    ----------
+    filename (str): Path to file to read video from.
+    frames (int or list): Frame indices to read in to output array.
+    frame_dims (tuple): Video dimensions (nrows, ncols)
+    bit_depth (int): Number of bits per pixel, corresponds to image resolution.
+    kwargs (dict): Any additional parameters that could be required in read_frames_raw().
+
+    Returns
+    -------
+    frame_data (3D np.ndarray): Read video as numpy array. (nframes, nrows, ncols)
+    '''
+
+    if type(frames) is int:
+        frames = [frames]
 
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.lower().endswith(('.dat', '.mkv')):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
                                          bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
-            if type(frames) is int:
-                frames = [frames]
-            frame_data = read_frames(filename,
-                                     frames)
-        elif filename.lower().endswith('.mkv'):
-            if type(frames) is int:
-                frames = [frames]
             frame_data = read_frames(filename, frames)
 
     except AttributeError as e:
+        print('Error:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
                                      frame_dims=frame_dims,
@@ -424,14 +434,15 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     metadata (dict): dictionary containing video file metadata
     '''
 
+    filename = filename.lower()
+
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.endswith(('.dat', '.mkv')):
             metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
+        elif filename.endswith('.avi'):
             metadata = get_video_info(filename)
-        elif filename.lower().endswith('.mkv'):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
     except AttributeError as e:
+        print('Error:', e)
         metadata = get_raw_info(filename)
 
     return metadata

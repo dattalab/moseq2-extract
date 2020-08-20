@@ -79,9 +79,8 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     plane_im = plane_im.reshape(bground_im.shape)
 
     write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
-    bground_im = plane_im
 
-    return bground_im
+    return plane_im
 
 def get_frame_range_indices(config_data, nframes):
     '''
@@ -262,15 +261,14 @@ def load_found_session_paths(input_dir, exts):
     files (list): sorted list of all paths to found depth files
     '''
 
-    files = []
-    if isinstance(exts, list):
-        for ext in exts:
-            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
-    else:
-        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
+    if not isinstance(exts, (tuple, list)):
+        exts = [exts]
 
-    files = sorted(files)
-    return files
+    files = []
+    for ext in exts:
+        files.extend(glob(os.path.join(input_dir, '*/*' + ext), recursive=True))
+
+    return sorted(files)
 
 
 def select_strel(string='e', size=(10, 10)):
@@ -466,7 +464,8 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
                 dict_to_h5(h5, item, dest)
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
-        except:
+        except Exception as e:
+            print(e)
             if key != 'inputs':
                 print('h5py could not encode key:', key)
 

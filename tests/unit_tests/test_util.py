@@ -260,7 +260,8 @@ class testExtractUtils(TestCase):
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
             'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
-            'config_file': None
+            'config_file': None,
+            'progress_bar': 'Show verbose progress bars.'
         }
         test_dict = click_param_annot(find_roi)
         npt.assert_equal(ref_dict, test_dict)
