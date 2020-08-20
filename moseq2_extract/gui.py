@@ -337,7 +337,7 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
 
     for sess in sessions:
         sess_dir = os.path.dirname(sess) # get path to session directory
-        sess_name = sess.split('/')[-2]
+        sess_name = os.path.basename(sess_dir)
         if 'metadata.json' not in os.listdir(sess_dir):
             warnings.warn(f'No metadata file corresponding to {sess_name} found. Generating a default template.')
             sample_meta['SessionName'] = sess_name

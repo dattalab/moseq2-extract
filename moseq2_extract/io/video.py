@@ -401,7 +401,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
         frames = [frames]
 
     try:
-        if filename.lower().endswith('.dat') or filename.lower().endswith('.mkv'):
+        if filename.lower().endswith(('.dat', '.mkv')):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
@@ -437,7 +437,7 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     filename = filename.lower()
 
     try:
-        if filename.endswith('.dat') or filename.endswith('.mkv'):
+        if filename.endswith(('.dat', '.mkv')):
             metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
         elif filename.endswith('.avi'):
             metadata = get_video_info(filename)
