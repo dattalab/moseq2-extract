@@ -60,7 +60,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             raise Exception
 
 
-def generate_index_wrapper(input_dir, output_file, subpath='/proc/'):
+def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
     Generates index file containing a summary of all extracted sessions.
 

@@ -254,7 +254,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, output_file, subpath='/proc/'):
+def generate_index_command(input_dir, output_file, subpath='proc/'):
     '''
     Generates Index File based on aggregated sessions
 
@@ -284,7 +284,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
-    subpath (str): subdirectory that all sessions must exist within
     mouse_threshold (float): threshold value of mean frame depth to include session frames
 
     Returns
