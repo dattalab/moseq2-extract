@@ -5,7 +5,6 @@ Remainder of functions are used in the data aggregation process.
 '''
 
 import os
-import re
 import h5py
 import shutil
 import tarfile
@@ -13,8 +12,8 @@ import warnings
 import numpy as np
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
+from cytoolz import keymap
 from ast import literal_eval
-from cytoolz import keymap, pluck
 from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
@@ -126,41 +125,7 @@ def get_selected_sessions(to_extract, extract_all):
 
     return ret_extract
 
-# Next two functions are index_file helper functions
-
-def get_pca_uuids(dicts, pca_file, all_uuids):
-    '''
-    Checks for pre-existing PCA Scores file to load given uuids from.
-    If file is not found, then uuids to use in later PCA step will come from
-    the loaded results_00.yaml files in dicts.
-
-    Note: This is a direct helper function for generate_index_wrapper().
-
-    Parameters
-    ----------
-    dicts (list): list of dictionaries containing extraction results metadata
-    pca_file (str): path to pca_scores.h5 file
-    all_uuids (list): list of all extracted session uuids
-
-    Returns
-    -------
-    pca_uuids (list): list of uuids to include in index-file
-    '''
-
-    if not os.path.exists(pca_file) or all_uuids:
-        warnings.warn('Will include all files')
-        pca_uuids = [dct['uuid'] for dct in dicts]
-    else:
-        if not os.path.exists(pca_file) or all_uuids:
-            warnings.warn('Will include all files')
-            pca_uuids = pluck('uuid', dicts)
-        else:
-            with h5py.File(pca_file, 'r') as f:
-                pca_uuids = list(f['scores'])
-
-    return pca_uuids
-
-def build_index_dict(files_to_use, pca_file, filter=[]):
+def build_index_dict(files_to_use):
     '''
     Given a list of files and respective metadatas to include in an index file,
     creates a dictionary that will be saved later as the index file.
@@ -171,8 +136,6 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
     Parameters
     ----------
     files_to_use (list): list of paths to extracted h5 files.
-    pca_file (str): path to pca scores file.
-    filter (list or tuple): list of metadata keys to conditionally filter. (Empty in most cases)
 
     Returns
     -------
@@ -181,7 +144,7 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
 
     output_dict = {
         'files': [],
-        'pca_path': pca_file
+        'pca_path': ''
     }
 
     index_uuids = []
@@ -200,11 +163,6 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
             # handling metadata sub-dictionary values
             if 'metadata' in file_tup[2].keys():
                 for k, v in file_tup[2]['metadata'].items():
-                    for filt in filter:
-                        if k == filt[0]:
-                            tmp = re.match(filt[1], v)
-                            if tmp is not None:
-                                v = tmp[0]
                     # setting metadata values in a nested dict
                     output_dict['files'][i]['metadata'][k] = v
             else:
