@@ -90,14 +90,14 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     extracted cropped, oriented and centered RGB video chunk to be written to file.
     '''
 
-    if isinstance(bground, np.ndarray) and (bground.shape == chunk[0].shape):
+    if bground is not None:
         # Perform background subtraction
         chunk = (bground-chunk).astype(frame_dtype)
 
         # Threshold chunk depth values at min and max heights
-        chunk = threshold_chunk(chunk, min_height, max_height, kwargs['dilate_iterations']).astype(frame_dtype)
+        chunk = threshold_chunk(chunk, min_height, max_height).astype(frame_dtype)
 
-    if isinstance(roi, np.ndarray) and (roi.shape == chunk[0].shape):
+    if roi is not None:
         chunk = apply_roi(chunk, roi)
 
     # Denoise the frames before we do anything else
@@ -195,6 +195,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     # Store all results in a dictionary
     results = {
+        'chunk': chunk,
         'depth_frames': cropped_frames,
         'mask_frames': mask,
         'scalars': scalars,

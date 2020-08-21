@@ -267,6 +267,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     elif num_frames > video_metadata['nframes']:
         warnings.warn('Requested more frames than video includes, extracting whole recording...')
         nframes = int(video_metadata['nframes'])
+    elif isinstance(num_frames, int):
+        nframes = num_frames
 
     config_data = check_filter_sizes(config_data)
 
@@ -303,6 +305,13 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # Non-functional indicator for extraction completion statuspytx
+    done_file = os.path.join(output_dir, 'done.txt')
+
+    # Ensure index is int
+    if isinstance(config_data["bg_roi_index"], list):
+        config_data["bg_roi_index"] = config_data["bg_roi_index"][0]
+
     output_filename = f'results_{config_data["bg_roi_index"]:02d}'
     status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
 
@@ -310,6 +319,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if check_completion_status(status_filename) and skip:
         print('Skipping...')
         return
+
+    # Removing done.txt file if it already exists
+    if os.path.exists(done_file):
+        os.remove(done_file)
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
@@ -387,7 +400,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    with open(os.path.join(output_dir, 'done.txt'), 'w') as f:
+    with open(done_file, 'w') as f:
         f.write('done')
 
     return output_dir

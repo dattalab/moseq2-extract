@@ -38,6 +38,8 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
     '''
 
     video_pipe = None
+    config_data['tracking_init_mean'] = None
+    config_data['tracking_init_cov'] = None
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         chunk_frames = [f + first_frame_idx for f in frame_range]
@@ -82,13 +84,13 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
             h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
         # Create empty array for output movie with filtered video and cropped mouse on the top left
-        nframes, rows, cols = raw_chunk[offset:].shape
+        nframes, rows, cols = results['chunk'][offset:].shape
         output_movie = np.zeros((nframes, rows + config_data['crop_size'][0], cols + config_data['crop_size'][1]),
                                 'uint16')
 
         # Populating array with filtered and cropped videos
         output_movie[:, :config_data['crop_size'][0], :config_data['crop_size'][1]] = results['depth_frames'][offset:]
-        output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = raw_chunk[offset:]
+        output_movie[:, config_data['crop_size'][0]:, config_data['crop_size'][1]:] = results['chunk'][offset:]
 
         # Writing frame batch to mp4 file
         video_pipe = write_frames_preview(
@@ -98,10 +100,10 @@ def process_extract_batches(h5_file, input_file, config_data, bground_im, roi,
             depth_max=config_data['max_height'], depth_min=config_data['min_height'],
             progress_bar=config_data.get('progress_bar', False))
 
-        # Check if video is done writing. If not, wait.
-        if video_pipe:
-            video_pipe.stdin.close()
-            video_pipe.wait()
+    # Check if video is done writing. If not, wait.
+    if video_pipe is not None:
+        video_pipe.stdin.close()
+        video_pipe.wait()
 
 
 def run_local_extract(to_extract, config_file, skip_extracted=False):

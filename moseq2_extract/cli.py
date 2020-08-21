@@ -125,6 +125,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_roi_options
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
+@click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
 @click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
@@ -140,8 +141,6 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--tracking-model-ll-clip', default=-100, type=float, help="Clip log-likelihoods below this value")
 @click.option('--tracking-model-segment', default=True, type=bool, help="Segment likelihood mask from tracking model")
 @click.option('--tracking-model-init', default='raw', type=str, help="Method for tracking model initialization")
-@click.option('--tracking-init-mean', default=None, type=float, help="EM tracking initial mean.")
-@click.option('--tracking-init-cov', default=None, type=float, help="EM tracking initial covariance.")
 @click.option('--cable-filter-iters', default=0, type=int, help="Number of cable filter iterations")
 @click.option('--cable-filter-shape', default='rectangle', type=str, help="Cable filter shape (rectangle or ellipse)")
 @click.option('--cable-filter-size', default=(5, 5), type=(int, int), help="Cable filter size (in pixels)")
@@ -164,7 +163,7 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
 @click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')
-def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
+def extract(input_file, crop_size, num_frames, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
             bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
             bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
             min_height, max_height, detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
@@ -174,12 +173,10 @@ def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
             model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, tracking_init_mean, tracking_init_cov,
-            skip_completed, progress_bar):
-
+            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip_completed, progress_bar):
 
     click_data = click.get_current_context().params
-    extract_wrapper(input_file, output_dir, click_data, skip=skip_completed)
+    extract_wrapper(input_file, output_dir, click_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
