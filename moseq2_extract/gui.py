@@ -6,9 +6,9 @@ with some additional preprocessing steps and state-retrieval functionality
 to facilitate Jupyter notebook usage.
 '''
 
+import os
 import json
 import warnings
-from .cli import *
 import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
@@ -157,6 +157,7 @@ def generate_config_command(output_file):
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=UserWarning)
 
+    from .cli import extract
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
@@ -235,11 +236,11 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     # find directories with .dat files that either have incomplete or no extractions
     if isinstance(ext, str):
-        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext, skip_checks=True)
+        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext)
         to_extract = [e for e in to_extract if e.endswith(ext)]
     elif isinstance(ext, list):
         for ex in ext:
-            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=True)
+            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
             to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
@@ -253,28 +254,26 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-def generate_index_command(input_dir, pca_file, output_file, filter, all_uuids, subpath='/'):
+def generate_index_command(input_dir, output_file, subpath='proc/'):
     '''
     Generates Index File based on aggregated sessions
 
     Parameters
     ----------
     input_dir (str): path to aggregated_results/ dir
-    pca_file (str): path to pca file
     output_file (str): index file name
-    filter (list): keys to filter through
-    all_uuids (list): all extracted session uuids
+    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
     output_file (str): path to index file.
     '''
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
     print('Index file successfully generated.')
     return output_file
 
-def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'):
+def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold=0.0):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
@@ -285,6 +284,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
+    mouse_threshold (float): threshold value of mean frame depth to include session frames
 
     Returns
     -------
@@ -300,11 +300,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, subpath='/'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir)
-
-    indexpath = generate_index_command(output_dir, '', os.path.join(input_dir, 'moseq2-index.yaml'), (), False, subpath=subpath)
-
-    print(f'Index file path: {indexpath}')
+    indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
     return indexpath
 
@@ -335,8 +331,8 @@ def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
                    'ColorDataType': "Byte[]", "StartTime": ""}
 
     for sess in sessions:
-        sess_dir = '/'.join(sess.split('/')[:-1]) # get path to session directory
-        sess_name = sess.split('/')[-2]
+        sess_dir = os.path.dirname(sess) # get path to session directory
+        sess_name = os.path.basename(sess_dir)
         if 'metadata.json' not in os.listdir(sess_dir):
             warnings.warn(f'No metadata file corresponding to {sess_name} found. Generating a default template.')
             sample_meta['SessionName'] = sess_name
@@ -411,7 +407,8 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    output_dir = get_roi_wrapper(input_file, config_data, gui=True)
+    output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+    get_roi_wrapper(input_file, config_data, output_dir)
 
     with open(config_file, 'w') as g:
         yaml.safe_dump(config_data, g)
@@ -487,6 +484,6 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip, gui=True)
+    extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
 
     return 'Extraction completed.'

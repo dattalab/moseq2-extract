@@ -71,11 +71,9 @@ class CLITests(TestCase):
 
     def test_generate_index(self):
         input_dir = 'data/'
-        pca_path = ''
         output_file = 'data/moseq2-index.yaml'
 
         params = ['-i', input_dir,
-                  '-p', pca_path,
                   '-o', output_file]
 
         runner = CliRunner()

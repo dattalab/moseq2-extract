@@ -5,7 +5,6 @@ Remainder of functions are used in the data aggregation process.
 '''
 
 import os
-import re
 import h5py
 import shutil
 import tarfile
@@ -13,8 +12,8 @@ import warnings
 import numpy as np
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
+from cytoolz import keymap
 from ast import literal_eval
-from cytoolz import keymap, pluck
 from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
@@ -126,41 +125,7 @@ def get_selected_sessions(to_extract, extract_all):
 
     return ret_extract
 
-# Next two functions are index_file helper functions
-
-def get_pca_uuids(dicts, pca_file, all_uuids):
-    '''
-    Checks for pre-existing PCA Scores file to load given uuids from.
-    If file is not found, then uuids to use in later PCA step will come from
-    the loaded results_00.yaml files in dicts.
-
-    Note: This is a direct helper function for generate_index_wrapper().
-
-    Parameters
-    ----------
-    dicts (list): list of dictionaries containing extraction results metadata
-    pca_file (str): path to pca_scores.h5 file
-    all_uuids (list): list of all extracted session uuids
-
-    Returns
-    -------
-    pca_uuids (list): list of uuids to include in index-file
-    '''
-
-    if not os.path.exists(pca_file) or all_uuids:
-        warnings.warn('Will include all files')
-        pca_uuids = [dct['uuid'] for dct in dicts]
-    else:
-        if not os.path.exists(pca_file) or all_uuids:
-            warnings.warn('Will include all files')
-            pca_uuids = pluck('uuid', dicts)
-        else:
-            with h5py.File(pca_file, 'r') as f:
-                pca_uuids = list(f['scores'])
-
-    return pca_uuids
-
-def build_index_dict(files_to_use, pca_file, filter=[]):
+def build_index_dict(files_to_use):
     '''
     Given a list of files and respective metadatas to include in an index file,
     creates a dictionary that will be saved later as the index file.
@@ -171,8 +136,6 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
     Parameters
     ----------
     files_to_use (list): list of paths to extracted h5 files.
-    pca_file (str): path to pca scores file.
-    filter (list or tuple): list of metadata keys to conditionally filter. (Empty in most cases)
 
     Returns
     -------
@@ -181,7 +144,7 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
 
     output_dict = {
         'files': [],
-        'pca_path': pca_file
+        'pca_path': ''
     }
 
     index_uuids = []
@@ -200,11 +163,6 @@ def build_index_dict(files_to_use, pca_file, filter=[]):
             # handling metadata sub-dictionary values
             if 'metadata' in file_tup[2].keys():
                 for k, v in file_tup[2]['metadata'].items():
-                    for filt in filter:
-                        if k == filt[0]:
-                            tmp = re.match(filt[1], v)
-                            if tmp is not None:
-                                v = tmp[0]
                     # setting metadata values in a nested dict
                     output_dict['files'][i]['metadata'][k] = v
             else:
@@ -442,8 +400,8 @@ def handle_extract_metadata(input_file, dirname):
 
 
 # extract h5 helper function
-def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs,
-                      nframes, true_depth, roi, bground_im, first_frame, timestamps):
+def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, scalars_attrs,
+                      nframes, roi, bground_im, first_frame, timestamps, **kwargs):
     '''
     This is a helper function for extract_wrapper(); handles writing the following metadata
     to an open results_00.h5 file:
@@ -451,14 +409,12 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
 
     Parameters
     ----------
-    f (h5py.File object): opened h5 file object to write to.
+    h5_file (h5py.File object): opened h5 file object to write to.
     acquisition_metadata (dict): Dictionary containing extracted session acquisition metadata.
     config_data (dict): dictionary object containing all required extraction parameters. (auto generated)
     status_dict (dict): dictionary that helps indicate if the session has been extracted fully.
-    scalars (list): list of computed scalar metadata.
-    scalars_attrs (dict): dict of respective computed scalar attributes and descriptions to save.
+    scalars_attrs (dict): dict of computed scalar attributes and descriptions to save.
     nframes (int): number of frames being recorded
-    true_depth (float): computed detected true depth
     roi (2d np.ndarray): Computed 2D ROI Image.
     bground_im (2d np.ndarray): Computed 2D Background Image.
     first_frame (2d np.ndarray): Computed 2D First Frame Image.
@@ -470,62 +426,62 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
     None
     '''
 
-    f.create_dataset('metadata/uuid', data=status_dict['uuid'])
+    h5_file.create_dataset('metadata/uuid', data=status_dict['uuid'])
 
     # Creating scalar dataset
-    for scalar in scalars:
-        f.create_dataset(f'scalars/{scalar}', (nframes,), 'float32', compression='gzip')
-        f[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
+    for scalar in list(scalars_attrs.keys()):
+        h5_file.create_dataset(f'scalars/{scalar}', (nframes,), 'float32', compression='gzip')
+        h5_file[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
     # Timestamps
     if timestamps is not None:
-        f.create_dataset('timestamps', compression='gzip', data=timestamps)
-        f['timestamps'].attrs['description'] = "Depth video timestamps"
+        h5_file.create_dataset('timestamps', compression='gzip', data=timestamps)
+        h5_file['timestamps'].attrs['description'] = "Depth video timestamps"
 
     # Cropped Frames
-    f.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
+    h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
                      config_data['frame_dtype'], compression='gzip')
-    f['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
+    h5_file['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
 
     # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:
-        f.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'float32',
+        h5_file.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'float32',
                          compression='gzip')
-        f['frames_mask'].attrs['description'] = 'Log-likelihood values from the tracking model (nframes x w x h)'
+        h5_file['frames_mask'].attrs['description'] = 'Log-likelihood values from the tracking model (nframes x w x h)'
     else:
-        f.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'bool',
+        h5_file.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'bool',
                          compression='gzip')
-        f['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
+        h5_file['frames_mask'].attrs['description'] = 'Boolean mask, false=not mouse, true=mouse'
 
     # Flip Classifier
     if config_data['flip_classifier'] is not None:
-        f.create_dataset('metadata/extraction/flips', (nframes,), 'bool', compression='gzip')
-        f['metadata/extraction/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
+        h5_file.create_dataset('metadata/extraction/flips', (nframes,), 'bool', compression='gzip')
+        h5_file['metadata/extraction/flips'].attrs['description'] = 'Output from flip classifier, false=no flip, true=flip'
 
     # True Depth
-    f.create_dataset('metadata/extraction/true_depth', data=true_depth)
-    f['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
+    h5_file.create_dataset('metadata/extraction/true_depth', data=config_data['true_depth'])
+    h5_file['metadata/extraction/true_depth'].attrs['description'] = 'Detected true depth of arena floor in mm'
 
     # ROI
-    f.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
-    f['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
+    h5_file.create_dataset('metadata/extraction/roi', data=roi, compression='gzip')
+    h5_file['metadata/extraction/roi'].attrs['description'] = 'ROI mask'
 
     # First Frame
-    f.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
-    f['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
+    h5_file.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
+    h5_file['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
 
     # Background
-    f.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
-    f['metadata/extraction/background'].attrs['description'] = 'Computed background image'
+    h5_file.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
+    h5_file['metadata/extraction/background'].attrs['description'] = 'Computed background image'
 
     # Extract Version
     extract_version = np.string_(get_distribution('moseq2-extract').version)
-    f.create_dataset('metadata/extraction/extract_version', data=extract_version)
-    f['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
+    h5_file.create_dataset('metadata/extraction/extract_version', data=extract_version)
+    h5_file['metadata/extraction/extract_version'].attrs['description'] = 'Version of moseq2-extract'
 
     # Extraction Parameters
     from moseq2_extract.cli import extract
-    dict_to_h5(f, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
+    dict_to_h5(h5_file, status_dict['parameters'], 'metadata/extraction/parameters', click_param_annot(extract))
 
     # Acquisition Metadata
     for key, value in acquisition_metadata.items():
@@ -533,6 +489,6 @@ def create_extract_h5(f, acquisition_metadata, config_data, status_dict, scalars
             value = [n.encode('utf8') for n in value]
 
         if value is not None:
-            f.create_dataset(f'metadata/acquisition/{key}', data=value)
+            h5_file.create_dataset(f'metadata/acquisition/{key}', data=value)
         else:
-            f.create_dataset(f'metadata/acquisition/{key}', dtype="f")
+            h5_file.create_dataset(f'metadata/acquisition/{key}', dtype="f")

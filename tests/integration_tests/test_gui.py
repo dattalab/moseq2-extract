@@ -152,7 +152,7 @@ class GUITests(TestCase):
         outfile = os.path.join(input_dir, 'moseq2-index.yaml')
 
         # minimal test case - more use cases to come
-        generate_index_command(input_dir, '', outfile, [], [])
+        generate_index_command(input_dir, outfile)
         assert os.path.isfile(outfile), "index file was not generated correctly"
         os.remove(outfile)
 

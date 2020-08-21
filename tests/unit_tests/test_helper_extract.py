@@ -18,7 +18,6 @@ class TestHelperExtract(TestCase):
 
     def test_process_extract_batches(self):
 
-        tar = False
         output_dir = 'data/'
         config_file = 'data/config.yaml'
         metadata_path = 'data/metadata.json'
@@ -43,6 +42,8 @@ class TestHelperExtract(TestCase):
             config_data = yaml.safe_load(f)
 
         config_data['flip_classifier'] = flip_file
+        config_data['true_depth'] = true_depth
+        config_data['tar'] = False
 
         status_dict = {
             'parameters': deepcopy(config_data),
@@ -53,8 +54,11 @@ class TestHelperExtract(TestCase):
         }
 
         frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap']))
-        strel_tail = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-        strel_min = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+
+        str_els = {
+            'strel_tail': cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
+            'strel_min': cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        }
 
         scalars_attrs = scalar_attributes()
         scalars = list(scalars_attrs.keys())
@@ -69,11 +73,11 @@ class TestHelperExtract(TestCase):
         assert os.path.isfile(data_file)
 
         with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as g:
-            create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars, scalars_attrs, nframes,
-                              true_depth, roi, bground_im, first_frame, None)
+            create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars_attrs, nframes,
+                              roi, bground_im, first_frame, None)
+
             video_pipe = process_extract_batches(g, data_file, config_data, bground_im, roi, scalars, frame_batches,
-                                                 first_frame_idx, true_depth, tar, strel_tail, strel_min, output_dir,
-                                                 output_filename)
+                                                 first_frame_idx, str_els, output_dir, output_filename)
             if video_pipe:
                 video_pipe.stdin.close()
                 video_pipe.wait()

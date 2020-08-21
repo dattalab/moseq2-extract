@@ -46,7 +46,7 @@ class TestExtractROI(TestCase):
         z = plane_equation_noisy(xy.T, noise_scale=.1)
         tmp_img = z.reshape(xx.shape)
 
-        a = plane_ransac(tmp_img, depth_range=(0, 1000),
+        a = plane_ransac(tmp_img, bg_roi_depth_range=(0, 1000),
                          iters=1000, noise_tolerance=10)
         norma = -a[0]/a[0][2]
 

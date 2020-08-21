@@ -79,9 +79,8 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     plane_im = plane_im.reshape(bground_im.shape)
 
     write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
-    bground_im = plane_im
 
-    return bground_im
+    return plane_im
 
 def get_frame_range_indices(config_data, nframes):
     '''
@@ -198,6 +197,31 @@ def set_bg_roi_weights(config_data):
 
     return config_data
 
+def check_filter_sizes(config_data):
+    '''
+    Checks if inputted spatial and temporal filter kernel sizes are odd numbers.
+    Incrementing the value if not.
+
+    Parameters
+    ----------
+    config_data (dict): Configuration dict holding all extraction parameters
+
+    Returns
+    -------
+    config_data (dict): Updated configuration dict
+
+    '''
+
+    # Ensure filter kernel sizes are odd
+    if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+        config_data['spatial_filter_size'][0] += 1
+    if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
+        config_data['temporal_filter_size'][0] += 1
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+
+    return config_data
+
 def load_metadata(metadata_file):
     '''
     Loads metadata from session metadata.json file.
@@ -237,15 +261,14 @@ def load_found_session_paths(input_dir, exts):
     files (list): sorted list of all paths to found depth files
     '''
 
-    files = []
-    if isinstance(exts, list):
-        for ext in exts:
-            files += sorted(glob(os.path.join(input_dir, '*/*.' + ext.replace('.', ''))))
-    else:
-        files += sorted(glob(os.path.join(input_dir, '*/*.' + exts.replace('.', ''))))
+    if not isinstance(exts, (tuple, list)):
+        exts = [exts]
 
-    files = sorted(files)
-    return files
+    files = []
+    for ext in exts:
+        files.extend(glob(os.path.join(input_dir, '*/*' + ext), recursive=True))
+
+    return sorted(files)
 
 
 def select_strel(string='e', size=(10, 10)):
@@ -441,7 +464,8 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
                 dict_to_h5(h5, item, dest)
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
-        except:
+        except Exception as e:
+            print(e)
             if key != 'inputs':
                 print('h5py could not encode key:', key)
 
@@ -865,19 +889,19 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     return np.clip(1 - weights, 0.08, 0.8)
 
 
-def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir):
+def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir):
     '''
     Creates a gradient to represent the dilated (now visible) bucket wall regions.
     Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
     This is done to handle noise attributed by bucket walls being slanted, and thus being picked
     up as large noise depth values. Moreover, to appropriately subtract the background from input
     images during extraction without obscuring the rodent, or including unwanted wall regions.
+
     Parameters
     ----------
     bground_im (2d np.ndarray): the bucket floor image computed as the median distance throughout the session.
     config_data (dict): dictionary containing helper user configuration parameters.
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
-    true_depth (float): median distance computed throughout recording.
     output_dir (str): path to save newly computed background to use.
 
     Returns
@@ -895,6 +919,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
 
     # getting helper user parameters
+    true_depth = config_data['true_depth']
     xoffset = config_data.get('x_bg_offset', -2)
     yoffset = config_data.get('y_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
