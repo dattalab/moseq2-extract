@@ -1,15 +1,19 @@
-from moseq2_extract.util import convert_pxs_to_mm, strided_app
+'''
+Video pre-processing utilities for detecting ROIs and extracting raw data.
+'''
+
+import cv2
+import joblib
+import scipy.stats
+import numpy as np
+import scipy.signal
+import skimage.measure
+import scipy.interpolate
+import skimage.morphology
+from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
-import numpy as np
-import skimage.measure
-import skimage.morphology
-import scipy.stats
-import scipy.signal
-import scipy.interpolate
-import cv2
-from tqdm.auto import tqdm
-import joblib
+from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
 
 def get_flips(frames, flip_file=None, smoothing=None):
@@ -64,9 +68,9 @@ def get_largest_cc(frames, progress_bar=False):
 
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
         nb_components, output, stats, centroids =\
-            cv2.connectedComponentsWithStats(frames[i, ...], connectivity=4)
+            cv2.connectedComponentsWithStats(frames[i], connectivity=4)
         szs = stats[:, -1]
-        foreground_obj[i, ...] = output == szs[1:].argmax()+1
+        foreground_obj[i] = output == szs[1:].argmax()+1
 
     return foreground_obj
 
@@ -105,12 +109,10 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     '''
 
     try:
-        if frames_file.endswith('dat'):
+        if frames_file.endswith(('dat', 'mkv')):
             finfo = moseq2_extract.io.video.get_raw_info(frames_file)
         elif frames_file.endswith('avi'):
             finfo = moseq2_extract.io.video.get_video_info(frames_file)
-        elif frames_file.endswith('mkv'):
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
     except AttributeError as e:
         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
@@ -119,16 +121,16 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
 
     for i, frame in enumerate(frame_idx):
         try:
-            if frames_file.endswith('dat'):
+            if frames_file.endswith(('dat', 'mkv')):
                 frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
             elif frames_file.endswith('avi'):
                 frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
-            elif frames_file.endswith('mkv'):
-                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
         except AttributeError as e:
+            print('Error reading frames:', e)
+            print('Attempting raw file read...')
             frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
 
-        frame_store[i, ...] = cv2.medianBlur(frs, med_scale)
+        frame_store[i] = cv2.medianBlur(frs, med_scale)
 
     return get_bground_im(frame_store)
 
@@ -154,20 +156,40 @@ def get_bbox(roi):
         bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
         return bbox
 
+def threshold_chunk(chunk, min_height, max_height):
+    '''
+    Thresholds out depth values that are less than min_height and larger than
+    max_height.
+
+    Parameters
+    ----------
+    chunk (3D np.ndarray): Chunk of frames to threshold (nframes, width, height)
+    min_height (int): Minimum depth values to include after thresholding.
+    max_height (int): Maximum depth values to include after thresholding.
+    dilate_iterations (int): Number of iterations the ROI was dilated.
+
+    Returns
+    -------
+    chunk (3D np.ndarray): Updated frame chunk.
+    '''
+
+    chunk[chunk < min_height] = 0
+    chunk[chunk > max_height] = 0
+
+    return chunk
 
 def get_roi(depth_image,
             strel_dilate=cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15)),
-            dilate_iters=1,
+            dilate_iterations=0,
+            erode_iterations=0,
             strel_erode=None,
             noise_tolerance=30,
-            weights=(1, .1, 1),
+            bg_roi_weights=(1, .1, 1),
             overlap_roi=None,
-            gradient_filter=False,
-            gradient_kernel=7,
-            gradient_threshold=3000,
-            fill_holes=True,
-            gui=False,
-            verbose=0,
+            bg_roi_gradient_filter=False,
+            bg_roi_gradient_kernel=7,
+            bg_roi_gradient_threshold=3000,
+            bg_roi_fill_holes=True,
             **kwargs):
     '''
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -176,18 +198,17 @@ def get_roi(depth_image,
     ----------
     depth_image (2d np.ndarray): Singular depth image frame.
     strel_dilate (cv2.StructuringElement - Rectangle): dilation shape to use.
-    dilate_iters (int): number of dilation iterations.
+    dilate_iterations (int): number of dilation iterations.
+    erode_iterations (int): number of erosion iterations.
     strel_erode (int): image erosion kernel size.
     noise_tolerance (int): threshold to use for noise filtering.
-    weights (tuple): weights describing threshold to accept ROI.
+    bg_roi_weights (tuple): weights describing threshold to accept ROI.
     overlap_roi (np.ndarray): list of ROI boolean arrays to possibly combine.
-    gradient_filter (bool): Boolean for whether to use a gradient filter.
-    gradient_kernel (tuple): Kernel size of length 2, e.g. (1, 1.5)
-    gradient_threshold (int): Threshold for noise gradient filtering
-    fill_holes (bool): Boolean to fill any missing regions within the ROI.
-    gui (bool): Boolean for whether function is running on GUI.
-    verbose (bool): Boolean for whether to display progress
-    kwargs
+    bg_roi_gradient_filter (bool): Boolean for whether to use a gradient filter.
+    bg_roi_gradient_kernel (tuple): Kernel size of length 2, e.g. (1, 1.5)
+    bg_roi_gradient_threshold (int): Threshold for noise gradient filtering
+    bg_roi_fill_holes (bool): Boolean to fill any missing regions within the ROI.
+    kwargs (dict) Dictionary containing `bg_roi_depth_range` parameter for plane_ransac()
 
     Returns
     -------
@@ -199,26 +220,25 @@ def get_roi(depth_image,
     shape_index (list): list of rank means.
     '''
 
-    if gradient_filter:
+    if bg_roi_gradient_filter:
         gradient_x = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
-                                      1, 0, ksize=gradient_kernel))
+                                      1, 0, ksize=bg_roi_gradient_kernel))
         gradient_y = np.abs(cv2.Sobel(depth_image, cv2.CV_64F,
-                                      0, 1, ksize=gradient_kernel))
-        mask = np.logical_and(gradient_x < gradient_threshold, gradient_y < gradient_threshold)
+                                      0, 1, ksize=bg_roi_gradient_kernel))
+        mask = np.logical_and(gradient_x < bg_roi_gradient_threshold, gradient_y < bg_roi_gradient_threshold)
     else:
         mask = None
 
     roi_plane, dists = moseq2_extract.extract.roi.plane_ransac(
-        depth_image, noise_tolerance=noise_tolerance, mask=mask, gui=gui, verbose=verbose, **kwargs)
+        depth_image, noise_tolerance=noise_tolerance, mask=mask, **kwargs)
     dist_ims = dists.reshape(depth_image.shape)
 
-    if gradient_filter:
+    if bg_roi_gradient_filter:
         dist_ims[~mask] = np.inf
 
     bin_im = dist_ims < noise_tolerance
 
     # anything < noise_tolerance from the plane is part of it
-
     label_im = skimage.measure.label(bin_im)
     region_properties = skimage.measure.regionprops(label_im)
 
@@ -227,7 +247,6 @@ def get_roi(depth_image,
     dists = np.zeros_like(extents)
 
     # get the max distance from the center, area and extent
-
     center = np.array(depth_image.shape)/2
 
     for i, props in enumerate(region_properties):
@@ -237,33 +256,32 @@ def get_roi(depth_image,
         dists[i] = tmp_dists.max()
 
     # rank features
-
     ranks = np.vstack((scipy.stats.rankdata(-areas, method='max'),
                        scipy.stats.rankdata(-extents, method='max'),
                        scipy.stats.rankdata(dists, method='max')))
-    weight_array = np.array(weights, 'float32')
+    weight_array = np.array(bg_roi_weights, 'float32')
     shape_index = np.mean(np.multiply(ranks.astype('float32'), weight_array[:, np.newaxis]), 0).argsort()
 
     # expansion microscopy on the roi
-
     rois = []
     bboxes = []
 
+    # Perform image processing on each found ROI
     for shape in shape_index:
         roi = np.zeros_like(depth_image)
         roi[region_properties[shape].coords[:, 0],
             region_properties[shape].coords[:, 1]] = 1
         if strel_dilate is not None:
-            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iters)
+            roi = cv2.dilate(roi, strel_dilate, iterations=dilate_iterations) # Dilate
         if strel_erode is not None:
-            roi = cv2.erode(roi, strel_erode, iterations=1)
-        if fill_holes:
-            roi = scipy.ndimage.morphology.binary_fill_holes(roi)
+            roi = cv2.erode(roi, strel_erode, iterations=erode_iterations) # Erode
+        if bg_roi_fill_holes:
+            roi = scipy.ndimage.morphology.binary_fill_holes(roi) # Fill Holes
 
-        # roi=skimage.morphology.dilation(roi,dilate_element)
         rois.append(roi)
         bboxes.append(get_bbox(roi))
 
+    # Remove largest overlapping found ROI
     if overlap_roi is not None:
         overlaps = np.zeros_like(areas)
 
@@ -294,7 +312,7 @@ def apply_roi(frames, roi):
     # yeah so fancy indexing slows us down by 3-5x
     cropped_frames = frames*roi
     bbox = get_bbox(roi)
-    # cropped_frames[:,roi==0]=0
+
     cropped_frames = cropped_frames[:, bbox[0, 0]:bbox[1, 0], bbox[0, 1]:bbox[1, 1]]
     return cropped_frames
 
@@ -339,7 +357,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
                  iters_tail=None, frame_dtype='uint8',
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-                 iters_min=None, progress_bar=True, gui=False, verbose=0):
+                 iters_min=None, progress_bar=False):
     '''
     Simple filtering, median filter and morphological opening.
 
@@ -354,8 +372,6 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     strel_min (int): minimum kernel size
     iters_min (int): minimum number of filtering iterations
     progress_bar (bool): display progress bar
-    gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -364,9 +380,6 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
     # seeing enormous speed gains w/ opencv
     filtered_frames = frames.copy().astype(frame_dtype)
-
-    if verbose == 0:
-        progress_bar = False
 
     for i in tqdm(range(frames.shape[0]),
                        disable=not progress_bar, desc='Cleaning frames'):
@@ -392,7 +405,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
 
 
 def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
-                       mask_threshold=-30, use_cc=False, progress_bar=True, gui=False, verbose=0):
+                       mask_threshold=-30, use_cc=False, progress_bar=False):
     '''
     Use image moments to compute features of the largest object in the frame
 
@@ -404,8 +417,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     mask_threshold (int): threshold to include regions into mask.
     use_cc (bool): Use connected components.
     progress_bar (bool): Display progress bar.
-    gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -413,7 +424,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     mask (3d np.ndarray): input frame mask.
     '''
 
-    features = []
     nframes = frames.shape[0]
 
     if type(mask) is np.ndarray and mask.size > 0:
@@ -428,8 +438,6 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
         'axis_length': np.full((nframes, 2), np.nan)
     }
 
-    if verbose == 0:
-        progress_bar = False
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
 
         frame_mask = frames[i] > frame_threshold
@@ -459,8 +467,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     return features, mask
 
 
-def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
-                           progress_bar=True, gui=False, verbose=0):
+def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=False):
     '''
     Crops mouse from image and orients it s.t it is always facing east.
 
@@ -471,7 +478,6 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     crop_size (tuple): size of cropped image.
     progress_bar (bool): Display progress bar.
     gui (bool): indicate GUI is executing function
-    verbose (bool): display progress
 
     Returns
     -------
@@ -482,11 +488,10 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
     cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
     win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
     border = (crop_size[1], crop_size[1], crop_size[0], crop_size[0])
-    if verbose == 0:
-        progress_bar = False
+
     for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Rotating'):
 
-        if np.any(np.isnan(features['centroid'][i, :])):
+        if np.any(np.isnan(features['centroid'][i])):
             continue
 
         use_frame = cv2.copyMakeBorder(frames[i], *border, cv2.BORDER_CONSTANT, 0)
@@ -505,7 +510,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80),
 
         rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
                                           -np.rad2deg(features['orientation'][i]), 1)
-        cropped_frames[i, :, :] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
+        cropped_frames[i] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
                                                  rot_mat, (crop_size[0], crop_size[1]))
 
     return cropped_frames
@@ -605,6 +610,7 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
                           angle_hampel_span=None, angle_hampel_sig=3):
     '''
     Filters computed extraction features using Hampel Filtering.
+    Used to detect and filter out outliers.
 
     Parameters
     ----------

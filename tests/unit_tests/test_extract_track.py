@@ -2,7 +2,7 @@ import numpy as np
 import numpy.testing as npt
 from unittest import TestCase
 import statsmodels.stats.correlation_tools as stats_tools
-from moseq2_extract.extract.track import em_get_ll, em_iter, em_tracking
+from moseq2_extract.extract.track import em_get_ll, em_tracking
 
 def make_fake_movie():
     edge_size = 40

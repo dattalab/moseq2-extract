@@ -1,7 +1,14 @@
+'''
+CLI front-end operations. This module contains all the functionality and configurable parameters
+users can alter to most accurately process their data.
+
+Note: These functions simply read all the parameters into a dictionary,
+ and then call the corresponding wrapper function with the given input parameters.
+'''
+
 import os
 import sys
 import click
-import pathlib
 import numpy as np
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
@@ -22,15 +29,24 @@ click.core.Option.__init__ = new_init
 
 
 @click.group()
+@click.version_option()
 def cli():
     pass
 
-@cli.command('version', help='Print version number')
-def version():
-    import moseq2_extract
-    click.echo(moseq2_extract.__version__)
-
 def common_roi_options(function):
+    '''
+    Decorator function for grouping shared ROI related parameters.
+    The parameters included in this function are shared between the find_roi and extract CLI commands.
+
+    Parameters
+    ----------
+    function: Function to add enclosed parameters to as click options.
+
+    Returns
+    -------
+    function: Updated function including shared parameters.
+    '''
+
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
                             help='Size of strel to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
@@ -39,6 +55,9 @@ def common_roi_options(function):
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
+    function = click.option('--camera-type', default='kinect', type=click.Choice(["kinect", "azure", "realsense"]),
+                            help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
+                             Possible types: ["kinect", "azure", "realsense"]')(function)
     function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
@@ -52,19 +71,39 @@ def common_roi_options(function):
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
-    function = click.option('--dilate-iterations', default=1, type=int,
-                            help='Number of dilation iterations to increase bucket floor size.')(function)
+    function = click.option('--dilate-iterations', default=0, type=int,
+                            help='Number of dilation iterations to increase bucket floor size. (Special Cases Only)')(function)
+    function = click.option('--bg-roi-erode', default=(1, 1), type=(int, int),
+                            help='Size of cv2 Structure Element to erode roi. (Special Cases Only)')(function)
+    function = click.option('--erode-iterations', default=0, type=int,
+                            help='Number of erosion iterations to decrease bucket floor size. (Special Cases Only)')(function)
+    function = click.option('--noise-tolerance', default=30, type=int,
+                            help='Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)')(function)
     function = click.option('--output-dir', default=None, help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
     function = click.option("--config-file", type=click.Path())(function)
+    function = click.option('--progress-bar', '-p', is_flag=True, help='Show verbose progress bars.')(function)
     return function
 
 def common_avi_options(function):
+    '''
+    Decorator function for grouping shared video processing parameters.
+    The included parameters are shared between convert_raw_to_avi() and copy_slice()
+
+    Parameters
+    ----------
+    function: Function to add enclosed parameters to as click options.
+
+    Returns
+    -------
+    function: Updated function including shared parameters.
+    '''
+
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
-    function = click.option('--delete', type=bool, is_flag=True, help='Delete raw file if encoding is sucessful')(function)
+    function = click.option('--delete', is_flag=True, help='Delete raw file if encoding is sucessful')(function)
     function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
     return function
 
@@ -73,10 +112,10 @@ def common_avi_options(function):
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
-def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
+def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type, bg_roi_depth_range,
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
-             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
-             output_dir, use_plane_bground, config_file):
+             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, bg_roi_erode,
+             erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file, progress_bar):
 
     click_data = click.get_current_context().params
     get_roi_wrapper(input_file, click_data, output_dir)
@@ -86,12 +125,16 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_roi_options
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
+@click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
 @click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')
-@click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. Either "auto" or a int value.')
+@click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
+            This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
+@click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")
 @click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
+@click.option('--use-cc', default=False, type=bool, help="Extract features using largest connected components.")
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
 @click.option('--tracking-model-ll-threshold', default=-100, type=float, help="Threshold on log-likelihood for pixels to use for update during tracking")
 @click.option('--tracking-model-mask-threshold', default=-16, type=float, help="Threshold on log-likelihood to include pixels for centroid and angle calculation")
@@ -119,27 +162,26 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress', default=False, type=bool, help='Convert .dat to .avi after successful extraction')
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
-@click.option('--verbose', type=int, default=0, help='Level of verbosity during extraction process. [0-2]')
-def extract(input_file, crop_size, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, bg_roi_depth_range,
-            bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
-            bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, min_height, max_height,
-            detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
-            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold,
+@click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')
+def extract(input_file, crop_size, num_frames, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
+            bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
+            bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
+            min_height, max_height, detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
+            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold, use_cc,
             tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
             cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
             temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
             frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, verbose, compress_chunk_size, compress_threads):
+            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
+            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip_completed, progress_bar):
 
     click_data = click.get_current_context().params
-    extract_wrapper(input_file, output_dir, click_data, extract=extract)
-
-
+    extract_wrapper(input_file, output_dir, click_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
-              default=os.path.join(pathlib.Path.home(), 'moseq2'), help="Temp storage")
+              default=os.path.expanduser('~/moseq2'), help="Temp storage")
 def download_flip_file(config_file, output_dir):
 
     flip_file_wrapper(config_file, output_dir)
@@ -159,14 +201,11 @@ def generate_config(output_file):
 
 @cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
-@click.option('--pca-file', '-p', type=click.Path(), default=os.path.join(os.getcwd(), '_pca/pca_scores.h5'), help='Path to PCA results')
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
-@click.option('--filter', '-f', type=(str, str), default=None, help='Regex filter for metadata', multiple=True)
-@click.option('--all-uuids', '-a', type=bool, default=False, help='Use all uuids')
 @click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
-def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath):
+def generate_index(input_dir, output_file, subpath):
 
-    output_file = generate_index_wrapper(input_dir, pca_file, output_file, filter, all_uuids, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
 
     if output_file != None:
         print(f'Index file: {output_file} was successfully generated.')
@@ -175,16 +214,15 @@ def generate_index(input_dir, pca_file, output_file, filter, all_uuids, subpath)
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
 @click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
-def aggregate_extract_results(input_dir, format, output_dir):
+@click.option('--mouse-threshold', default=0, type=float, help='Threshold value for mean depth to include frames in aggregated results')
+def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 
-    aggregate_extract_results_wrapper(input_dir, format, output_dir)
-
+    aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
-@click.option('-v', '--verbose', type=int, default=0, help='Verbosity level out batch encoding. [0-1]')
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, verbose):
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
@@ -201,7 +239,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
                                   pipe=video_pipe,
                                   close_pipe=False,
                                   threads=threads,
-                                  fps=fps, verbose=verbose)
+                                  fps=fps)
 
     if video_pipe:
         video_pipe.stdin.close()
