@@ -2,26 +2,46 @@ import os
 import cv2
 import h5py
 import json
-import shutil
 import numpy as np
-from pathlib import Path
 import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-from moseq2_extract.tests.integration_tests.test_cli import write_fake_movie
+from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, scalar_attributes, dict_to_h5, click_param_annot, \
-    get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, \
-    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml
+    select_strel, scalar_attributes, dict_to_h5, click_param_annot, strided_app, \
+    get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, command_with_config, \
+    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, set_bg_roi_weights
 
 class testExtractUtils(TestCase):
 
     def test_build_path(self):
         out = build_path({'test1': 'value', 'test2': 'value2'}, '{test1}_{test2}')
         assert out == 'value_value2'
+
+    def test_set_bg_roi_weights(self):
+        test_config_data = {'camera_type': 'kinect',
+                            'bg_roi_weights': (1, .1, 1)}
+
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (1, .1, 1)
+
+        test_config_data['camera_type'] = 'azure'
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (10, .1, 1)
+
+        test_config_data['camera_type'] = 'realsense'
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (10, 1, 4)
+
+        test_config_data['camera_type'] = None
+        new_config_data = set_bg_roi_weights(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (1, .1, 1)
 
     def test_read_yaml(self):
 
@@ -70,19 +90,18 @@ class testExtractUtils(TestCase):
 
         assert(gen_list == tmp_list)
 
-
     def test_load_timestamps(self):
 
-        with TemporaryDirectory() as tmp:
-            txt_path = NamedTemporaryFile(prefix=tmp+'/', suffix=".txt")
+        txt_path = 'data/tmp_timestamps.txt'
 
-            tmp_timestamps = np.arange(0, 5, .05)
-            with open(txt_path.name, 'w') as f:
-                for timestamp in tmp_timestamps:
-                    print('{}'.format(str(timestamp)), file=f)
+        tmp_timestamps = np.arange(0, 5, .05)
+        with open(txt_path, 'w') as f:
+            for timestamp in tmp_timestamps:
+                print('{}'.format(str(timestamp)), file=f)
 
-            loaded_timestamps = load_timestamps(txt_path.name)
-            npt.assert_almost_equal(loaded_timestamps, tmp_timestamps, 10)
+        loaded_timestamps = load_timestamps(txt_path)
+        npt.assert_almost_equal(loaded_timestamps, tmp_timestamps, 10)
+        os.remove(txt_path)
 
     def test_load_metadata(self):
 
@@ -90,25 +109,26 @@ class testExtractUtils(TestCase):
             'test': 'test2'
         }
 
-        with TemporaryDirectory() as tmp:
-            json_file = NamedTemporaryFile(prefix=tmp+'/', suffix=".json")
-            with open(json_file.name, 'w') as f:
-                json.dump(tmp_dict, f)
+        json_file = 'data/test_metadata.json'
+        with open(json_file, 'w') as f:
+            json.dump(tmp_dict, f)
 
-            loaded_dict = load_metadata(json_file.name)
+        loaded_dict = load_metadata(json_file)
 
-            assert(loaded_dict == tmp_dict)
+        assert(loaded_dict == tmp_dict)
+        os.remove(json_file)
 
     def test_convert_raw_to_avi(self):
 
-        with TemporaryDirectory() as tmp:
-            # writing a file to test following pipeline
-            data_path = Path(NamedTemporaryFile(prefix=tmp+'/', suffix=".dat").name)
+        # writing a file to test following pipeline
+        data_path = 'data/fake_movie_to_convert.dat'
 
-            write_fake_movie(data_path)
+        write_fake_movie(data_path)
 
-            convert_raw_to_avi_function(str(data_path))
-            assert Path(str(data_path).replace('.dat', '.avi')).is_file()
+        convert_raw_to_avi_function(data_path)
+        assert os.path.isfile(data_path.replace('.dat', '.avi'))
+        os.remove(data_path)
+        os.remove(data_path.replace('.dat', '.avi'))
 
     def test_select_strel(self):
 
@@ -121,13 +141,11 @@ class testExtractUtils(TestCase):
         strel = select_strel('sdfdfsf', size=(9, 9))
         npt.assert_equal(strel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
 
-
     def test_scalar_attributes(self):
 
         dct = scalar_attributes()
 
         assert(dct is not None)
-
 
     def test_dict_to_h5(self):
 
@@ -147,25 +165,26 @@ class testExtractUtils(TestCase):
             'bool': False,
             'list': [1,2,3],
         }
-        with TemporaryDirectory() as tmp:
-            fpath = NamedTemporaryFile(prefix=tmp+'/', suffix=".h5")
-            with h5py.File(fpath.name, 'w') as f:
-                dict_to_h5(f, tmp_dic, tmp)
 
-            def h5_to_dict(h5file, path):
-                ans = {}
-                if not path.endswith('/'):
-                    path = path + '/'
-                for key, item in h5file[path].items():
-                    if type(item) is h5py.Dataset:
-                        ans[key] = item[()]
-                    elif type(item) is h5py.Group:
-                        ans[key] = h5_to_dict(h5file, path + key + '/')
-                return ans
+        fpath = 'data/fake_results.h5'
+        with h5py.File(fpath, 'w') as f:
+            dict_to_h5(f, tmp_dic, 'data/')
 
-            with h5py.File(fpath.name, 'r') as f:
-                result = h5_to_dict(f, tmp)
-            npt.assert_equal(result, tmp_dic)
+        def h5_to_dict(h5file, path):
+            ans = {}
+            if not path.endswith('/'):
+                path = path + '/'
+            for key, item in h5file[path].items():
+                if type(item) is h5py.Dataset:
+                    ans[key] = item[()]
+                elif type(item) is h5py.Group:
+                    ans[key] = h5_to_dict(h5file, path + key + '/')
+            return ans
+
+        with h5py.File(fpath, 'r') as f:
+            result = h5_to_dict(f, 'data/')
+        npt.assert_equal(result, tmp_dic)
+        os.remove(fpath)
 
     def test_get_bucket_center(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
@@ -179,7 +198,6 @@ class testExtractUtils(TestCase):
 
         assert x > 0 and x < img.shape[1]
         assert y > 0 and y < img.shape[0]
-
 
     def test_make_gradient(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
@@ -200,16 +218,26 @@ class testExtractUtils(TestCase):
         roi = read_image('data/tiffs/roi_bucket_01.tiff')
         true_depth = np.median(img[roi > 0])
 
-        config_data = {}
+        config_data = {'true_depth': true_depth}
         strel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
         output_dir = 'data/tiffs/'
 
-        new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, true_depth, output_dir)
+        new_bg = graduate_dilated_wall_area(img, config_data, strel_dilate, output_dir)
 
         assert new_bg.all() != img.all()
         assert np.median(new_bg) > np.median(img)
         assert os.path.exists('data/tiffs/new_bg.tiff')
         os.remove('data/tiffs/new_bg.tiff')
+
+    def test_strided_app(self):
+        test_in = np.array([ 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11])
+
+        test_out = strided_app(test_in, L=5, S=3)
+        expected_out = np.array([[ 1,  2,  3,  4,  5],
+                                 [ 4,  5,  6,  7,  8],
+                                 [ 7,  8,  9, 10, 11]])
+
+        npt.assert_array_equal(test_out, expected_out)
 
     def test_click_param_annot(self):
         ref_dict = {
@@ -217,6 +245,8 @@ class testExtractUtils(TestCase):
             'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
             'bg_roi_index': 'Index of which background mask(s) to use',
             'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
+            'camera_type': 'Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
+                             Possible types: ["kinect", "azure", "realsense"]',
             'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
             'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
             'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
@@ -224,10 +254,17 @@ class testExtractUtils(TestCase):
             'bg_sort_roi_by_position': 'Sort ROIs by position',
             'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
             'bg_roi_fill_holes': 'Fill holes in ROI',
-            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
+            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size. (Special Cases Only)',
+            'bg_roi_erode': 'Size of cv2 Structure Element to erode roi. (Special Cases Only)',
+            'erode_iterations': 'Number of erosion iterations to decrease bucket floor size. (Special Cases Only)',
+            'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
             'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
-            'config_file': None
+            'config_file': None,
+            'progress_bar': 'Show verbose progress bars.'
         }
         test_dict = click_param_annot(find_roi)
         npt.assert_equal(ref_dict, test_dict)
+
+    def test_command_with_config(self):
+        command_with_config(find_roi)

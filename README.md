@@ -17,7 +17,8 @@ They are accessible via CLI or Jupyter Notebook in [moseq2-app](https://github.c
 Usage: moseq2-extract [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.  [default: False]
+  --help              Show this message and exit.  [default: False]
+  --version           Print version number
 
 Commands:
   aggregate-results   Copies all extracted results (h5, yaml, avi) files...
@@ -29,7 +30,6 @@ Commands:
                       from...
   generate-config     Generates a configuration file that holds editable...
   generate-index      Generates an index YAML file containing all extracted...
-  version             Print version number
 ```
 
 Run any command with the `--help` flag to display all available options and their descriptions.
@@ -38,8 +38,17 @@ Run any command with the `--help` flag to display all available options and thei
 
 ## Documentation
 
+MoSeq2 uses `sphinx` to generate the documentation in HTML and PDF forms. To install `sphinx`, follow the commands below:
+```.bash
+pip install sphinx==3.0.3
+pip install sphinx-rtd-theme
+pip install rst2pdf
+``` 
+
 All documentation regarding moseq2-extract can be found in the `Documentation.pdf` file in the root directory,
 an HTML ReadTheDocs page can be generated via running the `make html` in the `docs/` directory.
+
+To generate a PDF version of the documentation, simply run `make pdf` in the `docs/` directory.
 
 For information on getting started, check out the [MoSeq Roadmap](https://github.com/dattalab/moseq2-docs/wiki).
 ***

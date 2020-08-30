@@ -1,3 +1,7 @@
+'''
+General helper/convenience utilities that are implemented throughout the extract package.
+'''
+
 import os
 import re
 import cv2
@@ -7,6 +11,7 @@ import h5py
 import click
 import warnings
 import numpy as np
+from glob import glob
 from copy import deepcopy
 import ruamel.yaml as yaml
 from typing import Pattern
@@ -51,6 +56,62 @@ def command_with_config(config_file_param_name):
 
     return custom_command_class
 
+def set_bground_to_plane_fit(bground_im, plane, output_dir):
+    '''
+    Replaces median-computed background image with plane fit.
+    Only occurs if config_data['use_plane_bground'] == True.
+
+    Parameters
+    ----------
+    bground_im (2D numpy array): Background image computed via median value of depth video.
+    plane (2D numpy array): Computed ROI Plane using RANSAC.
+    output_dir (str): Path to write updated background image to.
+
+    Returns
+    -------
+    bground_im (2D numpy array): Plane fit version of the background image.
+    '''
+
+    xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
+    coords = np.vstack((xx.ravel(), yy.ravel()))
+
+    plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
+    plane_im = plane_im.reshape(bground_im.shape)
+
+    write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+
+    return plane_im
+
+def get_frame_range_indices(config_data, nframes):
+    '''
+    Computes the total number of frames to be extracted, given the total number of frames
+    and an initial frame index starting point.
+
+    Parameters
+    ----------
+    config_data (dict): dictionary holding all extraction parameters
+    nframes (int): total number of requested frames to extract
+
+    Returns
+    -------
+    nframes (int): total number of frames to extract
+    first_frame_idx (int): index of the frame to begin extraction from
+    last_frame_idx (int): index of the last frame in the extraction
+    '''
+
+    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
+        first_frame_idx = config_data['frame_trim'][0]
+    else:
+        first_frame_idx = 0
+
+    if nframes - config_data['frame_trim'][1] > first_frame_idx:
+        last_frame_idx = nframes - config_data['frame_trim'][1]
+    else:
+        last_frame_idx = nframes
+
+    nframes = last_frame_idx - first_frame_idx
+
+    return nframes, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -84,7 +145,7 @@ def load_timestamps(timestamp_file, col=0):
 
     Returns
     -------
-    ts (list): list of timestamps
+    ts (1D array): list of timestamps
     '''
 
     ts = []
@@ -109,10 +170,61 @@ def load_timestamps(timestamp_file, col=0):
 
     return ts
 
+def set_bg_roi_weights(config_data):
+    '''
+    Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
+    If no camera_type is inputted, program will assume a kinect camera is being used.
+
+    Parameters
+    ----------
+    config_data (dict): dictionary containing all input parameters to a CLI/GUI command.
+
+    Returns
+    -------
+    config_data (dict): updated dictionary with bg-roi-weights to use in extraction/ROI retrieval.
+    '''
+
+    # Auto-setting background weights
+    if config_data.get('camera_type', None) == 'kinect':
+        config_data['bg_roi_weights'] = (1, .1, 1)
+    elif config_data.get('camera_type', None) == 'azure':
+        config_data['bg_roi_weights'] = (10, 0.1, 1)
+    elif config_data.get('camera_type', None) == 'realsense':
+        config_data['bg_roi_weights'] = (10, 1, 4)
+    else:
+        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
+        config_data['bg_roi_weights'] = (1, .1, 1)
+
+    return config_data
+
+def check_filter_sizes(config_data):
+    '''
+    Checks if inputted spatial and temporal filter kernel sizes are odd numbers.
+    Incrementing the value if not.
+
+    Parameters
+    ----------
+    config_data (dict): Configuration dict holding all extraction parameters
+
+    Returns
+    -------
+    config_data (dict): Updated configuration dict
+
+    '''
+
+    # Ensure filter kernel sizes are odd
+    if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+        config_data['spatial_filter_size'][0] += 1
+    if config_data['temporal_filter_size'][0] % 2 == 0 and config_data['temporal_filter_size'][0] > 0:
+        config_data['temporal_filter_size'][0] += 1
+        warnings.warn("Spatial Filter Size must be an odd number. Incrementing value by 1.")
+
+    return config_data
 
 def load_metadata(metadata_file):
     '''
-    Loads metadata.
+    Loads metadata from session metadata.json file.
 
     Parameters
     ----------
@@ -120,7 +232,7 @@ def load_metadata(metadata_file):
 
     Returns
     -------
-    metadata (dict)
+    metadata (dict): key-value pairs of JSON contents
     '''
 
     metadata = {}
@@ -134,6 +246,29 @@ def load_metadata(metadata_file):
         metadata = json.load(metadata_file)
 
     return metadata
+
+def load_found_session_paths(input_dir, exts):
+    '''
+    Given an input directory and file extensions, this function will return all
+    depth file paths found in the inputted parent (input) directory.
+    Parameters
+    ----------
+    input_dir (str): path to parent directory holding all the session folders.
+    exts (list or str): list of extensions to search for, or a single extension in string form.
+
+    Returns
+    -------
+    files (list): sorted list of all paths to found depth files
+    '''
+
+    if not isinstance(exts, (tuple, list)):
+        exts = [exts]
+
+    files = []
+    for ext in exts:
+        files.extend(glob(os.path.join(input_dir, '*/*' + ext), recursive=True))
+
+    return sorted(files)
 
 
 def select_strel(string='e', size=(10, 10)):
@@ -329,8 +464,10 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
                 dict_to_h5(h5, item, dest)
             else:
                 raise ValueError('Cannot save {} type to key {}'.format(type(item), dest))
-        except:
-            print('h5py could not encode key:', key)
+        except Exception as e:
+            print(e)
+            if key != 'inputs':
+                print('h5py could not encode key:', key)
 
         if key in annotations:
             if annotations[key] is None:
@@ -752,19 +889,19 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     return np.clip(1 - weights, 0.08, 0.8)
 
 
-def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth, output_dir):
+def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir):
     '''
     Creates a gradient to represent the dilated (now visible) bucket wall regions.
     Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
     This is done to handle noise attributed by bucket walls being slanted, and thus being picked
     up as large noise depth values. Moreover, to appropriately subtract the background from input
     images during extraction without obscuring the rodent, or including unwanted wall regions.
+
     Parameters
     ----------
     bground_im (2d np.ndarray): the bucket floor image computed as the median distance throughout the session.
     config_data (dict): dictionary containing helper user configuration parameters.
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
-    true_depth (float): median distance computed throughout recording.
     output_dir (str): path to save newly computed background to use.
 
     Returns
@@ -782,6 +919,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, true_depth
     width, height = bground_im.shape[1], bground_im.shape[0]  # shape of bounding box
 
     # getting helper user parameters
+    true_depth = config_data['true_depth']
     xoffset = config_data.get('x_bg_offset', -2)
     yoffset = config_data.get('y_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
