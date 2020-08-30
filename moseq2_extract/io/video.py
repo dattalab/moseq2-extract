@@ -36,7 +36,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
             'dims': frame_dims,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith('.mkv'):
+        if filename.endswith(('.mkv', '.avi')):
             try:
                 vid = cv2.VideoCapture(filename).read()
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
@@ -143,10 +143,8 @@ def get_video_info(filename):
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
             'nframes': int(out[3])}
     except:
-        return {'file': filename,
-            'dims': (int(out[0]), int(out[1])),
-            'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'nframes': out[3]}
+        print('Could not process this video extension:', filename)
+        return {}
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -217,7 +215,7 @@ def write_frames(filename, frames, threads=6, fps=30,
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
                 pixel_format='gray16le', frame_size=None,
-                slices=24, slicecrc=1, get_cmd=False):
+                slices=24, slicecrc=1, mapping=0, get_cmd=False):
     '''
     Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
 
@@ -231,6 +229,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     frame_size (str): wxh frame size in pixels
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
+    mapping (int): ffmpeg channel mapping; "o:mapping"
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
     Returns
@@ -264,8 +263,8 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         '-vcodec', 'rawvideo',
     ]
 
-    if filename.endswith('.mkv'):
-        command += ['-map', '0:0']
+    if filename.endswith(('.mkv', '.avi')):
+        command += ['-map', f'0:{mapping}']
         command += ['-vsync', '0']
 
     command += ['-']
@@ -434,13 +433,13 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     metadata (dict): dictionary containing video file metadata
     '''
 
-    filename = filename.lower()
-
     try:
-        if filename.endswith(('.dat', '.mkv')):
+        if filename.lower().endswith(('.dat', '.mkv')):
             metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-        elif filename.endswith('.avi'):
+        elif filename.lower().endswith('.avi'):
             metadata = get_video_info(filename)
+            if metadata == {}:
+                metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
     except AttributeError as e:
         print('Error:', e)
         metadata = get_raw_info(filename)
