@@ -7,7 +7,6 @@ to facilitate Jupyter notebook usage.
 '''
 
 import os
-import json
 import warnings
 import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_tiff_files
@@ -303,50 +302,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
     return indexpath
-
-def get_found_sessions(data_dir="", exts=['dat', 'mkv', 'avi']):
-    '''
-    Find all depth recording sessions (with given extensions) to work on given base directory.
-
-    Parameters
-    ----------
-    data_dir (str): path to directory containing all session folders
-    exts (list): list of depth file extensions to search for
-
-    Returns
-    -------
-    data_dir (str): path to base_dir to save in progress file
-    found_sessions (int): number of found sessions with given extensions
-    '''
-
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
-
-    sessions = load_found_session_paths(data_dir, exts)
-
-    # generate sample metadata json for each session that is missing one
-    sample_meta = {'SubjectName': 'default', 'SessionName': 'default',
-                   'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
-                   'ColorDataType': "Byte[]", "StartTime": ""}
-
-    for sess in sessions:
-        sess_dir = os.path.dirname(sess) # get path to session directory
-        sess_name = os.path.basename(sess_dir)
-        if 'metadata.json' not in os.listdir(sess_dir):
-            warnings.warn(f'No metadata file corresponding to {sess_name} found. Generating a default template.')
-            sample_meta['SessionName'] = sess_name
-
-            # Generating a default metadata.json in respective session directory
-            with open(os.path.join(sess_dir, 'metadata.json'), 'w') as fp:
-                json.dump(sample_meta, fp)
-
-    for i, sess in enumerate(sessions):
-        print(f'[{str(i+1)}] {sess}')
-
-    found_sessions = len(sessions)
-
-    return data_dir, found_sessions
 
 def download_flip_command(output_dir, config_file="", selection=1):
     '''

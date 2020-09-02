@@ -4,9 +4,10 @@ import shutil
 import ruamel.yaml as yaml
 from unittest import TestCase
 from .test_cli import write_fake_movie
+from moseq2_extract.helpers.data import get_session_paths
 from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
 from moseq2_extract.gui import update_progress, check_progress, generate_config_command, view_extraction, \
-    generate_index_command, aggregate_extract_results_command, get_found_sessions, download_flip_command,\
+    generate_index_command, aggregate_extract_results_command, download_flip_command, \
     find_roi_command, sample_extract_command, extract_command, extract_found_sessions
 
 
@@ -156,37 +157,6 @@ class GUITests(TestCase):
         assert os.path.isfile(outfile), "index file was not generated correctly"
         os.remove(outfile)
 
-    def test_get_found_sessions(self):
-
-        ft1 = 'tmp_depth.dat'
-        ft2 = 'tmp_depth.mkv'
-        ft3 = 'tmp_depth.avi'
-
-        input_dir = 'data/'
-        temp_outdir = os.path.join(input_dir, 'temp')
-
-        f1 = os.path.join(temp_outdir, ft1)
-        f2 = os.path.join(temp_outdir, ft2)
-        f3 = os.path.join(temp_outdir, ft3)
-
-        if not os.path.isdir(temp_outdir):
-            os.makedirs(temp_outdir)
-
-        for i in [f1, f2, f3]:
-            with open(i, 'w') as f:
-                f.write('Y')
-
-        assert os.path.isfile(f1), "temp file 1 was not created properly"
-        assert os.path.isfile(f2), "temp file 2 was not created properly"
-        assert os.path.isfile(f3), "temp file 3 was not created properly"
-
-        data_dir, found_sessions = get_found_sessions(input_dir)
-        assert(found_sessions == 3), "temp files were not successfully located"
-
-        data_dir, found_sessions = get_found_sessions('')
-        assert found_sessions == 0, "filesystem structure is incorrect. No sessions should be found."
-        shutil.rmtree(temp_outdir)
-
     def test_download_flip_file_command(self):
         test_outdir = 'data/flip/'
         download_flip_command(test_outdir)
@@ -254,8 +224,9 @@ class GUITests(TestCase):
 
         sys.stdin = open(stdin)
 
-        output_dir = sample_extract_command(input_dir, config_path, 40, exts=['dat'], select_session=True)
+        output_dir = sample_extract_command(input_dir, config_path, 40, exts=['.dat'], select_session=True)
         assert os.path.exists(output_dir), "sample_proc directory was not created"
+
         shutil.rmtree(data_path)
         os.remove(stdin)
         os.remove(config_path)
@@ -306,12 +277,14 @@ class GUITests(TestCase):
         assert(os.path.isdir(out_dir)), "proc directory was not created"
         assert(os.path.isfile(os.path.join(out_dir, 'done.txt'))), "extraction did not finish"
         assert ('completed' in ret), "GUI command failed"
+
         shutil.rmtree('data/flip/')
         shutil.rmtree(data_path)
         os.remove(configfile)
         os.remove(stdin)
 
     def test_aggregate_results_command(self):
+
         input_dir = 'data/'
         ret = aggregate_extract_results_command(input_dir, "", "aggregate_results")
 

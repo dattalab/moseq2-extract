@@ -1,6 +1,8 @@
 '''
+
 Wrapper functions for all functionality afforded by MoSeq2-Extract.
 These functions perform all the data processing from start to finish, and are shared between the CLI and GUI.
+
 '''
 
 import os
@@ -14,13 +16,18 @@ from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
+import ipywidgets as widgets
+from ipywidgets import fixed
 from moseq2_extract.io.image import write_image
+from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from moseq2_extract.interactive.widgets import sess_select, checked_list
+from moseq2_extract.interactive.controller import interactive_find_roi_session_selector
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                            copy_manifest_results, build_index_dict, check_completion_status
+                            copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
                         h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
@@ -59,6 +66,51 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
         except Exception:
             raise Exception
 
+def interactive_roi_wrapper(data_path, session_config, config_data):
+    '''
+
+    Interactive ROI detection wrapper function. Users can use run this wrapper
+    to find the required extraction parameters, as well as preview examples of the extraction
+    with the found parameters.
+
+    Parameters
+    ----------
+    data_path (str): Path to base directory containing session folders.
+    config_data (dict): ROI and Extraction configuration parameters
+    session_parameters (str): Path to file containing individual session parameter sets.
+
+    Returns
+    -------
+    None
+    '''
+
+    if os.path.exists(session_config):
+        with open(session_config, 'r') as f:
+            session_parameters = yaml.safe_load(f)
+    else:
+        session_parameters = {}
+        with open(session_config, 'w+') as f:
+            yaml.safe_dump(session_parameters, f)
+
+    config_data['session_config_path'] = session_config
+
+    sess_select.options = get_session_paths(data_path)
+    checked_list.options = list(sess_select.options.keys())
+
+    config_data['inital'] = True
+    selout = widgets.interactive_output(interactive_find_roi_session_selector,
+                                        {'session': sess_select,
+                                         'config_data': fixed(config_data),
+                                         'session_parameters': fixed(session_parameters)
+                                        })
+    display(sess_select, selout)
+
+    def on_value_change(change):
+        print("Loading Background...")
+        clear_output()
+        display(sess_select, selout)
+
+    selout.observe(on_value_change, names='value')
 
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
