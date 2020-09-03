@@ -18,6 +18,7 @@ from tqdm.auto import tqdm
 from cytoolz import partial
 import ipywidgets as widgets
 from ipywidgets import fixed
+from os.path import dirname, join
 from moseq2_extract.io.image import write_image
 from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
@@ -28,9 +29,10 @@ from moseq2_extract.interactive.widgets import sess_select, checked_list
 from moseq2_extract.interactive.controller import interactive_find_roi_session_selector
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
                             copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
-from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
-                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
+from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
+                        convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
+                        clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
+                        get_frame_range_indices, check_filter_sizes
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -66,7 +68,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
         except Exception:
             raise Exception
 
-def interactive_roi_wrapper(data_path, session_config, config_data):
+def interactive_roi_wrapper(data_path, config_file, session_config=None):
     '''
 
     Interactive ROI detection wrapper function. Users can use run this wrapper
@@ -84,20 +86,35 @@ def interactive_roi_wrapper(data_path, session_config, config_data):
     None
     '''
 
-    if os.path.exists(session_config):
-        with open(session_config, 'r') as f:
-            session_parameters = yaml.safe_load(f)
-    else:
+    # Read default config parameters
+    with open(config_file, 'r') as f:
+        config_data = yaml.safe_load(f)
+
+    # Read individual session config if it exists
+    if session_config is not None:
+        if os.path.exists(session_config):
+            with open(session_config, 'r') as f:
+                session_parameters = yaml.safe_load(f)
+        else:
+            warnings.warn('Session configuration file was not found. Generating a new one.')
+            session_config = None
+
+    # Generate session config file if it does not exist
+    if session_config is None:
+        session_config = join(dirname(config_file), 'session_config.yaml')
         session_parameters = {}
         with open(session_config, 'w+') as f:
             yaml.safe_dump(session_parameters, f)
 
     config_data['session_config_path'] = session_config
+    config_data['config_file'] = config_file
 
+    # Update DropDown menu items
     sess_select.options = get_session_paths(data_path)
     checked_list.options = list(sess_select.options.keys())
 
     config_data['inital'] = True
+    # Run interactive application
     selout = widgets.interactive_output(interactive_find_roi_session_selector,
                                         {'session': sess_select,
                                          'config_data': fixed(config_data),
@@ -106,10 +123,23 @@ def interactive_roi_wrapper(data_path, session_config, config_data):
     display(sess_select, selout)
 
     def on_value_change(change):
+        '''
+        Callback function for DropDown menu that is triggered when the
+         user changes the currently selected session.
+
+        Parameters
+        ----------
+        change (ipywidgets event): User changes current value of sess_select
+
+        Returns
+        -------
+        '''
+
         print("Loading Background...")
         clear_output()
         display(sess_select, selout)
 
+    # Watch for change in inputted session
     selout.observe(on_value_change, names='value')
 
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
@@ -380,12 +410,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         yaml.safe_dump(status_dict, f)
 
     # Get Structuring Elements for extraction
-    str_els = {
-        'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
-        'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
-        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
-        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
-    }
+    str_els = get_strels(config_data)
 
     # Compute ROIs
     roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir)

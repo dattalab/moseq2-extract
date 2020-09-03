@@ -15,9 +15,9 @@ import ipywidgets as widgets
 from ipywidgets import interact, fixed
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
-from moseq2_extract.util import get_bucket_center, select_strel
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from moseq2_extract.util import get_bucket_center, get_strels, select_strel
 from moseq2_extract.interactive.view import plot_roi_results, show_extraction
 from moseq2_extract.interactive.widgets import sess_select, save_parameters, bg_roi_depth_range, minmax_heights, \
                                         check_all, checked_list, checked_lbl, frame_num, frame_range, \
@@ -121,6 +121,9 @@ def interactive_find_roi_session_selector(session, config_data, session_paramete
 
         with open(config_data['session_config_path'], 'w+') as f:
             yaml.safe_dump(session_parameters, f)
+
+        with open(config_data['config_file'], 'w+') as f:
+            yaml.safe_dump(config_data, f)
 
         save_parameters.button_style = 'success'
         save_parameters.icon = 'check'
@@ -345,12 +348,7 @@ def get_extraction(input_file, config_data, bground_im, roi):
 
     '''
 
-    str_els = {
-        'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
-        'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
-        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
-        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
-    }
+    str_els = get_strels(config_data)
 
     output_dir = dirname(input_file)
     outpath = 'test_extraction'
@@ -365,4 +363,5 @@ def get_extraction(input_file, config_data, bground_im, roi):
     process_extract_batches(input_file, config_data, bground_im, roi, frame_batches,
                             frame_num.value, str_els, output_dir, outpath)
 
+    # display extracted video as HTML Div using Bokeh
     show_extraction(basename(dirname(input_file)), view_path)

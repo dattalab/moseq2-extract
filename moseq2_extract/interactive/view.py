@@ -4,10 +4,13 @@ Interactive ROI/Extraction Bokeh visualization functions.
 
 '''
 
+import warnings
 from bokeh.models import Div
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
+from moseq2_extract.util import get_strels
 from moseq2_extract.io.video import load_movie_data
+from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, threshold_chunk
 
 def show_extraction(input_file, video_file):
@@ -30,7 +33,7 @@ def show_extraction(input_file, video_file):
                     <h2>{input_file}</h2>
                     <video
                         src="{video_file}"; alt="{video_file}"; 
-                        height="450"; width="450"; preload="true";
+                        height="450"; width="450"; preload="auto";
                         style="float: left; type: "video/mp4"; margin: 0px 10px 10px 0px;
                         border="2"; autoplay controls loop>
                     </video>
@@ -85,7 +88,10 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     Returns
     -------
     '''
+    # ignore flip classifier sklearn version warnings
+    warnings.filterwarnings('ignore')
 
+    # set bokeh tools
     tools = 'pan, box_zoom, wheel_zoom, hover, reset'
 
     # update adjusted min and max heights
@@ -96,8 +102,8 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     session_parameters[session_key] = config_data
 
     # get segmented frame
-    curr_frame = load_movie_data(input_file, fn)
-    curr_frame = (bground_im - curr_frame)
+    raw_frame = load_movie_data(input_file, fn)
+    curr_frame = (bground_im - raw_frame)
 
     # filter out regions outside of ROI
     filtered_frames = apply_roi(curr_frame, roi)[0]
@@ -140,5 +146,29 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
 
     bokeh_plot_helper(segmented_fig, filtered_frames)
 
-    gp = gridplot([[bg_fig, overlay_fig, segmented_fig]], plot_width=300, plot_height=300)
+    # plot crop rotated frame
+    cropped_fig = figure(title=f"Crop-Rotated Frame #{fn}",
+                         tools=tools,
+                         tooltips=[("(x,y)", "($x{0.1f}, $y{0.1f})"), ("value", "@image")],
+                         output_backend="webgl")
+
+    # prepare extraction metadatas
+    str_els = get_strels(config_data)
+    config_data['tracking_init_mean'] = None
+    config_data['tracking_init_cov'] = None
+
+    # extract crop-rotated selected frame
+    result = extract_chunk(**config_data,
+                           **str_els,
+                           chunk=raw_frame.copy(),
+                           roi=roi,
+                           bground=bground_im,
+                           )
+
+    bokeh_plot_helper(cropped_fig, result['depth_frames'][0])
+
+    # Create 2x2 grid plot
+    gp = gridplot([[bg_fig, overlay_fig],
+                   [segmented_fig, cropped_fig]],
+                    plot_width=300, plot_height=300)
     show(gp)
