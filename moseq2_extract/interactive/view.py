@@ -102,8 +102,8 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     session_parameters[session_key] = config_data
 
     # get segmented frame
-    raw_frame = load_movie_data(input_file, fn)
-    curr_frame = (bground_im - raw_frame)
+    raw_frames = load_movie_data(input_file, range(fn, fn+30))
+    curr_frame = (bground_im - raw_frames)
 
     # filter out regions outside of ROI
     filtered_frames = apply_roi(curr_frame, roi)[0]
@@ -160,7 +160,7 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     # extract crop-rotated selected frame
     result = extract_chunk(**config_data,
                            **str_els,
-                           chunk=raw_frame.copy(),
+                           chunk=raw_frames.copy(),
                            roi=roi,
                            bground=bground_im,
                            )

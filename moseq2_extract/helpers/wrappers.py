@@ -25,8 +25,8 @@ from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.interactive.widgets import sess_select, checked_list
 from moseq2_extract.interactive.controller import interactive_find_roi_session_selector
+from moseq2_extract.interactive.widgets import sess_select, checked_list, toggle_autodetect
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
                             copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
 from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
@@ -113,7 +113,7 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
     sess_select.options = get_session_paths(data_path)
     checked_list.options = list(sess_select.options.keys())
 
-    config_data['inital'] = True
+    config_data['autodetect'] = True
     # Run interactive application
     selout = widgets.interactive_output(interactive_find_roi_session_selector,
                                         {'session': sess_select,
@@ -141,6 +141,28 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
 
     # Watch for change in inputted session
     selout.observe(on_value_change, names='value')
+
+    def toggle_button_clicked(b):
+        '''
+        Updates the true depth autodetection parameter
+         such that the true depth is autodetected for each found session
+
+        Parameters
+        ----------
+        b (ipywidgets Button): Button click event.
+
+        Returns
+        -------
+        '''
+
+        config_data['autodetect'] = toggle_autodetect.value
+        if toggle_autodetect.value == True:
+            toggle_autodetect.button_style = 'success'
+        else:
+            toggle_autodetect.button_style = 'info'
+
+    # Set toggle button callback
+    toggle_autodetect.observe(toggle_button_clicked, names='value')
 
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''

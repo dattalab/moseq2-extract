@@ -13,6 +13,8 @@ import skimage.morphology
 from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
+from os.path import exists, join, dirname
+from moseq2_extract.io.image import read_image, write_image
 from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
 
@@ -108,31 +110,40 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground (2d numpy array):  r x c, background image
     '''
 
-    try:
-        if frames_file.endswith(('dat', 'mkv')):
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-        elif frames_file.endswith('avi'):
-            finfo = moseq2_extract.io.video.get_video_info(frames_file)
-    except AttributeError as e:
-        finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+    bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
-    frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-    frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
-
-    for i, frame in enumerate(frame_idx):
+    # Compute background image if it doesn't exist. Otherwise, load from file
+    if not exists(bground_path):
         try:
             if frames_file.endswith(('dat', 'mkv')):
-                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
+                finfo = moseq2_extract.io.video.get_raw_info(frames_file)
             elif frames_file.endswith('avi'):
-                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+                finfo = moseq2_extract.io.video.get_video_info(frames_file)
         except AttributeError as e:
-            print('Error reading frames:', e)
-            print('Attempting raw file read...')
-            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
-        frame_store[i] = cv2.medianBlur(frs, med_scale)
+        frame_idx = np.arange(0, finfo['nframes'], frame_stride)
+        frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
 
-    return get_bground_im(frame_store)
+        for i, frame in enumerate(frame_idx):
+            try:
+                if frames_file.endswith(('dat', 'mkv')):
+                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
+                elif frames_file.endswith('avi'):
+                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+            except AttributeError as e:
+                print('Error reading frames:', e)
+                print('Attempting raw file read...')
+                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+
+            frame_store[i] = cv2.medianBlur(frs, med_scale)
+
+        bground = get_bground_im(frame_store)
+        write_image(bground_path, bground, scale=True)
+    else:
+        bground = read_image(bground_path, scale=True)
+
+    return bground
 
 
 def get_bbox(roi):

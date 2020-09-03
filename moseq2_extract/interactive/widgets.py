@@ -17,16 +17,19 @@ sess_select = widgets.Dropdown(options=[], description='Session:', disabled=Fals
 # roi widgets
 roi_label = widgets.Label(value="ROI Parameters", layout=label_layout)
 bg_roi_depth_range = widgets.IntRangeSlider(value=[650, 750], min=0, max=1500, step=5,
-                                            description='Included Depth Range', continuous_update=False, style=style)
+                                            description='Included BG Depth Range', continuous_update=False, style=style)
 dilate_iters = widgets.IntSlider(value=0, min=0, max=25, step=1, description='Dilate Iters:',
                                  continuous_update=False, style=style)
 frame_num = widgets.IntSlider(value=0, min=0, max=1000, step=1, description='Current Frame:',
                               disabled=False, continuous_update=False, style=style)
 
+toggle_autodetect = widgets.ToggleButton(value=False, description='Autodetect Depth Range', disabled=False,
+                                         button_style='info', tooltip='Auto-detect depths', layout=label_layout)
+
 # extract widgets
 ext_label = widgets.Label(value="Extract Parameters", layout=label_layout)
 minmax_heights = widgets.IntRangeSlider(value=[10, 100], min=0, max=300, step=1,
-                                        description='Depth Values to Capture', style=style, continuous_update=False)
+                                        description='Mouse Heights to Capture', style=style, continuous_update=False)
 frame_range = widgets.IntRangeSlider(value=[0, 300], min=0, max=3000, step=30,
                                      description='Number of Frames to Extract', style=style, continuous_update=False)
 
@@ -43,7 +46,7 @@ checked_list = widgets.SelectMultiple(options=list(), value=[], description='', 
 # groupings
 # ui widgets
 roi_tools = VBox([roi_label, bg_roi_depth_range, dilate_iters, frame_num])
-extract_tools = VBox([ext_label, minmax_heights, frame_range])
+extract_tools = VBox([ext_label, minmax_heights, frame_range, toggle_autodetect])
 
 layout_hidden = widgets.Layout(visibility='hidden', display='none')
 layout_visible = widgets.Layout(visibility='visible', display='inline-flex')

@@ -8,6 +8,7 @@ the widgets.py file to facilitate the real-time interaction.
 import os
 import cv2
 import math
+import click
 import numpy as np
 from math import isclose
 import ruamel.yaml as yaml
@@ -17,11 +18,11 @@ from os.path import dirname, basename, join
 from IPython.display import display, clear_output
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.util import get_bucket_center, get_strels, select_strel
 from moseq2_extract.interactive.view import plot_roi_results, show_extraction
+from moseq2_extract.util import get_bucket_center, get_strels, select_strel, set_bground_to_plane_fit
 from moseq2_extract.interactive.widgets import sess_select, save_parameters, bg_roi_depth_range, minmax_heights, \
                                         check_all, checked_list, checked_lbl, frame_num, frame_range, \
-                                        dilate_iters, ui_tools, layout_visible
+                                        dilate_iters, ui_tools, layout_visible, toggle_autodetect, label_layout
 
 def test_all_sessions(session_dict, config_data, session_parameters):
     '''
@@ -45,10 +46,15 @@ def test_all_sessions(session_dict, config_data, session_parameters):
         if sessionName not in checked_list.value:
             # Get background image for each session and test the current parameters on it
             bground_im = get_bground_im_file(sessionPath)
-            sess_res = get_roi_and_depths(bground_im, config_data, False)
+            config_data, sess_res = get_roi_and_depths(bground_im, sessionPath, config_data)
 
             if not sess_res['flagged']:
                 session_parameters[sessionName] = config_data
+                checked_list.value = list(set(list(checked_list.value))) + [sessionName]
+                checked_lbl.value = f'Passing Sessions: {len(list(checked_list.value))}/{len(checked_list.options)}'
+            else:
+                checked_list.value = list(checked_list.value).remove(sessionName)
+                checked_lbl.value = f'Passing Sessions: {len(list(checked_list.value))}/{len(checked_list.options)}'
 
             all_results[sessionName] = sess_res['flagged']
 
@@ -104,6 +110,7 @@ def interactive_find_roi_session_selector(session, config_data, session_paramete
 
         save_parameters.layout = layout_visible
 
+    # Set check all sessions button callback
     check_all.on_click(check_all_sessions)
 
     def save_clicked(b):
@@ -128,6 +135,7 @@ def interactive_find_roi_session_selector(session, config_data, session_paramete
         save_parameters.button_style = 'success'
         save_parameters.icon = 'check'
 
+    # Set save parameters button callback
     save_parameters.on_click(save_clicked)
 
 def interactive_depth_finder(session, bground_im, config_data, session_parameters, dr, di):
@@ -152,30 +160,29 @@ def interactive_depth_finder(session, bground_im, config_data, session_parameter
     save_parameters.button_style = 'primary'
     save_parameters.icon = 'none'
 
-    # autodetect reference depth range and min-max height values at launch
-    if config_data['inital']:
-        config_data, results = get_roi_and_depths(bground_im, config_data)
-        config_data['inital'] = False
-
-        # set initial frame range tuple value
+    # Autodetect reference depth range and min-max height values at launch
+    if config_data['autodetect']:
+        config_data, results = get_roi_and_depths(bground_im, session, config_data)
+        config_data['autodetect'] = False
+        # Set initial frame range tuple value
         config_data['frame_range'] = frame_range.value
 
-        # update sliders with autodetected values
+        # Update sliders with autodetected values
         bg_roi_depth_range.value = config_data['bg_roi_depth_range']
         minmax_heights.value = [config_data['min_height'], config_data['max_height']]
     else:
-        # test updated parameters
+        # Test updated parameters
         config_data['bg_roi_depth_range'] = (int(dr[0]), int(dr[1]))
         config_data['dilate_iterations'] = di
-        config_data, results = get_roi_and_depths(bground_im, config_data, config_data['inital'])
+        config_data, results = get_roi_and_depths(bground_im, session, config_data)
 
-    # clear output to update view
+    # Clear output to update view
     clear_output()
 
-    # display validation indicator
-    label_layout = widgets.Layout(display='flex', flex_flow='column', align_items='center', width='100%')
+    # Display validation indicator
     indicator = widgets.Label(value="", font_size=50, layout=label_layout)
 
+    # Session selection dict key names
     keys = list(sess_select.options.keys())
 
     # set indicator
@@ -187,9 +194,9 @@ def interactive_depth_finder(session, bground_im, config_data, session_parameter
         session_parameters[keys[sess_select.index]] = config_data
         checked_lbl.value = f'Passing Sessions: {len(list(checked_list.value))}/{len(checked_list.options)}'
 
+    # Display extraction validation indicator
     display(indicator)
 
-    # display graphs
     out = widgets.interactive_output(plot_roi_results, {'input_file': fixed(session),
                                                         'config_data': fixed(config_data),
                                                         'session_parameters': fixed(session_parameters),
@@ -198,6 +205,7 @@ def interactive_depth_finder(session, bground_im, config_data, session_parameter
                                                         'roi': fixed(results['roi']),
                                                         'minmax_heights': minmax_heights,
                                                         'fn': frame_num})
+    # display graphs
     display(out)
 
     def update_minmax_config(event):
@@ -244,7 +252,7 @@ def interactive_depth_finder(session, bground_im, config_data, session_parameter
                  roi=fixed(results['roi']))
 
 
-def get_roi_and_depths(bground_im, config_data, autodetect=True):
+def get_roi_and_depths(bground_im, session, config_data):
     '''
     Performs bucket centroid estimation to find the coordinates to use as the true depth value.
     The true depth will be used to estimate the background depth_range, then it will update the
@@ -253,8 +261,8 @@ def get_roi_and_depths(bground_im, config_data, autodetect=True):
     Parameters
     ----------
     bground_im (2D np.array): Computed session background
+    session (str): path to currently processed session
     config_data (dict): Extraction configuration parameters
-    autodetect (bool): boolean for whether to compute the true depth
 
     Returns
     -------
@@ -264,7 +272,7 @@ def get_roi_and_depths(bground_im, config_data, autodetect=True):
     # initialize results dict
     results = {'flagged': False}
 
-    if autodetect:
+    if config_data['autodetect']:
         # Get max depth as a thresholding limit (this would be the DTD if it already was computed)
         limit = np.max(bground_im)
 
@@ -274,12 +282,16 @@ def get_roi_and_depths(bground_im, config_data, autodetect=True):
         # True depth is at the center of the bucket
         true_depth = bground_im[cX][cY]
 
+        # Get true depth range difference
+        range_diff = 10**(len(str(int(true_depth)))-1)
+
         # Center the depth ranges around the true depth
-        bg_roi_range_min = true_depth - 100
-        bg_roi_range_max = true_depth + 100
+        bg_roi_range_min = true_depth - range_diff
+        bg_roi_range_max = true_depth + range_diff
 
         config_data['bg_roi_depth_range'] = (bg_roi_range_min, bg_roi_range_max)
 
+    # Get relevant structuring elements
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
     strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
@@ -289,8 +301,11 @@ def get_roi_and_depths(bground_im, config_data, autodetect=True):
                                            strel_dilate=strel_dilate,
                                            strel_erode=strel_erode
                                            )
+    if config_data['use_plane_bground']:
+        print('Using plane fit for background...')
+        bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session, 'proc')))
 
-    if autodetect:
+    if config_data['autodetect']:
         # Get pixel dims from bounding box
         xmin = bboxes[0][0][1]
         xmax = bboxes[0][1][1]
@@ -334,28 +349,32 @@ def get_roi_and_depths(bground_im, config_data, autodetect=True):
 
 def get_extraction(input_file, config_data, bground_im, roi):
     '''
+    Extracts selected frame range (with the currently set session parameters)
+    and displays the extraction as a Bokeh HTML-embedded div.
 
     Parameters
     ----------
-    input_file
-    config_data (dict): Extraction configuration parameters
-    bground_im (2D np.array): Computed session background
-    roi
-    fr
+    input_file (str): Path to session to extract
+    config_data (dict): Extraction configuration parameters.
+    bground_im (2D np.array): Computed session background.
+    roi (2D np.array): Computed Region of interest array to mask bground_im with.
 
     Returns
     -------
-
     '''
 
+    # Get structuring elements
     str_els = get_strels(config_data)
 
+    # Get output path for extraction video
     output_dir = dirname(input_file)
-    outpath = 'test_extraction'
+    outpath = 'extraction_preview'
     view_path = join(output_dir, outpath+'.mp4')
 
+    # Get frames to extract
     frame_batches = [range(config_data['frame_range'][0], config_data['frame_range'][1])]
 
+    # Remove previous preview
     if os.path.exists(view_path):
         os.remove(view_path)
 
