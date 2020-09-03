@@ -17,6 +17,7 @@ click = "*"
 awscli = "*"
 joblib = "*"
 cytoolz = "*"
+ipython = '*'
 matplotlib = '*'
 ipywidgets = '*'
 statsmodels = "*"
