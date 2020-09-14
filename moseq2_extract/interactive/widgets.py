@@ -25,15 +25,16 @@ class InteractiveROIWidgets:
         self.layout_visible = widgets.Layout(visibility='visible', display='inline-flex')
 
         # session select widget
-        self.sess_select = widgets.Dropdown(options=[], description='Session:', disabled=False)
+        self.sess_select = widgets.Dropdown(options=[], description='Session:', disabled=False, continuous_update=True)
 
         # roi widgets
         self.roi_label = widgets.Label(value="ROI Parameters", layout=self.label_layout)
         self.bg_roi_depth_range = widgets.IntRangeSlider(value=[650, 750], min=0, max=1500, step=5,
-                                                    description='Included BG Depth Range', continuous_update=False, style=style)
+                                                    description='Depth Range', continuous_update=False, style=style)
         self.dilate_iters = widgets.IntSlider(value=0, min=0, max=25, step=1, description='Dilate Iters:',
                                         continuous_update=False, style=style)
         self.frame_num = widgets.IntSlider(value=0, min=0, max=1000, step=1, description='Current Frame:',
+                                    tooltip='Processed Frame Index to Display',
                                     disabled=False, continuous_update=False, style=style)
 
         self.toggle_autodetect = widgets.ToggleButton(value=False, description='Autodetect Depth Range', disabled=False,
@@ -42,9 +43,10 @@ class InteractiveROIWidgets:
         # extract widgets
         self.ext_label = widgets.Label(value="Extract Parameters", layout=self.label_layout)
         self.minmax_heights = widgets.IntRangeSlider(value=[10, 100], min=0, max=300, step=1,
-                                                description='Mouse Heights to Capture', style=style, continuous_update=False)
+                                                description='Min-Max Mouse Height', style=style, continuous_update=False)
         self.frame_range = widgets.IntRangeSlider(value=[0, 300], min=0, max=3000, step=30,
-                                            description='Number of Frames to Extract', style=style, continuous_update=False)
+                                            tooltip='Frames to Extract Sample',
+                                            description='Frame Range', style=style, continuous_update=False)
 
         # check all button label
         self.checked_lbl = widgets.Label(value="Passing Sessions", layout=self.label_layout, button_style='info')

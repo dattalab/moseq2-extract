@@ -36,12 +36,12 @@ def show_extraction(input_file, video_file):
                     <video
                         src="{video_file}"; alt="{video_file}"; 
                         height="450"; width="450"; preload="auto";
-                        style="float: left; type: "video/mp4"; margin: 0px 10px 10px 0px;
+                        style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
                         border="2"; autoplay controls loop>
                     </video>
                 '''
 
-    div = Div(text=video_div, style={'width': '100%'})
+    div = Div(text=video_div, style={'width': '100%', 'align-items':'center'})
     show(div)
 
 def bokeh_plot_helper(bk_fig, image):
@@ -61,14 +61,14 @@ def bokeh_plot_helper(bk_fig, image):
 
     bk_fig.x_range.range_padding = bk_fig.y_range.range_padding = 0
     if isinstance(image, dict):
-        bk_fig.image(source=image, image='image', x='x', y='y', dw='dw', dh='dh', palette="Spectral11")
+        bk_fig.image(source=image, image='image', x='x', y='y', dw='dw', dh='dh', palette="Viridis256")
     else:
         bk_fig.image(image=[image],
                      x=0,
                      y=0,
                      dw=image.shape[1],
                      dh=image.shape[0],
-                     palette="Spectral11")
+                     palette="Viridis256")
 
 def plot_roi_results(input_file, config_data, session_key, session_parameters, bground_im, roi, minmax_heights, fn):
     '''

@@ -8,6 +8,7 @@ the widgets.py file to facilitate the real-time interaction.
 import os
 import cv2
 import math
+import time
 import click
 import warnings
 import numpy as np
@@ -17,6 +18,7 @@ import ipywidgets as widgets
 from ipywidgets import interact, fixed
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
+from moseq2_extract.helpers.data import get_session_paths
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.interactive.widgets import InteractiveROIWidgets
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
@@ -26,7 +28,7 @@ from moseq2_extract.util import get_bucket_center, get_strels, select_strel, set
 
 class InteractiveFindRoi(InteractiveROIWidgets):
 
-    def __init__(self, config_file, session_config):
+    def __init__(self, data_path, config_file, session_config):
         super().__init__()
 
         # Read default config parameters
@@ -48,12 +50,30 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                 self.session_parameters = {}
                 with open(session_config, 'w+') as f:
                     yaml.safe_dump(self.session_parameters, f)
+        
+        self.all_results = {}
 
         self.config_data['session_config_path'] = session_config
         self.config_data['config_file'] = config_file
 
+        # Update DropDown menu items
+        self.sess_select.options = get_session_paths(data_path)
+        self.checked_list.options = list(self.sess_select.options.keys())
+
         # Set toggle button callback
         self.toggle_autodetect.observe(self.toggle_button_clicked, names='value')
+
+        # Set save parameters button callback
+        self.save_parameters.on_click(self.save_clicked)
+
+        # Set check all sessions button callback
+        self.check_all.on_click(self.check_all_sessions)
+
+        # Set min-max range slider callback
+        self.minmax_heights.observe(self.update_minmax_config, names='value')
+
+        # Set extract frame range slider
+        self.frame_range.observe(self.update_config_fr, names='value')
 
     def toggle_button_clicked(self, b):
         '''
@@ -74,6 +94,92 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         else:
             self.toggle_autodetect.button_style = 'info'
 
+    def check_all_sessions(self, b):
+        '''
+        Callback function to run the ROI area comparison test on all the existing sessions.
+        Saving their individual session parameter sets in the session_parameters dict in the process.
+
+        Parameters
+        ----------
+        b (button event): User click
+
+        Returns
+        -------
+        '''
+
+        self.check_all.description = 'Checking...'
+
+        self.test_all_sessions(self.sess_select.options)
+
+        if all(list(self.all_results.values())) == False:
+            self.check_all.button_style = 'success'
+            self.check_all.icon = 'check'
+        else:
+            self.check_all.button_style = 'danger'
+        self.check_all.description = 'Check All Sessions'
+
+        self.save_parameters.layout = self.layout_visible
+
+    def save_clicked(self, b):
+        '''
+        Callback function to save the current session_parameters dict into
+        the file of their choice (given in the top-most wrapper function).
+
+        Parameters
+        ----------
+        b (button event): User click
+
+        Returns
+        -------
+        '''
+
+        with open(self.config_data['session_config_path'], 'w+') as f:
+            yaml.safe_dump(self.session_parameters, f)
+
+        with open(self.config_data['config_file'], 'w+') as f:
+            yaml.safe_dump(self.config_data, f)
+
+        self.save_parameters.button_style = 'success'
+        self.save_parameters.icon = 'check'
+
+        tmp_options = self.sess_select.options.copy()
+        for k, v in self.all_results.items():
+            if not v:
+                if len(tmp_options.keys()) > 1 and k in tmp_options.keys():
+                    del tmp_options[k]
+        
+        self.sess_select.options = tmp_options
+        self.checked_list.options = list(self.sess_select.options.keys())
+
+    def update_minmax_config(self, event):
+        '''
+        Callback function to update config dict with current UI min/max height range values
+
+        Parameters
+        ----------
+        event (ipywidget callback): Any user interaction.
+
+        Returns
+        -------
+        '''
+
+        self.config_data['min_height'] = self.minmax_heights.value[0]
+        self.config_data['max_height'] = self.minmax_heights.value[1]
+
+    def update_config_fr(self, event):
+        '''
+        Callback function to update config dict with current UI depth range values
+
+        Parameters
+        ----------
+        event (ipywidget callback): Any user interaction.
+
+        Returns
+        -------
+        '''
+
+        self.config_data['frame_range'] = self.frame_range.value
+    
     def test_all_sessions(self, session_dict):
         '''
         Helper function to test the current configurable UI values on all the
@@ -89,14 +195,12 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         all_results (dict): dict of session names and values used to indicate if a session was flagged,
         with their computed ROI for convenience.
         '''
-
-        all_results = {}
         # test saved config data parameters on all sessions
         for sessionName, sessionPath in session_dict.items():
             if sessionName not in self.checked_list.value:
                 # Get background image for each session and test the current parameters on it
                 bground_im = get_bground_im_file(sessionPath)
-                self.config_data, sess_res = self.get_roi_and_depths(bground_im, sessionPath)
+                sess_res = self.get_roi_and_depths(bground_im, sessionPath)
 
                 if not sess_res['flagged']:
                     self.session_parameters[sessionName] = self.config_data
@@ -106,9 +210,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                     self.checked_list.value = list(self.checked_list.value).remove(sessionName)
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
-                all_results[sessionName] = sess_res['flagged']
-
-        return all_results
+                self.all_results[sessionName] = sess_res['flagged']
 
     def interactive_find_roi_session_selector(self, session):
         '''
@@ -130,61 +232,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                                                             'bground_im': fixed(bground_im),
                                                             'dr': self.bg_roi_depth_range,
                                                             'di': self.dilate_iters})
-        display(self.ui_tools, out)
-
-        def check_all_sessions(self, b):
-            '''
-            Callback function to run the ROI area comparison test on all the existing sessions.
-            Saving their individual session parameter sets in the session_parameters dict in the process.
-
-            Parameters
-            ----------
-            b (button event): User click
-
-            Returns
-            -------
-            '''
-
-            self.check_all.description = 'Checking...'
-
-            res = self.test_all_sessions(self.sess_select.options, self.config_data, self.session_parameters)
-
-            if all(list(res.values())) == False:
-                self.check_all.button_style = 'success'
-                self.check_all.icon = 'check'
-            else:
-                self.check_all.button_style = 'danger'
-            self.check_all.description = 'Check All Sessions'
-
-            self.save_parameters.layout = self.layout_visible
-
-        def save_clicked(self, b):
-            '''
-            Callback function to save the current session_parameters dict into
-            the file of their choice (given in the top-most wrapper function).
-
-            Parameters
-            ----------
-            b (button event): User click
-
-            Returns
-            -------
-            '''
-
-            with open(self.config_data['session_config_path'], 'w+') as f:
-                yaml.safe_dump(self.session_parameters, f)
-
-            with open(self.config_data['config_file'], 'w+') as f:
-                yaml.safe_dump(self.config_data, f)
-
-            self.save_parameters.button_style = 'success'
-            self.save_parameters.icon = 'check'
-
-        # Set save parameters button callback
-        self.save_parameters.on_click(save_clicked)
-
-        # Set check all sessions button callback
-        self.check_all.on_click(check_all_sessions)
+        display(self.sess_select, self.ui_tools, out)
 
     def interactive_depth_finder(self, session, bground_im, dr, di):
         '''
@@ -208,10 +256,15 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         self.save_parameters.button_style = 'primary'
         self.save_parameters.icon = 'none'
 
+        # Session selection dict key names
+        keys = list(self.sess_select.options.keys())
+
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
-            self.config_data, results = self.get_roi_and_depths(bground_im, session)
+            results = self.get_roi_and_depths(bground_im, session)
+            self.all_results[keys[self.sess_select.index]] = results['flagged']
             self.config_data['autodetect'] = False
+
             # Set initial frame range tuple value
             self.config_data['frame_range'] = self.frame_range.value
 
@@ -222,16 +275,14 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             # Test updated parameters
             self.config_data['bg_roi_depth_range'] = (int(dr[0]), int(dr[1]))
             self.config_data['dilate_iterations'] = di
-            self.config_data, results = self.get_roi_and_depths(bground_im, session)
+            results = self.get_roi_and_depths(bground_im, session)
+            self.all_results[keys[self.sess_select.index]] = results['flagged']
 
         # Clear output to update view
         clear_output()
 
         # Display validation indicator
         indicator = widgets.Label(value="", font_size=50, layout=self.label_layout)
-
-        # Session selection dict key names
-        keys = list(self.sess_select.options.keys())
 
         # set indicator
         if results['flagged']:
@@ -241,15 +292,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             self.checked_list.value = list(set(list(self.checked_list.value) + [keys[self.sess_select.index]]))
             self.session_parameters[keys[self.sess_select.index]] = self.config_data
             self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
-
-        # manual extract API
-        interact_ext = interact.options(manual=True, manual_name="Extract Sample")
-
-        # Generates a button below the bokeh plots
-        interact_ext(self.get_extraction,
-                    input_file=fixed(session),
-                    bground_im=fixed(bground_im),
-                    roi=fixed(results['roi']))
 
         # Display extraction validation indicator
         display(indicator)
@@ -264,39 +306,15 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                                                             'fn': self.frame_num})
         # display graphs
         display(out)
+        
+        # manual extract API
+        interact_ext = interact.options(manual=True, manual_name="Extract Sample")
 
-        def update_minmax_config(event):
-            '''
-            Callback function to update config dict with current UI min/max height range values
-
-            Parameters
-            ----------
-            event (ipywidget callback): Any user interaction.
-
-            Returns
-            -------
-            '''
-
-            self.config_data['min_height'] = self.minmax_heights.value[0]
-            self.config_data['max_height'] = self.minmax_heights.value[1]
-
-        self.minmax_heights.observe(update_minmax_config, names='value')
-
-        def update_config_fr(event):
-            '''
-            Callback function to update config dict with current UI depth range values
-
-            Parameters
-            ----------
-            event (ipywidget callback): Any user interaction.
-
-            Returns
-            -------
-            '''
-
-            self.config_data['frame_range'] = self.frame_range.value
-
-        self.frame_range.observe(update_config_fr, names='value')
+        # Generates a button below the bokeh plots
+        interact_ext(self.get_extraction,
+                    input_file=fixed(session),
+                    bground_im=fixed(bground_im),
+                    roi=fixed(results['roi']))
 
 
     def get_roi_and_depths(self, bground_im, session):
@@ -366,12 +384,14 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
             pixels_per_inch = pixel_width / self.config_data['arena_width']
             self.config_data['pixels_per_inch'] = float(pixels_per_inch)
+
+            # Corresponds to a rough pixel area estimate
+            r = float(cv2.countNonZero(rois[0].astype('uint8')))
+            self.config_data['pixel_area'] = r
         else:
             pixels_per_inch = self.config_data['pixels_per_inch']
-
-        # Corresponds to a rough pixel area estimate
-        r = float(cv2.countNonZero(rois[0].astype('uint8')))
-        self.config_data['pixel_area'] = r
+            # Corresponds to a rough pixel area estimate
+            r = float(cv2.countNonZero(rois[0].astype('uint8')))
 
         # Compute arena area
         if self.config_data['arena_shape'] == 'ellipse':
@@ -382,7 +402,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         # Compute pixel per metric
         area_px_per_inch = r / area / pixels_per_inch
-
+        
         try:
             assert isclose(self.config_data['pixel_area'], r, abs_tol=10e3)
         except AssertionError:
@@ -392,7 +412,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Save ROI
         results['roi'] = rois[0]
 
-        return self.config_data, results
+        return results
 
     def get_extraction(self, input_file, bground_im, roi):
         '''
@@ -427,7 +447,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         # load chunk to display
         process_extract_batches(input_file, self.config_data, bground_im, roi, frame_batches,
-                                self.frame_num.value, str_els, output_dir, outpath)
+                                0, str_els, output_dir, outpath)
 
         # display extracted video as HTML Div using Bokeh
         show_extraction(basename(dirname(input_file)), view_path)

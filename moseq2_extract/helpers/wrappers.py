@@ -84,17 +84,14 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
     -------
     None
     '''
-    roi_app = InteractiveFindRoi(config_file, session_config)
-    # Update DropDown menu items
-    roi_app.sess_select.options = get_session_paths(data_path)
-    roi_app.checked_list.options = list(roi_app.sess_select.options.keys())
+    roi_app = InteractiveFindRoi(data_path, config_file, session_config)
 
     roi_app.config_data['autodetect'] = True
     
     # Run interactive application
     selout = widgets.interactive_output(roi_app.interactive_find_roi_session_selector,
                                         {'session': roi_app.sess_select})
-    display(roi_app.sess_select, selout)
+    display(selout)
 
     def on_value_change(change):
         '''
@@ -111,7 +108,7 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
 
         print("Loading Background...")
         clear_output()
-        display(roi_app.sess_select, selout)
+        display(selout)
 
     # Watch for change in inputted session
     selout.observe(on_value_change, names='value')
