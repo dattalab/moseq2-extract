@@ -5,7 +5,9 @@ Interactive ROI/Extraction Bokeh visualization functions.
 '''
 
 import warnings
+import ipywidgets as widgets
 from bokeh.models import Div
+from IPython.display import display
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from moseq2_extract.util import get_strels
@@ -170,5 +172,13 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     # Create 2x2 grid plot
     gp = gridplot([[bg_fig, overlay_fig],
                    [segmented_fig, cropped_fig]],
-                    plot_width=300, plot_height=300)
-    show(gp)
+                    #sizing_mode='scale_both',
+                    plot_width=350, plot_height=350)
+
+    # Create Output widget object to center grid plot in view
+    output = widgets.Output(layout=widgets.Layout(align_items='center'))
+    with output:
+        show(gp)
+    
+    # Display centered grid plot
+    display(output)
