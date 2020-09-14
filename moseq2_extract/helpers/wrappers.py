@@ -212,7 +212,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     print('Results successfully aggregated in', output_dir)
 
-    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=os.path.dirname(output_dir))
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=os.path.dirname(output_dir).split('/')[-1])
 
     print(f'Index file path: {indexpath}')
     return indexpath
