@@ -211,6 +211,12 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
                 self.all_results[sessionName] = sess_res['flagged']
+        
+        if len(self.checked_list.value) == len(self.checked_list.options):
+            self.message.value = r'All sessions passed with the current parameter set. Save the parameters and move to the extract all cell.'
+        else:
+            self.message.value = r'Some sessions were flagged. Save the parameter set for the current passing sessions, then find and save the correct set for the remaining sessions.'
+        
 
     def interactive_find_roi_session_selector(self, session):
         '''
@@ -262,8 +268,10 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
             results = self.get_roi_and_depths(bground_im, session)
-            self.all_results[keys[self.sess_select.index]] = results['flagged']
             self.config_data['autodetect'] = False
+
+            # Update the session flag result
+            self.all_results[keys[self.sess_select.index]] = results['flagged']
 
             # Set initial frame range tuple value
             self.config_data['frame_range'] = self.frame_range.value
@@ -275,6 +283,8 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             # Test updated parameters
             self.config_data['bg_roi_depth_range'] = (int(dr[0]), int(dr[1]))
             self.config_data['dilate_iterations'] = di
+            
+            # Update the session flag result
             results = self.get_roi_and_depths(bground_im, session)
             self.all_results[keys[self.sess_select.index]] = results['flagged']
 

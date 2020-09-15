@@ -51,6 +51,8 @@ class InteractiveROIWidgets:
         # check all button label
         self.checked_lbl = widgets.Label(value="Passing Sessions", layout=self.label_layout, button_style='info')
 
+        self.message = widgets.Label(value="", font_size=50, layout=self.label_layout)
+
         # buttons
         self.save_parameters = widgets.Button(description='Save Parameters', disabled=False, tooltip='Save Parameters')
         self.check_all = widgets.Button(description='Check All Sessions', disabled=False,
@@ -68,4 +70,4 @@ class InteractiveROIWidgets:
 
         self.button_box = VBox([HBox([self.check_all, self.save_parameters]), self.checked_lbl, self.checked_list])
 
-        self.ui_tools = HBox([self.roi_tools, self.extract_tools, self.button_box], layout=self.box_layout)
+        self.ui_tools = VBox([HBox([self.roi_tools, self.extract_tools, self.button_box], layout=self.box_layout), self.message])
