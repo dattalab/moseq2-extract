@@ -4,11 +4,14 @@ Interactive ROI/Extraction Bokeh visualization functions.
 
 '''
 
+import os
+import shutil
 import warnings
+import numpy as np
 import ipywidgets as widgets
 from bokeh.models import Div
-from IPython.display import display
 from bokeh.layouts import gridplot
+from IPython.display import display
 from bokeh.plotting import figure, show
 from moseq2_extract.util import get_strels
 from moseq2_extract.io.video import load_movie_data
@@ -31,10 +34,20 @@ def show_extraction(input_file, video_file):
     -------
     '''
 
+    # Copy generated movie to temporary directory
+    vid_dir = os.path.dirname(video_file)
+    tmp_path = os.path.join(vid_dir, 'tmp', f'{np.random.randint(0, 99999)}', os.path.basename(video_file))
+    tmp_dirname = os.path.dirname(tmp_path)
+
+    if not os.path.exists(tmp_dirname):
+        os.makedirs(tmp_dirname)
+
+    shutil.copy2(video_file, tmp_path)
+
     video_div = f'''
                     <h2>{input_file}</h2>
                     <video
-                        src="{video_file}"; alt="{video_file}"; 
+                        src="{tmp_path}"; alt="{tmp_path}"; 
                         height="450"; width="450"; preload="auto";
                         style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
                         border="2"; autoplay controls loop>
