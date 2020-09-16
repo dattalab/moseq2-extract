@@ -54,7 +54,7 @@ def show_extraction(input_file, video_file):
                     </video>
                 '''
 
-    div = Div(text=video_div, style={'width': '100%', 'align-items':'center'})
+    div = Div(text=video_div, style={'width': '100%', 'align-items':'center', 'display': 'contents'})
     show(div)
 
 def bokeh_plot_helper(bk_fig, image):

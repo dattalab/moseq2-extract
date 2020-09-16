@@ -37,8 +37,8 @@ class InteractiveROIWidgets:
                                     tooltip='Processed Frame Index to Display',
                                     disabled=False, continuous_update=False, style=style)
 
-        self.toggle_autodetect = widgets.ToggleButton(value=False, description='Autodetect Depth Range', disabled=False,
-                                                button_style='info', tooltip='Auto-detect depths', layout=self.label_layout)
+        self.toggle_autodetect = widgets.Checkbox(value=False, description='Autodetect Depth Range',
+                                                  tooltip='Auto-detect depths', layout=widgets.Layout(display='none'))
 
         # extract widgets
         self.ext_label = widgets.Label(value="Extract Parameters", layout=self.label_layout)

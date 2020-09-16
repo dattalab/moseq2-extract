@@ -89,10 +89,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         '''
 
         self.config_data['autodetect'] = self.toggle_autodetect.value
-        if self.toggle_autodetect.value == True:
-            self.toggle_autodetect.button_style = 'success'
-        else:
-            self.toggle_autodetect.button_style = 'info'
 
     def check_all_sessions(self, b):
         '''
@@ -150,6 +146,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         
         self.sess_select.options = tmp_options
         self.checked_list.options = list(self.sess_select.options.keys())
+        self.checked_list.value = list(self.sess_select.options.keys())[0]
 
     def update_minmax_config(self, event):
         '''
@@ -213,9 +210,11 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                 self.all_results[sessionName] = sess_res['flagged']
         
         if len(self.checked_list.value) == len(self.checked_list.options):
-            self.message.value = r'All sessions passed with the current parameter set. Save the parameters and move to the extract all cell.'
+            self.message.value = 'All sessions passed with the current parameter set. \
+            Save the parameters and move to the "Extract All" cell.'
         else:
-            self.message.value = r'Some sessions were flagged. Save the parameter set for the current passing sessions, then find and save the correct set for the remaining sessions.'
+            self.message.value = 'Some sessions were flagged. Save the parameter set for the current passing sessions, \
+             then find and save the correct set for the remaining sessions.'
         
 
     def interactive_find_roi_session_selector(self, session):
@@ -268,7 +267,8 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
             results = self.get_roi_and_depths(bground_im, session)
-            self.config_data['autodetect'] = False
+            if not results['flagged']:
+                self.config_data['autodetect'] = False
 
             # Update the session flag result
             self.all_results[keys[self.sess_select.index]] = results['flagged']
@@ -297,6 +297,8 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # set indicator
         if results['flagged']:
             indicator.value = r'\(\color{red} {Flagged}\)'
+            self.checked_list.value = [v for v in self.checked_list.value if v != keys[self.sess_select.index]]
+            self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
         else:
             indicator.value = r'\(\color{green} {Passing}\)'
             self.checked_list.value = list(set(list(self.checked_list.value) + [keys[self.sess_select.index]]))
@@ -376,6 +378,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                                             strel_dilate=strel_dilate,
                                             strel_erode=strel_erode
                                             )
+
         if self.config_data['use_plane_bground']:
             print('Using plane fit for background...')
             bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session, 'proc')))
@@ -392,7 +395,13 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             pixel_width = xmax - xmin
             pixel_height = ymax - ymin
 
-            pixels_per_inch = pixel_width / self.config_data['arena_width']
+            if self.config_data.get('arena_width') is not None:
+                pixels_per_inch = pixel_width / self.config_data['arena_width']
+            elif self.config_data.get('true_height') is not None:
+                pixels_per_inch = pixel_width / self.config_data['true_height']
+            else:
+                print('Error: you must enter your arena width or true camera height.')
+
             self.config_data['pixels_per_inch'] = float(pixels_per_inch)
 
             # Corresponds to a rough pixel area estimate
@@ -403,24 +412,26 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             # Corresponds to a rough pixel area estimate
             r = float(cv2.countNonZero(rois[0].astype('uint8')))
 
-        # Compute arena area
-        if self.config_data['arena_shape'] == 'ellipse':
-            area = math.pi * (self.config_data['arena_width'] / 2) ** 2
-        elif 'rect' in self.config_data['arena_shape']:
-            estimated_height = pixel_height / pixels_per_inch
-            area = self.config_data['arena_width'] * estimated_height
+        if self.config_data.get('arena_width') is not None:
+            # Compute arena area
+            if self.config_data['arena_shape'] == 'ellipse':
+                area = math.pi * (self.config_data['arena_width'] / 2) ** 2
+            elif 'rect' in self.config_data['arena_shape']:
+                estimated_height = pixel_height / pixels_per_inch
+                area = self.config_data['arena_width'] * estimated_height
 
-        # Compute pixel per metric
-        area_px_per_inch = r / area / pixels_per_inch
-        
+            # Compute pixel per metric
+            self.config_data['area_px_per_inch'] = r / area / pixels_per_inch
+
         try:
-            assert isclose(self.config_data['pixel_area'], r, abs_tol=10e3)
+            assert isclose(self.config_data['pixel_area'], r, abs_tol=50e2)
         except AssertionError:
-            if area_px_per_inch < pixels_per_inch:
+            if self.config_data.get('area_px_per_inch', 0) < pixels_per_inch:
                 results['flagged'] = True
 
         # Save ROI
         results['roi'] = rois[0]
+        results['counted_pixels'] = r
 
         return results
 
