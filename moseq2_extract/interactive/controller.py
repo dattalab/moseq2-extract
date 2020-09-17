@@ -403,7 +403,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             elif self.config_data.get('true_height') is not None:
                 pixels_per_inch = pixel_width / self.config_data['true_height']
             else:
-                print('Error: you must enter your arena width or true camera height.')
+                raise Exception('Error: you must enter your arena width or true camera height.')
 
             self.config_data['pixels_per_inch'] = float(pixels_per_inch)
 
