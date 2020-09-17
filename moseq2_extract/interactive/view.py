@@ -36,7 +36,7 @@ def show_extraction(input_file, video_file):
 
     # Copy generated movie to temporary directory
     vid_dir = os.path.dirname(video_file)
-    tmp_path = os.path.join(vid_dir, 'tmp', f'{np.random.randint(0, 99999)}', os.path.basename(video_file))
+    tmp_path = os.path.join(vid_dir, 'tmp', f'{np.random.randint(0, 99999)}_{os.path.basename(video_file)}')
     tmp_dirname = os.path.dirname(tmp_path)
 
     if not os.path.exists(tmp_dirname):

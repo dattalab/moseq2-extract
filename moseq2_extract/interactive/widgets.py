@@ -42,7 +42,7 @@ class InteractiveROIWidgets:
 
         # extract widgets
         self.ext_label = widgets.Label(value="Extract Parameters", layout=self.label_layout)
-        self.minmax_heights = widgets.IntRangeSlider(value=[10, 100], min=0, max=300, step=1,
+        self.minmax_heights = widgets.IntRangeSlider(value=[13, 100], min=0, max=300, step=1,
                                                 description='Min-Max Mouse Height', style=style, continuous_update=False)
         self.frame_range = widgets.IntRangeSlider(value=[0, 300], min=0, max=3000, step=30,
                                             tooltip='Frames to Extract Sample',

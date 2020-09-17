@@ -8,8 +8,6 @@ the widgets.py file to facilitate the real-time interaction.
 import os
 import cv2
 import math
-import time
-import click
 import warnings
 import numpy as np
 from math import isclose
@@ -257,6 +255,11 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         Returns
         -------
         '''
+
+        if '.tar' in session:
+            self.config_data['tar'] = True
+        else:
+            self.config_data['tar'] = False
 
         self.save_parameters.button_style = 'primary'
         self.save_parameters.icon = 'none'
