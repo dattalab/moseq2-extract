@@ -42,6 +42,7 @@ def update_progress(progress_file, varK, varV):
         yml.dump(progress, f)
 
     print(f'Successfully updated progress file with {varK} -> {varV}')
+    return progress
 
 def restore_progress_vars(progress_file):
     '''
@@ -59,7 +60,7 @@ def restore_progress_vars(progress_file):
     with open(progress_file, 'r') as f:
         vars = yaml.safe_load(f)
 
-    return vars['config_file'], vars['index_file'], vars['train_data_dir'], vars['pca_dirname'], vars['scores_filename'], vars['model_path'], vars['scores_path'], vars['crowd_dir'], vars['plot_path']
+    return vars
 
 def check_progress(base_dir, progress_filepath):
     '''
@@ -78,9 +79,16 @@ def check_progress(base_dir, progress_filepath):
     yml = yaml.YAML()
     yml.indent(mapping=2, offset=2)
 
-    base_progress_vars = {'base_dir': base_dir, 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
-                     'pca_dirname': 'TBD', 'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD',
-                     'crowd_dir': 'TBD', 'plot_path': os.path.join(base_dir, 'plots/')}
+    base_progress_vars = {'base_dir': base_dir,
+                          'config_file': '',
+                          'index_file': '',
+                          'train_data_dir': '',
+                          'pca_dirname': '',
+                          'scores_filename': '',
+                          'scores_path': '',
+                          'model_path': '',
+                          'crowd_dir': '',
+                          'plot_path': os.path.join(base_dir, 'plots/')}
 
     if os.path.exists(progress_filepath):
         with open(progress_filepath, 'r') as f:
@@ -89,7 +97,7 @@ def check_progress(base_dir, progress_filepath):
         print('Progress file found, listing initialized variables...\n')
 
         for k, v in progress_vars.items():
-            if v != 'TBD':
+            if v != '':
                 print(f'{k}: {v}')
 
         restore = ''
@@ -100,12 +108,9 @@ def check_progress(base_dir, progress_filepath):
 
                 print('Updating notebook variables...')
 
-                config_filepath, index_filepath, train_data_dir, pca_dirname, \
-                scores_filename, model_path, scores_file, \
-                crowd_dir, plot_path = restore_progress_vars(progress_filepath)
+                progress_vars = restore_progress_vars(progress_filepath)
 
-                return config_filepath, index_filepath, train_data_dir, pca_dirname, \
-                scores_filename, model_path, scores_file, crowd_dir, plot_path
+                return progress_vars
 
             elif restore.lower() == "n":
 
@@ -118,10 +123,10 @@ def check_progress(base_dir, progress_filepath):
 
                 print('\nProgress file created, listing initialized variables...')
                 for k, v in progress_vars.items():
-                    if v != 'TBD':
+                    if v != '':
                         print(k, v)
-                return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'], \
-                       progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
+                return progress_vars
+
             elif restore.lower() == 'q':
                 return
     else:
@@ -133,11 +138,10 @@ def check_progress(base_dir, progress_filepath):
 
         print('\nProgress file created, listing initialized variables...')
         for k, v in progress_vars.items():
-            if v != 'TBD':
+            if v != '':
                 print(k, v)
 
-        return progress_vars['config_file'], progress_vars['index_file'], progress_vars['train_data_dir'], progress_vars['pca_dirname'], progress_vars['scores_filename'],\
-               progress_vars['model_path'], progress_vars['scores_path'], progress_vars['crowd_dir'], progress_vars['plot_path']
+        return progress_vars
 
 def generate_config_command(output_file):
     '''
