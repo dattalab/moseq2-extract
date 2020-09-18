@@ -195,14 +195,20 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             if sessionName not in self.checked_list.value:
                 # Get background image for each session and test the current parameters on it
                 bground_im = get_bground_im_file(sessionPath)
-                sess_res = self.get_roi_and_depths(bground_im, sessionPath)
+                try:
+                    sess_res = self.get_roi_and_depths(bground_im, sessionPath)
+                except:
+                    sess_res = {'flagged': True}
 
                 if not sess_res['flagged']:
                     self.session_parameters[sessionName] = self.config_data
                     self.checked_list.value = list(set(list(self.checked_list.value))) + [sessionName]
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
                 else:
-                    self.checked_list.value = list(self.checked_list.value).remove(sessionName)
+                    try:
+                        self.checked_list.value = list(self.checked_list.value).remove(sessionName)
+                    except ValueError:
+                        pass
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
                 self.all_results[sessionName] = sess_res['flagged']
@@ -384,7 +390,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         if self.config_data['use_plane_bground']:
             print('Using plane fit for background...')
-            bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session, 'proc')))
+            bground_im = set_bground_to_plane_fit(bground_im, plane, dirname(join(session, 'proc')))
 
         if self.config_data['autodetect']:
             # Get pixel dims from bounding box
