@@ -58,16 +58,21 @@ class InteractiveROIWidgets:
         self.check_all = widgets.Button(description='Check All Sessions', disabled=False,
                                 tooltip='Extract full session using current parameters')
 
+        self.extract_button = widgets.Button(description='Extract Sample', disabled=False, layout=self.label_layout,
+                                             tooltip='Preview extraction output')
+        self.mark_passing = widgets.Button(description='Mark Passing', disabled=False, layout=self.label_layout,
+                                           tooltip='Mark current session as passing')
+
         self.checked_list = widgets.SelectMultiple(options=list(), value=[], description='', disabled=True)
 
         # groupings
         # ui widgets
         self.roi_tools = VBox([self.roi_label, self.bg_roi_depth_range, self.dilate_iters, self.frame_num])
-        self.extract_tools = VBox([self.ext_label, self.minmax_heights, self.frame_range, self.toggle_autodetect])
+        self.extract_tools = VBox([self.ext_label, self.minmax_heights, self.frame_range, self.extract_button])
 
         self.box_layout = widgets.Layout(display='inline-flex', flex_flow='row nowrap', justify_content='space-around',
                                     align_items='center', width='100%')
 
-        self.button_box = VBox([HBox([self.check_all, self.save_parameters]), self.checked_lbl, self.checked_list])
+        self.button_box = VBox([HBox([self.check_all, self.save_parameters]), self.checked_lbl, self.checked_list, self.mark_passing])
 
         self.ui_tools = VBox([HBox([self.roi_tools, self.extract_tools, self.button_box], layout=self.box_layout), self.message])

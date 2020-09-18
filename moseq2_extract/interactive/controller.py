@@ -58,9 +58,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         self.sess_select.options = get_session_paths(data_path)
         self.checked_list.options = list(self.sess_select.options.keys())
 
-        # Set toggle button callback
-        self.toggle_autodetect.observe(self.toggle_button_clicked, names='value')
-
         # Set save parameters button callback
         self.save_parameters.on_click(self.save_clicked)
 
@@ -70,10 +67,16 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Set min-max range slider callback
         self.minmax_heights.observe(self.update_minmax_config, names='value')
 
+        # Set extract button callback
+        self.extract_button.on_click(self.extract_button_clicked)
+
+        # Set passing button callback
+        self.mark_passing.on_click(self.mark_passing_button_clicked)
+
         # Set extract frame range slider
         self.frame_range.observe(self.update_config_fr, names='value')
 
-    def toggle_button_clicked(self, b):
+    def extract_button_clicked(self, b):
         '''
         Updates the true depth autodetection parameter
          such that the true depth is autodetected for each found session
@@ -86,7 +89,21 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         -------
         '''
 
-        self.config_data['autodetect'] = self.toggle_autodetect.value
+        clear_output()
+        display(self.sess_select, self.ui_tools, self.main_out)
+        self.get_extraction(self.curr_session, self.curr_bground_im, self.curr_results['roi'])
+
+    def mark_passing_button_clicked(self, b):
+        if self.curr_results['flagged'] == True:
+            self.curr_results['flagged'] = False
+
+            self.checked_list.value = list(self.checked_list.value) + [self.keys[self.sess_select.index]]
+            self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
+
+            self.config_data['pixel_area'] = self.curr_results['counted_pixels']
+            self.indicator.value = r'\(\color{green} {Passing}\)'
+            clear_output()
+            display(self.sess_select, self.ui_tools, self.main_out)
 
     def check_all_sessions(self, b):
         '''
@@ -144,7 +161,8 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         
         self.sess_select.options = tmp_options
         self.checked_list.options = list(self.sess_select.options.keys())
-        self.checked_list.value = list(self.sess_select.options.keys())[0]
+        if len(tmp_options.keys()) > 0:
+            self.checked_list.value = (list(self.sess_select.options.keys())[0],)
 
     def update_minmax_config(self, event):
         '''
@@ -237,11 +255,11 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         bground_im = get_bground_im_file(session)
         clear_output()
-        out = widgets.interactive_output(self.interactive_depth_finder, {'session': fixed(session),
+        self.main_out = widgets.interactive_output(self.interactive_depth_finder, {'session': fixed(session),
                                                             'bground_im': fixed(bground_im),
                                                             'dr': self.bg_roi_depth_range,
                                                             'di': self.dilate_iters})
-        display(self.sess_select, self.ui_tools, out)
+        display(self.sess_select, self.ui_tools, self.main_out)
 
     def interactive_depth_finder(self, session, bground_im, dr, di):
         '''
@@ -271,7 +289,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         self.save_parameters.icon = 'none'
 
         # Session selection dict key names
-        keys = list(self.sess_select.options.keys())
+        self.keys = list(self.sess_select.options.keys())
 
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
@@ -280,7 +298,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                 self.config_data['autodetect'] = False
 
             # Update the session flag result
-            self.all_results[keys[self.sess_select.index]] = results['flagged']
+            self.all_results[self.keys[self.sess_select.index]] = results['flagged']
 
             # Set initial frame range tuple value
             self.config_data['frame_range'] = self.frame_range.value
@@ -295,47 +313,42 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             
             # Update the session flag result
             results = self.get_roi_and_depths(bground_im, session)
-            self.all_results[keys[self.sess_select.index]] = results['flagged']
+            self.all_results[self.keys[self.sess_select.index]] = results['flagged']
+
+        self.curr_session = session
+        self.curr_bground_im = bground_im
+        self.curr_results = results
 
         # Clear output to update view
         clear_output()
 
         # Display validation indicator
-        indicator = widgets.Label(value="", font_size=50, layout=self.label_layout)
+        self.indicator = widgets.Label(value="", font_size=50, layout=self.label_layout)
 
         # set indicator
         if results['flagged']:
-            indicator.value = r'\(\color{red} {Flagged}\)'
-            self.checked_list.value = [v for v in self.checked_list.value if v != keys[self.sess_select.index]]
+            self.indicator.value = r'\(\color{red} {Flagged}\)'
+            self.checked_list.value = [v for v in self.checked_list.value if v != self.keys[self.sess_select.index]]
             self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
         else:
-            indicator.value = r'\(\color{green} {Passing}\)'
-            self.checked_list.value = list(set(list(self.checked_list.value) + [keys[self.sess_select.index]]))
-            self.session_parameters[keys[self.sess_select.index]] = self.config_data
+            self.indicator.value = r'\(\color{green} {Passing}\)'
+            self.checked_list.value = list(set(list(self.checked_list.value) + [self.keys[self.sess_select.index]]))
+            self.session_parameters[self.keys[self.sess_select.index]] = self.config_data
             self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
         # Display extraction validation indicator
-        display(indicator)
+        display(self.indicator)
 
         out = widgets.interactive_output(plot_roi_results, {'input_file': fixed(session),
                                                             'config_data': fixed(self.config_data),
                                                             'session_parameters': fixed(self.session_parameters),
-                                                            'session_key': fixed(keys[self.sess_select.index]),
+                                                            'session_key': fixed(self.keys[self.sess_select.index]),
                                                             'bground_im': fixed(bground_im),
                                                             'roi': fixed(results['roi']),
                                                             'minmax_heights': self.minmax_heights,
                                                             'fn': self.frame_num})
         # display graphs
         display(out)
-        
-        # manual extract API
-        interact_ext = interact.options(manual=True, manual_name="Extract Sample")
-
-        # Generates a button below the bokeh plots
-        interact_ext(self.get_extraction,
-                    input_file=fixed(session),
-                    bground_im=fixed(bground_im),
-                    roi=fixed(results['roi']))
 
 
     def get_roi_and_depths(self, bground_im, session):
@@ -363,7 +376,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             limit = np.max(bground_im)
 
             # Threshold image to find depth at bucket center: the true depth
-            cX, cY = get_bucket_center(bground_im, limit, threshold=bground_im.mean())
+            cX, cY = get_bucket_center(bground_im, limit, threshold=limit-bground_im.std())
 
             # True depth is at the center of the bucket
             true_depth = bground_im[cX][cY]
@@ -376,6 +389,9 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             bg_roi_range_max = true_depth + range_diff
 
             self.config_data['bg_roi_depth_range'] = (bg_roi_range_min, bg_roi_range_max)
+
+            if bg_roi_range_max > self.bg_roi_depth_range.max:
+                self.bg_roi_depth_range.max = bg_roi_range_max + range_diff
 
         # Get relevant structuring elements
         strel_dilate = select_strel(self.config_data['bg_roi_shape'], tuple(self.config_data['bg_roi_dilate']))
@@ -390,7 +406,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         if self.config_data['use_plane_bground']:
             print('Using plane fit for background...')
-            bground_im = set_bground_to_plane_fit(bground_im, plane, dirname(join(session, 'proc')))
+            self.curr_bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session), 'proc'))
 
         if self.config_data['autodetect']:
             # Get pixel dims from bounding box
