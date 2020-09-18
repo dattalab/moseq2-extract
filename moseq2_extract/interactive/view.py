@@ -122,7 +122,7 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
 
     # filter out regions outside of ROI
     filtered_frames = apply_roi(curr_frame, roi)[0]
-    filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype('uint8')
+    filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype(config_data['frame_dtype'])
 
     # Get overlayed ROI
     overlay = bground_im.copy()

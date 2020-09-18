@@ -17,8 +17,6 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
 import ipywidgets as widgets
-from ipywidgets import fixed
-from os.path import dirname, join
 from moseq2_extract.io.image import write_image
 from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
@@ -85,8 +83,6 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
     None
     '''
     roi_app = InteractiveFindRoi(data_path, config_file, session_config)
-
-    roi_app.config_data['autodetect'] = True
     
     # Run interactive application
     selout = widgets.interactive_output(roi_app.interactive_find_roi_session_selector,

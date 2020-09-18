@@ -80,6 +80,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Update main configuration parameters
         self.config_data = set_bg_roi_weights(self.config_data)
         self.config_data = check_filter_sizes(self.config_data)
+        self.config_data['autodetect'] = True
 
     def extract_button_clicked(self, b):
         '''
@@ -149,6 +150,10 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         -------
         '''
 
+        # Update current session with current configuration parameters
+        self.session_parameters[self.keys[self.sess_select.index]] = self.config_data
+
+        # Update session parameters
         with open(self.config_data['session_config_path'], 'w+') as f:
             yaml.safe_dump(self.session_parameters, f)
 
@@ -295,6 +300,10 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Session selection dict key names
         self.keys = list(self.sess_select.options.keys())
 
+        # Setting current context parameters
+        self.curr_session = session
+        self.curr_bground_im = bground_im
+
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
             results = self.get_roi_and_depths(bground_im, session)
@@ -319,8 +328,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             results = self.get_roi_and_depths(bground_im, session)
             self.all_results[self.keys[self.sess_select.index]] = results['flagged']
 
-        self.curr_session = session
-        self.curr_bground_im = bground_im
         self.curr_results = results
 
         # Clear output to update view
@@ -347,7 +354,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
                                                             'config_data': fixed(self.config_data),
                                                             'session_parameters': fixed(self.session_parameters),
                                                             'session_key': fixed(self.keys[self.sess_select.index]),
-                                                            'bground_im': fixed(bground_im),
+                                                            'bground_im': fixed(self.curr_bground_im),
                                                             'roi': fixed(results['roi']),
                                                             'minmax_heights': self.minmax_heights,
                                                             'fn': self.frame_num})
