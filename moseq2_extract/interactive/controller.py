@@ -12,8 +12,8 @@ import warnings
 import numpy as np
 from math import isclose
 import ruamel.yaml as yaml
+from ipywidgets import fixed
 import ipywidgets as widgets
-from ipywidgets import interact, fixed
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
 from moseq2_extract.helpers.data import get_session_paths
@@ -21,7 +21,8 @@ from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.interactive.widgets import InteractiveROIWidgets
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.interactive.view import plot_roi_results, show_extraction
-from moseq2_extract.util import get_bucket_center, get_strels, select_strel, set_bground_to_plane_fit
+from moseq2_extract.util import get_bucket_center, get_strels, select_strel, \
+                        set_bground_to_plane_fit, set_bg_roi_weights, check_filter_sizes
 
 
 class InteractiveFindRoi(InteractiveROIWidgets):
@@ -75,6 +76,10 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         # Set extract frame range slider
         self.frame_range.observe(self.update_config_fr, names='value')
+
+        # Update main configuration parameters
+        self.config_data = set_bg_roi_weights(self.config_data)
+        self.config_data = check_filter_sizes(self.config_data)
 
     def extract_button_clicked(self, b):
         '''
@@ -237,7 +242,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         else:
             self.message.value = 'Some sessions were flagged. Save the parameter set for the current passing sessions, \
              then find and save the correct set for the remaining sessions.'
-        
 
     def interactive_find_roi_session_selector(self, session):
         '''

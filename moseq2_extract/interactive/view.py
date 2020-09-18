@@ -117,7 +117,7 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     session_parameters[session_key] = config_data
 
     # get segmented frame
-    raw_frames = load_movie_data(input_file, range(fn, fn+30))
+    raw_frames = load_movie_data(input_file, range(fn, fn+30), frame_dims=bground_im.shape[::-1])
     curr_frame = (bground_im - raw_frames)
 
     # filter out regions outside of ROI
