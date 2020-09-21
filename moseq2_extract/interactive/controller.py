@@ -408,12 +408,17 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         strel_dilate = select_strel(self.config_data['bg_roi_shape'], tuple(self.config_data['bg_roi_dilate']))
         strel_erode = select_strel(self.config_data['bg_roi_shape'], tuple(self.config_data['bg_roi_erode']))
 
-        # Get ROI
-        rois, plane, bboxes, _, _, _ = get_roi(bground_im,
-                                            **self.config_data,
-                                            strel_dilate=strel_dilate,
-                                            strel_erode=strel_erode
-                                            )
+        try:
+            # Get ROI
+            rois, plane, bboxes, _, _, _ = get_roi(bground_im,
+                                                **self.config_data,
+                                                strel_dilate=strel_dilate,
+                                                strel_erode=strel_erode
+                                                )
+        except:
+            results['flagged'] = True
+            results['roi'] = np.zeros_like(self.curr_bground_im)
+            return results
 
         if self.config_data['use_plane_bground']:
             print('Using plane fit for background...')

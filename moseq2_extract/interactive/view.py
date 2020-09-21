@@ -103,6 +103,7 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     Returns
     -------
     '''
+
     # ignore flip classifier sklearn version warnings
     warnings.filterwarnings('ignore')
 
@@ -121,8 +122,11 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     curr_frame = (bground_im - raw_frames)
 
     # filter out regions outside of ROI
-    filtered_frames = apply_roi(curr_frame, roi)[0]
-    filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype(config_data['frame_dtype'])
+    try:
+        filtered_frames = apply_roi(curr_frame, roi)[0]
+        filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype(config_data['frame_dtype'])
+    except:
+        filtered_frames = curr_frame.copy()[0]
 
     # Get overlayed ROI
     overlay = bground_im.copy()
@@ -173,19 +177,21 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     config_data['tracking_init_cov'] = None
 
     # extract crop-rotated selected frame
-    result = extract_chunk(**config_data,
-                           **str_els,
-                           chunk=raw_frames.copy(),
-                           roi=roi,
-                           bground=bground_im,
-                           )
+    try:
+        result = extract_chunk(**config_data,
+                               **str_els,
+                               chunk=raw_frames.copy(),
+                               roi=roi,
+                               bground=bground_im,
+                               )
+    except:
+        result = {'depth_frames': np.zeros((1, 80, 80))}
 
     bokeh_plot_helper(cropped_fig, result['depth_frames'][0])
 
     # Create 2x2 grid plot
     gp = gridplot([[bg_fig, overlay_fig],
                    [segmented_fig, cropped_fig]],
-                    #sizing_mode='scale_both',
                     plot_width=350, plot_height=350)
 
     # Create Output widget object to center grid plot in view
