@@ -11,23 +11,24 @@ import h5py
 import shutil
 import warnings
 import numpy as np
+import pandas as pd
 import urllib.request
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
 import ipywidgets as widgets
-from ipywidgets import fixed
-from os.path import dirname, join
 from moseq2_extract.io.image import write_image
 from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
-from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.interactive.controller import InteractiveFindRoi
+from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from moseq2_extract.extract.validation import count_frames_with_small_areas, compute_outlier_scalars_if, \
+    check_timestamp_error_percentage
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                            copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
+                            copy_manifest_results, build_index_dict, check_completion_status
 from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
                         convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
                         clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
@@ -301,12 +302,20 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     print('Processing:', input_file)
     # get the basic metadata
 
+    flags = {
+        'scalar_anomaly': False,
+        'corrupted': False,
+        'stationary': False,
+        'size_anomaly': False
+    }
+
     status_dict = {
         'parameters': deepcopy(config_data),
         'complete': False,
         'skip': False,
         'uuid': str(uuid.uuid4()),
-        'metadata': ''
+        'metadata': '',
+        'flags': flags
     }
 
     # handle tarball stuff
@@ -328,6 +337,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
     input_file, acquisition_metadata, timestamps, alternate_correct, config_data['tar'] = handle_extract_metadata(input_file, dirname)
+
+    if isinstance(timestamps, type(np.array)):
+        dropped_frame_percentage = check_timestamp_error_percentage(timestamps, config_data['fps'])
+        if dropped_frame_percentage >= 0.05:
+            status_dict['flagged'] = True
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -419,14 +433,36 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                           timestamps=timestamps)
 
         # Write crop-rotated results to h5 file and write video preview mp4 file
-        process_extract_batches(**extraction_data,
-                                h5_file=f,
-                                input_file=input_file,
-                                config_data=config_data,
-                                scalars=scalars,
-                                str_els=str_els,
-                                output_dir=output_dir,
-                                output_filename=output_filename)
+        config_data = process_extract_batches(**extraction_data,
+                                                h5_file=f,
+                                                input_file=input_file,
+                                                config_data=config_data,
+                                                scalars=scalars,
+                                                str_els=str_els,
+                                                output_dir=output_dir,
+                                                output_filename=output_filename)
+        tmp = {}
+        for key in scalars:
+            tmp[key] = f['scalars'][key][()]
+
+        scalar_df = pd.DataFrame.from_dict(tmp)
+
+        anomaly_percent = compute_outlier_scalars_if(scalar_df)
+        corrupted_percent = config_data['corrupted_frames']/nframes
+        stationary_percent = config_data['motionless_frames']/nframes
+        inconsistent_sized_frames_percent = count_frames_with_small_areas(scalar_df)/nframes
+
+        if anomaly_percent >= 0.05:
+            status_dict['flags']['scalar_anomaly'] = True
+
+        if corrupted_percent >= 0.05:
+            status_dict['flagged']['corrupted'] = True
+
+        if stationary_percent >= 0.05:
+            status_dict['flagged']['stationary'] = True
+
+        if inconsistent_sized_frames_percent >= 0.05:
+            status_dict['flagged']['size_anomaly'] = True
 
     print('\n')
 

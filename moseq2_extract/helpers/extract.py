@@ -7,9 +7,11 @@ These functions are primarily called from inside the extract_wrapper() function.
 
 import os
 import numpy as np
+import pandas as pd
 from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
+from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
     '''
@@ -27,12 +29,21 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
 
     Returns
     -------
-
+    config_data (dict): dictionary containing updated extraction validation parameter values
     '''
+
+    scalar_dict = {}
 
     # Writing computed scalars to h5 file
     for scalar in scalars:
         h5_file[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
+        scalar_dict[scalar] = h5_file['scalars'][scalar][()]
+
+    scalar_df = pd.DataFrame.from_dict(scalar_dict)
+    config_data['corrupted_frames'] += count_nan_rows(scalar_df)
+    config_data['corrupted_frames'] += count_missing_mouse_frames(scalar_df)
+
+    config_data['motionless_frames'] += count_stationary_frames(scalar_df)
 
     # Writing frames and mask to h5
     h5_file['frames'][frame_range] = results['depth_frames'][offset:]
@@ -41,6 +52,8 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
     # Writing flip classifier results to h5
     if config_data['flip_classifier']:
         h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
+
+    return config_data
 
 def process_extract_batches(input_file, config_data, bground_im, roi,
                             frame_batches, first_frame_idx, str_els,
@@ -66,12 +79,14 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
 
     Returns
     -------
-    None
+    config_data (dict): dictionary containing updated extraction validation parameter values
     '''
 
     video_pipe = None
     config_data['tracking_init_mean'] = None
     config_data['tracking_init_cov'] = None
+    config_data['corrupted_frames'] = 0
+    config_data['motionless_frames'] = 0
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         chunk_frames = [f + first_frame_idx for f in frame_range]
@@ -104,7 +119,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         frame_range = frame_range[offset:]
 
         if h5_file is not None:
-            write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset)
+            config_data = write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset)
 
         # Create empty array for output movie with filtered video and cropped mouse on the top left
         nframes, rows, cols = results['chunk'][offset:].shape
@@ -127,6 +142,8 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     if video_pipe is not None:
         video_pipe.stdin.close()
         video_pipe.wait()
+
+    return config_data
 
 def run_local_extract(to_extract, config_file, skip_extracted=False):
     '''
