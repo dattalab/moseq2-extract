@@ -18,6 +18,7 @@ import ipywidgets as widgets
 from bokeh.models import Div
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
+from moseq2_extract.io.video import get_video_info
 from moseq2_extract.helpers.data import get_session_paths
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.interactive.widgets import InteractiveROIWidgets
@@ -524,12 +525,14 @@ class InteractiveExtractionViewer:
 
     def get_extraction(self, input_file):
 
+        video_dims = get_video_info(input_file)['dims']
+
         # display extracted video as HTML Div using Bokeh
         video_div = f'''
                         <h2>{dirname(input_file)}</h2>
                         <video
                             src="{input_file}"; alt="{input_file}"; 
-                            height="450"; width="450"; preload="auto";
+                            height="{video_dims[1]}"; width="{video_dims[0]}"; preload="auto";
                             style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
                             border="2"; autoplay controls loop>
                         </video>

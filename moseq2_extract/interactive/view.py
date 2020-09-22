@@ -14,9 +14,9 @@ from bokeh.layouts import gridplot
 from IPython.display import display
 from bokeh.plotting import figure, show
 from moseq2_extract.util import get_strels
-from moseq2_extract.io.video import load_movie_data
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, threshold_chunk
+from moseq2_extract.io.video import load_movie_data, get_video_info
 
 def show_extraction(input_file, video_file):
     '''
@@ -44,11 +44,13 @@ def show_extraction(input_file, video_file):
 
     shutil.copy2(video_file, tmp_path)
 
+    video_dims = get_video_info(tmp_path)['dims']
+
     video_div = f'''
                     <h2>{input_file}</h2>
                     <video
                         src="{tmp_path}"; alt="{tmp_path}"; 
-                        height="450"; width="450"; preload="auto";
+                        height="{video_dims[1]}"; width="{video_dims[0]}"; preload="auto";
                         style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
                         border="2"; autoplay controls loop>
                     </video>
