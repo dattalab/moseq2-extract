@@ -7,11 +7,13 @@ to facilitate Jupyter notebook usage.
 '''
 
 import os
+import time
 import warnings
 import ruamel.yaml as yaml
+from tqdm.auto import tqdm
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
-from moseq2_extract.helpers.data import get_selected_sessions
+from moseq2_extract.helpers.data import get_selected_sessions, check_completion_status, get_session_paths
 from moseq2_extract.util import recursive_find_unextracted_dirs, load_found_session_paths
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
                                             generate_index_wrapper, aggregate_extract_results_wrapper
@@ -62,6 +64,131 @@ def restore_progress_vars(progress_file):
 
     return vars
 
+def handle_progress_restore_input(base_progress_vars, progress_filepath):
+    '''
+
+    Helper function that handles user input for restoring progress variables.
+
+    Parameters
+    ----------
+    base_progress_vars (dict): dict of default progress name to path pairs.
+    progress_filepath (str): path to progress filename
+
+    Returns
+    -------
+    progress_vars (dict): loaded progress variables
+    '''
+
+    restore = ''
+    # Restore loaded variables or overwrite with fresh state
+    while (restore != 'Y' or restore != 'N' or restore != 'q'):
+        restore = input('Would you like to restore the above listed notebook variables? Y -> restore variables, N -> overwrite progress file, q -> quit]')
+
+        if restore.lower() == "y":
+
+            print('Updating notebook variables...')
+            progress_vars = restore_progress_vars(progress_filepath)
+
+            return progress_vars
+
+        elif restore.lower() == "n":
+
+            print('Overwriting progress file with initial progress.')
+            progress_vars = base_progress_vars
+
+            with open(progress_filepath, 'w') as f:
+                yaml.safe_dump(progress_vars, f)
+
+            return progress_vars
+
+        elif restore.lower() == 'q':
+            return
+
+def print_progress(progress_vars):
+    '''
+    Displays tqdm progress bars checking a users jupyter notebook progress.
+
+    Parameters
+    ----------
+    progress_vars (dict): notebook progress dict
+
+    Returns
+    -------
+    '''
+
+    # fill with bools for whether each session is extracted, and index file is generated
+
+    pca_progress = {'pca_file': False, 'pca_scores': False, 'changepoints': False}
+    if progress_vars.get('index_file', None) != None:
+        pca_progress['index_file'] = True
+
+    modeling_progress = {'model_path': False}
+    analysis_progress = {'syll_info': False, 'crowd_dir': False}
+
+    # Get extraction progress
+    path_dict = get_session_paths(progress_vars['base_dir'])
+    e_path_dict = get_session_paths(progress_vars['base_dir'], extracted=True)
+
+    num_extracted = 0
+    for k, v in e_path_dict.items():
+        yaml_path = v.replace('mp4', 'yaml')
+        extracted = check_completion_status(yaml_path)
+        if extracted:
+            num_extracted += 1
+
+    total_extractions = len(path_dict.keys())
+
+    # Get PCA Progress
+    if progress_vars.get('pca_dirname', None) != None:
+        if os.path.exists(os.path.join(progress_vars['base_dir'], progress_vars['pca_dirname'], 'pca.h5')):
+            pca_progress['pca_file'] = True
+    if progress_vars.get('scores_path', None) != None:
+        pca_progress['pca_scores'] = True
+    if progress_vars.get('changepoints_path', None) != None:
+        pca_progress['changepoints'] = True
+
+    num_pca_files = 0
+    for v in pca_progress.values():
+        if v == True:
+            num_pca_files += 1
+
+    # Get Modeling Progress
+    if progress_vars.get('model_path', None) != None:
+        if os.path.exists(progress_vars['model_path']):
+            modeling_progress['model_path'] = True
+
+    # Get Analysis Path
+    if progress_vars.get('crowd_dir', None) != None:
+        if os.path.exists(progress_vars['crowd_dir']):
+            analysis_progress['crowd_dir'] = True
+
+    if progress_vars.get('syll_info', None) != None:
+        if os.path.exists(progress_vars['syll_info']):
+            analysis_progress['syll_info'] = True
+
+    # Show extraction progress
+    for i in tqdm(range(total_extractions), total=total_extractions, desc="Extraction Progress", bar_format='{desc}: {n_fmt}/{total_fmt} {bar}' ):
+        if i == num_extracted:
+            break
+
+    # Show PCA progress
+    for j in tqdm(range(len(pca_progress.keys())), total=len(pca_progress.keys()), desc="PCA Progress",
+                  bar_format='{desc}: {n_fmt}/{total_fmt} {bar}'):
+        if j == num_pca_files:
+            break
+
+    # Show Modeling progress
+    for i in tqdm(modeling_progress.keys(), total=len(modeling_progress.keys()), desc="Modeling Progress",
+                  bar_format='{desc}: {n_fmt}/{total_fmt} {bar}'):
+        if modeling_progress[i] == False:
+            break
+
+    # Show Analysis progress
+    for i in tqdm(analysis_progress.keys(), total=len(analysis_progress.keys()), desc="Analysis Progress",
+                  bar_format='{desc}: {n_fmt}/{total_fmt} {bar}'):
+        if analysis_progress[i] == False:
+            break
+
 def check_progress(base_dir, progress_filepath):
     '''
     Checks whether progress file exists and prompts user input on whether to overwrite, load old, or generate a new one.
@@ -79,6 +206,7 @@ def check_progress(base_dir, progress_filepath):
     yml = yaml.YAML()
     yml.indent(mapping=2, offset=2)
 
+    # Create basic progress file
     base_progress_vars = {'base_dir': base_dir,
                           'config_file': '',
                           'index_file': '',
@@ -90,56 +218,27 @@ def check_progress(base_dir, progress_filepath):
                           'crowd_dir': '',
                           'plot_path': os.path.join(base_dir, 'plots/')}
 
+    # Check if progress file exists
     if os.path.exists(progress_filepath):
         with open(progress_filepath, 'r') as f:
             progress_vars = yaml.safe_load(f)
 
-        print('Progress file found, listing initialized variables...\n')
+        print('Found progress file, displaying progress...')
+        # Display progress bars
+        print_progress(progress_vars)
+        time.sleep(0.1)
 
-        for k, v in progress_vars.items():
-            if v != '':
-                print(f'{k}: {v}')
+        # Handle user input
+        progress_vars = handle_progress_restore_input(base_progress_vars, progress_filepath)
+        return progress_vars
 
-        restore = ''
-        # Restore loaded variables or overwrite with fresh state
-        while(restore != 'Y' or restore != 'N' or restore != 'q'):
-            restore = input('Would you like to restore the above listed notebook variables? [Y -> restore variables, N -> overwrite progress file, q -> quit]')
-            if restore.lower() == "y":
-
-                print('Updating notebook variables...')
-
-                progress_vars = restore_progress_vars(progress_filepath)
-
-                return progress_vars
-
-            elif restore.lower() == "n":
-
-                print('Overwriting progress file with initial progress.')
-
-                progress_vars = base_progress_vars
-
-                with open(progress_filepath, 'w') as f:
-                    yaml.safe_dump(progress_vars, f)
-
-                print('\nProgress file created, listing initialized variables...')
-                for k, v in progress_vars.items():
-                    if v != '':
-                        print(k, v)
-                return progress_vars
-
-            elif restore.lower() == 'q':
-                return
     else:
         print('Progress file not found, creating new one.')
         progress_vars = base_progress_vars
+        print_progress(progress_vars)
 
         with open(progress_filepath, 'w') as f:
             yml.dump(progress_vars, f)
-
-        print('\nProgress file created, listing initialized variables...')
-        for k, v in progress_vars.items():
-            if v != '':
-                print(k, v)
 
         return progress_vars
 
