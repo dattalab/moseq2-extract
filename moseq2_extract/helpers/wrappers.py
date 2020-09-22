@@ -23,9 +23,9 @@ from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
-from moseq2_extract.extract.validation import count_frames_with_small_areas, compute_outlier_scalars_if, \
-    check_timestamp_error_percentage
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from moseq2_extract.extract.validation import count_frames_with_small_areas, check_timestamp_error_percentage
+from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames
 from moseq2_extract.interactive.controller import InteractiveFindRoi, InteractiveExtractionViewer
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
                                         copy_manifest_results, build_index_dict, check_completion_status
@@ -311,11 +311,13 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # get the basic metadata
 
     flags = {
-        'scalar_anomaly': False,
-        'corrupted': False,
-        'stationary': False,
-        'size_anomaly': False
-    }
+                'scalar_anomaly': False,
+                'dropped_frames': False,
+                'corrupted': False,
+                'stationary': False,
+                'missing': False,
+                'size_anomaly': False
+             }
 
     status_dict = {
         'parameters': deepcopy(config_data),
@@ -323,7 +325,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'skip': False,
         'uuid': str(uuid.uuid4()),
         'metadata': '',
-        'flags': flags
+        'flags': deepcopy(flags)
     }
 
     # handle tarball stuff
@@ -349,7 +351,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if isinstance(timestamps, type(np.array)):
         dropped_frame_percentage = check_timestamp_error_percentage(timestamps, config_data['fps'])
         if dropped_frame_percentage >= 0.05:
-            status_dict['flagged'] = True
+            status_dict['flags']['dropped_frames'] = True
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -455,22 +457,22 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
         scalar_df = pd.DataFrame.from_dict(tmp)
 
-        anomaly_percent = compute_outlier_scalars_if(scalar_df)
-        corrupted_percent = config_data['corrupted_frames']/nframes
-        stationary_percent = config_data['motionless_frames']/nframes
+        corrupted_percent = count_nan_rows(scalar_df)/nframes
+        missing_percent = count_missing_mouse_frames(scalar_df)/nframes
+        stationary_percent = count_stationary_frames(scalar_df)/nframes
         inconsistent_sized_frames_percent = count_frames_with_small_areas(scalar_df)/nframes
 
-        if anomaly_percent >= 0.05:
-            status_dict['flags']['scalar_anomaly'] = True
+        if missing_percent >= 0.05:
+            status_dict['flags']['missing'] = True
 
         if corrupted_percent >= 0.05:
-            status_dict['flagged']['corrupted'] = True
+            status_dict['flags']['corrupted'] = True
 
         if stationary_percent >= 0.05:
-            status_dict['flagged']['stationary'] = True
+            status_dict['flags']['stationary'] = True
 
         if inconsistent_sized_frames_percent >= 0.05:
-            status_dict['flagged']['size_anomaly'] = True
+            status_dict['flags']['size_anomaly'] = True
 
     print('\n')
 

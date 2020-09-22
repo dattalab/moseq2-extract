@@ -132,7 +132,7 @@ def compute_outlier_scalars_if(scalar_df):
     '''
 
     scaler = StandardScaler()
-    np_scaled = scaler.fit_transform(scalar_df.fillna(0))  #
+    np_scaled = scaler.fit_transform(scalar_df.fillna(0))
     data = pd.DataFrame(np_scaled)
 
     model = IsolationForest(random_state=42, max_features=data.shape[1], max_samples=data.shape[0])
@@ -140,7 +140,6 @@ def compute_outlier_scalars_if(scalar_df):
     scalar_df['anomaly'] = pd.Series(model.predict(data))
 
     anomaly_percent = get_anomaly_percentage(scalar_df)
-    print('Percentage of session with detected anomalies:', anomaly_percent)
 
-    return anomaly_percent
+    return scalar_df.anomaly, anomaly_percent
 

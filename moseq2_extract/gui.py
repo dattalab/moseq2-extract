@@ -346,7 +346,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
             to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
-    temp = [sess_dir for sess_dir in to_extract if '/tmp/' not in sess_dir]
+    temp = sorted([sess_dir for sess_dir in to_extract if '/tmp/' not in sess_dir])
     to_extract = get_selected_sessions(temp, extract_all)
 
     if not os.path.exists(config_file):
