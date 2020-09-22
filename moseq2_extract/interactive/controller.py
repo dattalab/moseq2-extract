@@ -11,9 +11,11 @@ import math
 import warnings
 import numpy as np
 from math import isclose
+from bokeh.io import show
 import ruamel.yaml as yaml
 from ipywidgets import fixed
 import ipywidgets as widgets
+from bokeh.models import Div
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
 from moseq2_extract.helpers.data import get_session_paths
@@ -513,3 +515,25 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         # display extracted video as HTML Div using Bokeh
         show_extraction(basename(dirname(input_file)), view_path)
+
+class InteractiveExtractionViewer:
+
+    def __init__(self, data_path):
+        self.sess_select = widgets.Dropdown(options=get_session_paths(data_path, extracted=True),
+                                            description='Session:', disabled=False, continuous_update=True)
+
+    def get_extraction(self, input_file):
+
+        # display extracted video as HTML Div using Bokeh
+        video_div = f'''
+                        <h2>{dirname(input_file)}</h2>
+                        <video
+                            src="{input_file}"; alt="{input_file}"; 
+                            height="450"; width="450"; preload="auto";
+                            style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
+                            border="2"; autoplay controls loop>
+                        </video>
+                     '''
+
+        div = Div(text=video_div, style={'width': '100%', 'align-items': 'center', 'display': 'contents'})
+        show(div)

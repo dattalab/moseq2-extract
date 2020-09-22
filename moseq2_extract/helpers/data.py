@@ -23,7 +23,7 @@ from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
 
-def get_session_paths(data_dir, exts=['dat', 'mkv', 'avi']):
+def get_session_paths(data_dir, extracted=False, exts=['dat', 'mkv', 'avi']):
     '''
     Find all depth recording sessions and their paths (with given extensions)
     to work on given base directory.
@@ -38,18 +38,24 @@ def get_session_paths(data_dir, exts=['dat', 'mkv', 'avi']):
     path_dict (dict): session directory name keys pair with their respective absolute paths.
     '''
 
+    if extracted:
+        path = '*/proc/*.'
+        exts = ['mp4']
+    else:
+        path = '*/*.'
+
     sessions = []
 
     # Get list of sessions ending in the given extensions
     for ext in exts:
         if len(data_dir) == 0:
             data_dir = os.getcwd()
-            files = sorted(glob('*/*.' + ext))
+            files = sorted(glob(path + ext))
             sessions += files
         else:
             data_dir = data_dir.strip()
             if os.path.isdir(data_dir):
-                files = sorted(glob(os.path.join(data_dir, '*/*.' + ext)))
+                files = sorted(glob(os.path.join(data_dir, path + ext)))
                 sessions += files
             else:
                 print('directory not found, try again.')
@@ -59,19 +65,23 @@ def get_session_paths(data_dir, exts=['dat', 'mkv', 'avi']):
                    'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
                    'ColorDataType': "Byte[]", "StartTime": ""}
 
-    for sess in sessions:
-        # get path to session directory
-        sess_dir = dirname(sess)
-        sess_name = basename(sess_dir)
-        # Generate metadata.json file if it's missing
-        if 'metadata.json' not in os.listdir(sess_dir):
-            sample_meta['SessionName'] = sess_name
-            with open(os.path.join(sess_dir, 'metadata.json'), 'w') as fp:
-                json.dump(sample_meta, fp)
+    if not extracted:
+        for sess in sessions:
+            # get path to session directory
+            sess_dir = dirname(sess)
+            sess_name = basename(sess_dir)
+            # Generate metadata.json file if it's missing
+            if 'metadata.json' not in os.listdir(sess_dir):
+                sample_meta['SessionName'] = sess_name
+                with open(os.path.join(sess_dir, 'metadata.json'), 'w') as fp:
+                    json.dump(sample_meta, fp)
 
-    # Create path dictionary
-    names = [basename(dirname(sess)) for sess in sessions]
-    path_dict = {n: p for n, p in zip(names, sessions)}
+        # Create path dictionary
+        names = [basename(dirname(sess)) for sess in sessions]
+        path_dict = {n: p for n, p in zip(names, sessions)}
+    else:
+        names = [dirname(sess).split('/')[-2] for sess in sessions]
+        path_dict = {n: p for n, p in zip(names, sessions)}
 
     return path_dict
 

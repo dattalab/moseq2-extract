@@ -23,9 +23,9 @@ from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.interactive.controller import InteractiveFindRoi
+from moseq2_extract.interactive.controller import InteractiveFindRoi, InteractiveExtractionViewer
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                            copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
+                                        copy_manifest_results, build_index_dict, check_completion_status
 from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
                         convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
                         clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
@@ -108,6 +108,16 @@ def interactive_roi_wrapper(data_path, config_file, session_config=None):
 
     # Watch for change in inputted session
     selout.observe(on_value_change, names='value')
+
+def interactive_extraction_preview_wrapper(input_dir):
+
+    viewer = InteractiveExtractionViewer(data_path=input_dir)
+
+    # Run interactive application
+    selout = widgets.interactive_output(viewer.get_extraction,
+                                        {'input_file': viewer.sess_select})
+    display(viewer.sess_select, selout)
+
 
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
