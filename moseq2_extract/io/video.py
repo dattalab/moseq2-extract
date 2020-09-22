@@ -406,7 +406,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
                                          frame_dims=frame_dims,
                                          bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
-            frame_data = read_frames(filename, frames)
+            frame_data = read_frames(filename, frames, frame_size=frame_dims)
 
     except AttributeError as e:
         print('Error:', e)

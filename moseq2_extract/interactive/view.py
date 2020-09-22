@@ -4,16 +4,19 @@ Interactive ROI/Extraction Bokeh visualization functions.
 
 '''
 
+import os
+import shutil
 import warnings
+import numpy as np
 import ipywidgets as widgets
 from bokeh.models import Div
-from IPython.display import display
 from bokeh.layouts import gridplot
+from IPython.display import display
 from bokeh.plotting import figure, show
 from moseq2_extract.util import get_strels
-from moseq2_extract.io.video import load_movie_data
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.extract.proc import apply_roi, threshold_chunk
+from moseq2_extract.io.video import load_movie_data, get_video_info
 
 def show_extraction(input_file, video_file):
     '''
@@ -31,17 +34,29 @@ def show_extraction(input_file, video_file):
     -------
     '''
 
+    # Copy generated movie to temporary directory
+    vid_dir = os.path.dirname(video_file)
+    tmp_path = os.path.join(vid_dir, 'tmp', f'{np.random.randint(0, 99999)}_{os.path.basename(video_file)}')
+    tmp_dirname = os.path.dirname(tmp_path)
+
+    if not os.path.exists(tmp_dirname):
+        os.makedirs(tmp_dirname)
+
+    shutil.copy2(video_file, tmp_path)
+
+    video_dims = get_video_info(tmp_path)['dims']
+
     video_div = f'''
                     <h2>{input_file}</h2>
                     <video
-                        src="{video_file}"; alt="{video_file}"; 
-                        height="450"; width="450"; preload="auto";
+                        src="{tmp_path}"; alt="{tmp_path}"; 
+                        height="{video_dims[1]}"; width="{video_dims[0]}"; preload="auto";
                         style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
                         border="2"; autoplay controls loop>
                     </video>
                 '''
 
-    div = Div(text=video_div, style={'width': '100%', 'align-items':'center'})
+    div = Div(text=video_div, style={'width': '100%', 'align-items':'center', 'display': 'contents'})
     show(div)
 
 def bokeh_plot_helper(bk_fig, image):
@@ -90,6 +105,7 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     Returns
     -------
     '''
+
     # ignore flip classifier sklearn version warnings
     warnings.filterwarnings('ignore')
 
@@ -104,12 +120,15 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     session_parameters[session_key] = config_data
 
     # get segmented frame
-    raw_frames = load_movie_data(input_file, range(fn, fn+30))
+    raw_frames = load_movie_data(input_file, range(fn, fn+30), frame_dims=bground_im.shape[::-1])
     curr_frame = (bground_im - raw_frames)
 
     # filter out regions outside of ROI
-    filtered_frames = apply_roi(curr_frame, roi)[0]
-    filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype('uint8')
+    try:
+        filtered_frames = apply_roi(curr_frame, roi)[0]
+        filtered_frames = threshold_chunk(filtered_frames, minmax_heights[0], minmax_heights[1]).astype(config_data['frame_dtype'])
+    except:
+        filtered_frames = curr_frame.copy()[0]
 
     # Get overlayed ROI
     overlay = bground_im.copy()
@@ -160,19 +179,21 @@ def plot_roi_results(input_file, config_data, session_key, session_parameters, b
     config_data['tracking_init_cov'] = None
 
     # extract crop-rotated selected frame
-    result = extract_chunk(**config_data,
-                           **str_els,
-                           chunk=raw_frames.copy(),
-                           roi=roi,
-                           bground=bground_im,
-                           )
+    try:
+        result = extract_chunk(**config_data,
+                               **str_els,
+                               chunk=raw_frames.copy(),
+                               roi=roi,
+                               bground=bground_im,
+                               )
+    except:
+        result = {'depth_frames': np.zeros((1, 80, 80))}
 
     bokeh_plot_helper(cropped_fig, result['depth_frames'][0])
 
     # Create 2x2 grid plot
     gp = gridplot([[bg_fig, overlay_fig],
                    [segmented_fig, cropped_fig]],
-                    #sizing_mode='scale_both',
                     plot_width=350, plot_height=350)
 
     # Create Output widget object to center grid plot in view

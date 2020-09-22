@@ -37,12 +37,12 @@ class InteractiveROIWidgets:
                                     tooltip='Processed Frame Index to Display',
                                     disabled=False, continuous_update=False, style=style)
 
-        self.toggle_autodetect = widgets.ToggleButton(value=False, description='Autodetect Depth Range', disabled=False,
-                                                button_style='info', tooltip='Auto-detect depths', layout=self.label_layout)
+        self.toggle_autodetect = widgets.Checkbox(value=False, description='Autodetect Depth Range',
+                                                  tooltip='Auto-detect depths', layout=widgets.Layout(display='none'))
 
         # extract widgets
         self.ext_label = widgets.Label(value="Extract Parameters", layout=self.label_layout)
-        self.minmax_heights = widgets.IntRangeSlider(value=[10, 100], min=0, max=300, step=1,
+        self.minmax_heights = widgets.IntRangeSlider(value=[13, 100], min=0, max=300, step=1,
                                                 description='Min-Max Mouse Height', style=style, continuous_update=False)
         self.frame_range = widgets.IntRangeSlider(value=[0, 300], min=0, max=3000, step=30,
                                             tooltip='Frames to Extract Sample',
@@ -58,16 +58,21 @@ class InteractiveROIWidgets:
         self.check_all = widgets.Button(description='Check All Sessions', disabled=False,
                                 tooltip='Extract full session using current parameters')
 
+        self.extract_button = widgets.Button(description='Extract Sample', disabled=False, layout=self.label_layout,
+                                             tooltip='Preview extraction output')
+        self.mark_passing = widgets.Button(description='Mark Passing', disabled=False, layout=self.label_layout,
+                                           tooltip='Mark current session as passing')
+
         self.checked_list = widgets.SelectMultiple(options=list(), value=[], description='', disabled=True)
 
         # groupings
         # ui widgets
         self.roi_tools = VBox([self.roi_label, self.bg_roi_depth_range, self.dilate_iters, self.frame_num])
-        self.extract_tools = VBox([self.ext_label, self.minmax_heights, self.frame_range, self.toggle_autodetect])
+        self.extract_tools = VBox([self.ext_label, self.minmax_heights, self.frame_range, self.extract_button])
 
         self.box_layout = widgets.Layout(display='inline-flex', flex_flow='row nowrap', justify_content='space-around',
                                     align_items='center', width='100%')
 
-        self.button_box = VBox([HBox([self.check_all, self.save_parameters]), self.checked_lbl, self.checked_list])
+        self.button_box = VBox([HBox([self.check_all, self.save_parameters]), self.checked_lbl, self.checked_list, self.mark_passing])
 
         self.ui_tools = VBox([HBox([self.roi_tools, self.extract_tools, self.button_box], layout=self.box_layout), self.message])

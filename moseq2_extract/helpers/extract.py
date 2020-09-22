@@ -90,7 +90,10 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         chunk_frames = [f + first_frame_idx for f in frame_range]
-        raw_chunk = load_movie_data(input_file, chunk_frames, tar_object=config_data['tar'])
+        raw_chunk = load_movie_data(input_file,
+                                    chunk_frames,
+                                    frame_dims=bground_im.shape[::-1],
+                                    tar_object=config_data['tar'])
 
         # Get crop-rotated frame batch
         results = extract_chunk(**config_data,

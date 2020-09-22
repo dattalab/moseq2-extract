@@ -8,22 +8,24 @@ the widgets.py file to facilitate the real-time interaction.
 import os
 import cv2
 import math
-import time
-import click
 import warnings
 import numpy as np
 from math import isclose
+from bokeh.io import show
 import ruamel.yaml as yaml
+from ipywidgets import fixed
 import ipywidgets as widgets
-from ipywidgets import interact, fixed
+from bokeh.models import Div
 from os.path import dirname, basename, join
 from IPython.display import display, clear_output
+from moseq2_extract.io.video import get_video_info
 from moseq2_extract.helpers.data import get_session_paths
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.interactive.widgets import InteractiveROIWidgets
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.interactive.view import plot_roi_results, show_extraction
-from moseq2_extract.util import get_bucket_center, get_strels, select_strel, set_bground_to_plane_fit
+from moseq2_extract.util import get_bucket_center, get_strels, select_strel, \
+                        set_bground_to_plane_fit, set_bg_roi_weights, check_filter_sizes
 
 
 class InteractiveFindRoi(InteractiveROIWidgets):
@@ -60,9 +62,6 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         self.sess_select.options = get_session_paths(data_path)
         self.checked_list.options = list(self.sess_select.options.keys())
 
-        # Set toggle button callback
-        self.toggle_autodetect.observe(self.toggle_button_clicked, names='value')
-
         # Set save parameters button callback
         self.save_parameters.on_click(self.save_clicked)
 
@@ -72,10 +71,21 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         # Set min-max range slider callback
         self.minmax_heights.observe(self.update_minmax_config, names='value')
 
+        # Set extract button callback
+        self.extract_button.on_click(self.extract_button_clicked)
+
+        # Set passing button callback
+        self.mark_passing.on_click(self.mark_passing_button_clicked)
+
         # Set extract frame range slider
         self.frame_range.observe(self.update_config_fr, names='value')
 
-    def toggle_button_clicked(self, b):
+        # Update main configuration parameters
+        self.config_data = set_bg_roi_weights(self.config_data)
+        self.config_data = check_filter_sizes(self.config_data)
+        self.config_data['autodetect'] = True
+
+    def extract_button_clicked(self, b):
         '''
         Updates the true depth autodetection parameter
          such that the true depth is autodetected for each found session
@@ -88,11 +98,21 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         -------
         '''
 
-        self.config_data['autodetect'] = self.toggle_autodetect.value
-        if self.toggle_autodetect.value == True:
-            self.toggle_autodetect.button_style = 'success'
-        else:
-            self.toggle_autodetect.button_style = 'info'
+        clear_output()
+        display(self.sess_select, self.ui_tools, self.main_out)
+        self.get_extraction(self.curr_session, self.curr_bground_im, self.curr_results['roi'])
+
+    def mark_passing_button_clicked(self, b):
+        if self.curr_results['flagged'] == True:
+            self.curr_results['flagged'] = False
+
+            self.checked_list.value = list(self.checked_list.value) + [self.keys[self.sess_select.index]]
+            self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
+
+            self.config_data['pixel_area'] = self.curr_results['counted_pixels']
+            self.indicator.value = r'\(\color{green} {Passing}\)'
+            clear_output()
+            display(self.sess_select, self.ui_tools, self.main_out)
 
     def check_all_sessions(self, b):
         '''
@@ -133,6 +153,10 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         -------
         '''
 
+        # Update current session with current configuration parameters
+        self.session_parameters[self.keys[self.sess_select.index]] = self.config_data
+
+        # Update session parameters
         with open(self.config_data['session_config_path'], 'w+') as f:
             yaml.safe_dump(self.session_parameters, f)
 
@@ -150,6 +174,8 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         
         self.sess_select.options = tmp_options
         self.checked_list.options = list(self.sess_select.options.keys())
+        if len(tmp_options.keys()) > 0:
+            self.checked_list.value = (list(self.sess_select.options.keys())[0],)
 
     def update_minmax_config(self, event):
         '''
@@ -200,23 +226,30 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             if sessionName not in self.checked_list.value:
                 # Get background image for each session and test the current parameters on it
                 bground_im = get_bground_im_file(sessionPath)
-                sess_res = self.get_roi_and_depths(bground_im, sessionPath)
+                try:
+                    sess_res = self.get_roi_and_depths(bground_im, sessionPath)
+                except:
+                    sess_res = {'flagged': True}
 
                 if not sess_res['flagged']:
                     self.session_parameters[sessionName] = self.config_data
                     self.checked_list.value = list(set(list(self.checked_list.value))) + [sessionName]
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
                 else:
-                    self.checked_list.value = list(self.checked_list.value).remove(sessionName)
+                    try:
+                        self.checked_list.value = list(self.checked_list.value).remove(sessionName)
+                    except ValueError:
+                        pass
                     self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
                 self.all_results[sessionName] = sess_res['flagged']
         
         if len(self.checked_list.value) == len(self.checked_list.options):
-            self.message.value = r'All sessions passed with the current parameter set. Save the parameters and move to the extract all cell.'
+            self.message.value = 'All sessions passed with the current parameter set. \
+            Save the parameters and move to the "Extract All" cell.'
         else:
-            self.message.value = r'Some sessions were flagged. Save the parameter set for the current passing sessions, then find and save the correct set for the remaining sessions.'
-        
+            self.message.value = 'Some sessions were flagged. Save the parameter set for the current passing sessions, \
+             then find and save the correct set for the remaining sessions.'
 
     def interactive_find_roi_session_selector(self, session):
         '''
@@ -234,11 +267,11 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         bground_im = get_bground_im_file(session)
         clear_output()
-        out = widgets.interactive_output(self.interactive_depth_finder, {'session': fixed(session),
+        self.main_out = widgets.interactive_output(self.interactive_depth_finder, {'session': fixed(session),
                                                             'bground_im': fixed(bground_im),
                                                             'dr': self.bg_roi_depth_range,
                                                             'di': self.dilate_iters})
-        display(self.sess_select, self.ui_tools, out)
+        display(self.sess_select, self.ui_tools, self.main_out)
 
     def interactive_depth_finder(self, session, bground_im, dr, di):
         '''
@@ -259,19 +292,29 @@ class InteractiveFindRoi(InteractiveROIWidgets):
         -------
         '''
 
+        if '.tar' in session:
+            self.config_data['tar'] = True
+        else:
+            self.config_data['tar'] = False
+
         self.save_parameters.button_style = 'primary'
         self.save_parameters.icon = 'none'
 
         # Session selection dict key names
-        keys = list(self.sess_select.options.keys())
+        self.keys = list(self.sess_select.options.keys())
+
+        # Setting current context parameters
+        self.curr_session = session
+        self.curr_bground_im = bground_im
 
         # Autodetect reference depth range and min-max height values at launch
         if self.config_data['autodetect']:
             results = self.get_roi_and_depths(bground_im, session)
-            self.config_data['autodetect'] = False
+            if not results['flagged']:
+                self.config_data['autodetect'] = False
 
             # Update the session flag result
-            self.all_results[keys[self.sess_select.index]] = results['flagged']
+            self.all_results[self.keys[self.sess_select.index]] = results['flagged']
 
             # Set initial frame range tuple value
             self.config_data['frame_range'] = self.frame_range.value
@@ -286,45 +329,40 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             
             # Update the session flag result
             results = self.get_roi_and_depths(bground_im, session)
-            self.all_results[keys[self.sess_select.index]] = results['flagged']
+            self.all_results[self.keys[self.sess_select.index]] = results['flagged']
+
+        self.curr_results = results
 
         # Clear output to update view
         clear_output()
 
         # Display validation indicator
-        indicator = widgets.Label(value="", font_size=50, layout=self.label_layout)
+        self.indicator = widgets.Label(value="", font_size=50, layout=self.label_layout)
 
         # set indicator
         if results['flagged']:
-            indicator.value = r'\(\color{red} {Flagged}\)'
+            self.indicator.value = r'\(\color{red} {Flagged}\)'
+            self.checked_list.value = [v for v in self.checked_list.value if v != self.keys[self.sess_select.index]]
+            self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
         else:
-            indicator.value = r'\(\color{green} {Passing}\)'
-            self.checked_list.value = list(set(list(self.checked_list.value) + [keys[self.sess_select.index]]))
-            self.session_parameters[keys[self.sess_select.index]] = self.config_data
+            self.indicator.value = r'\(\color{green} {Passing}\)'
+            self.checked_list.value = list(set(list(self.checked_list.value) + [self.keys[self.sess_select.index]]))
+            self.session_parameters[self.keys[self.sess_select.index]] = self.config_data
             self.checked_lbl.value = f'Passing Sessions: {len(list(self.checked_list.value))}/{len(self.checked_list.options)}'
 
         # Display extraction validation indicator
-        display(indicator)
+        display(self.indicator)
 
         out = widgets.interactive_output(plot_roi_results, {'input_file': fixed(session),
                                                             'config_data': fixed(self.config_data),
                                                             'session_parameters': fixed(self.session_parameters),
-                                                            'session_key': fixed(keys[self.sess_select.index]),
-                                                            'bground_im': fixed(bground_im),
+                                                            'session_key': fixed(self.keys[self.sess_select.index]),
+                                                            'bground_im': fixed(self.curr_bground_im),
                                                             'roi': fixed(results['roi']),
                                                             'minmax_heights': self.minmax_heights,
                                                             'fn': self.frame_num})
         # display graphs
         display(out)
-        
-        # manual extract API
-        interact_ext = interact.options(manual=True, manual_name="Extract Sample")
-
-        # Generates a button below the bokeh plots
-        interact_ext(self.get_extraction,
-                    input_file=fixed(session),
-                    bground_im=fixed(bground_im),
-                    roi=fixed(results['roi']))
 
 
     def get_roi_and_depths(self, bground_im, session):
@@ -352,7 +390,7 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             limit = np.max(bground_im)
 
             # Threshold image to find depth at bucket center: the true depth
-            cX, cY = get_bucket_center(bground_im, limit, threshold=bground_im.mean())
+            cX, cY = get_bucket_center(bground_im, limit, threshold=limit-bground_im.std())
 
             # True depth is at the center of the bucket
             true_depth = bground_im[cX][cY]
@@ -366,19 +404,28 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
             self.config_data['bg_roi_depth_range'] = (bg_roi_range_min, bg_roi_range_max)
 
+            if bg_roi_range_max > self.bg_roi_depth_range.max:
+                self.bg_roi_depth_range.max = bg_roi_range_max + range_diff
+
         # Get relevant structuring elements
         strel_dilate = select_strel(self.config_data['bg_roi_shape'], tuple(self.config_data['bg_roi_dilate']))
         strel_erode = select_strel(self.config_data['bg_roi_shape'], tuple(self.config_data['bg_roi_erode']))
 
-        # Get ROI
-        rois, plane, bboxes, _, _, _ = get_roi(bground_im,
-                                            **self.config_data,
-                                            strel_dilate=strel_dilate,
-                                            strel_erode=strel_erode
-                                            )
+        try:
+            # Get ROI
+            rois, plane, bboxes, _, _, _ = get_roi(bground_im,
+                                                **self.config_data,
+                                                strel_dilate=strel_dilate,
+                                                strel_erode=strel_erode
+                                                )
+        except:
+            results['flagged'] = True
+            results['roi'] = np.zeros_like(self.curr_bground_im)
+            return results
+
         if self.config_data['use_plane_bground']:
             print('Using plane fit for background...')
-            bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session, 'proc')))
+            self.curr_bground_im = set_bground_to_plane_fit(bground_im, plane, join(dirname(session), 'proc'))
 
         if self.config_data['autodetect']:
             # Get pixel dims from bounding box
@@ -392,7 +439,13 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             pixel_width = xmax - xmin
             pixel_height = ymax - ymin
 
-            pixels_per_inch = pixel_width / self.config_data['arena_width']
+            if self.config_data.get('arena_width') is not None:
+                pixels_per_inch = pixel_width / self.config_data['arena_width']
+            elif self.config_data.get('true_height') is not None:
+                pixels_per_inch = pixel_width / self.config_data['true_height']
+            else:
+                raise Exception('Error: you must enter your arena width or true camera height.')
+
             self.config_data['pixels_per_inch'] = float(pixels_per_inch)
 
             # Corresponds to a rough pixel area estimate
@@ -403,24 +456,26 @@ class InteractiveFindRoi(InteractiveROIWidgets):
             # Corresponds to a rough pixel area estimate
             r = float(cv2.countNonZero(rois[0].astype('uint8')))
 
-        # Compute arena area
-        if self.config_data['arena_shape'] == 'ellipse':
-            area = math.pi * (self.config_data['arena_width'] / 2) ** 2
-        elif 'rect' in self.config_data['arena_shape']:
-            estimated_height = pixel_height / pixels_per_inch
-            area = self.config_data['arena_width'] * estimated_height
+        if self.config_data.get('arena_width') is not None:
+            # Compute arena area
+            if self.config_data['arena_shape'] == 'ellipse':
+                area = math.pi * (self.config_data['arena_width'] / 2) ** 2
+            elif 'rect' in self.config_data['arena_shape']:
+                estimated_height = pixel_height / pixels_per_inch
+                area = self.config_data['arena_width'] * estimated_height
 
-        # Compute pixel per metric
-        area_px_per_inch = r / area / pixels_per_inch
-        
+            # Compute pixel per metric
+            self.config_data['area_px_per_inch'] = r / area / pixels_per_inch
+
         try:
-            assert isclose(self.config_data['pixel_area'], r, abs_tol=10e3)
+            assert isclose(self.config_data['pixel_area'], r, abs_tol=50e2)
         except AssertionError:
-            if area_px_per_inch < pixels_per_inch:
+            if self.config_data.get('area_px_per_inch', 0) < pixels_per_inch:
                 results['flagged'] = True
 
         # Save ROI
         results['roi'] = rois[0]
+        results['counted_pixels'] = r
 
         return results
 
@@ -461,3 +516,27 @@ class InteractiveFindRoi(InteractiveROIWidgets):
 
         # display extracted video as HTML Div using Bokeh
         show_extraction(basename(dirname(input_file)), view_path)
+
+class InteractiveExtractionViewer:
+
+    def __init__(self, data_path):
+        self.sess_select = widgets.Dropdown(options=get_session_paths(data_path, extracted=True),
+                                            description='Session:', disabled=False, continuous_update=True)
+
+    def get_extraction(self, input_file):
+
+        video_dims = get_video_info(input_file)['dims']
+
+        # display extracted video as HTML Div using Bokeh
+        video_div = f'''
+                        <h2>{dirname(input_file)}</h2>
+                        <video
+                            src="{input_file}"; alt="{input_file}"; 
+                            height="{video_dims[1]}"; width="{video_dims[0]}"; preload="auto";
+                            style="float: center; type: "video/mp4"; margin: 0px 10px 10px 0px;
+                            border="2"; autoplay controls loop>
+                        </video>
+                     '''
+
+        div = Div(text=video_div, style={'width': '100%', 'align-items': 'center', 'display': 'contents'})
+        show(div)
