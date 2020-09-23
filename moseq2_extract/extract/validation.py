@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
+from moseq2_extract.util import scalar_attributes
 
 def check_timestamp_error_percentage(timestamps, fps):
     '''
@@ -100,46 +102,3 @@ def count_stationary_frames(scalar_df):
     motionless_frames = len(scalar_df[scalar_df['velocity_2d_mm'] < 0.1])-1 # subtract 1 because first frame is always 0mm/s
 
     return motionless_frames
-
-def get_anomaly_percentage(scalar_df):
-    '''
-
-    Parameters
-    ----------
-    scalar_df
-
-    Returns
-    -------
-    anomaly_percent
-    '''
-
-    a = scalar_df.loc[scalar_df['anomaly'] == -1]
-
-    anomaly_percent = len(a) / len(scalar_df)
-
-    return anomaly_percent
-
-def compute_outlier_scalars_if(scalar_df):
-    '''
-
-    Parameters
-    ----------
-    scalar_df
-
-    Returns
-    -------
-
-    '''
-
-    scaler = StandardScaler()
-    np_scaled = scaler.fit_transform(scalar_df.fillna(0))
-    data = pd.DataFrame(np_scaled)
-
-    model = IsolationForest(random_state=42, max_features=data.shape[1], max_samples=data.shape[0])
-    model.fit(data)
-    scalar_df['anomaly'] = pd.Series(model.predict(data))
-
-    anomaly_percent = get_anomaly_percentage(scalar_df)
-
-    return scalar_df.anomaly, anomaly_percent
-

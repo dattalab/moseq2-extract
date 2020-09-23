@@ -24,11 +24,11 @@ from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
-from moseq2_extract.extract.validation import count_frames_with_small_areas, check_timestamp_error_percentage
-from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames
+from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames, \
+                                              count_frames_with_small_areas, check_timestamp_error_percentage
 from moseq2_extract.interactive.controller import InteractiveFindRoi, InteractiveExtractionViewer
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                                        copy_manifest_results, build_index_dict, check_completion_status
+                                    copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
 from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
                         convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
                         clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
@@ -121,6 +121,165 @@ def interactive_extraction_preview_wrapper(input_dir):
                                         {'input_file': viewer.sess_select})
     display(viewer.sess_select, selout)
 
+
+def get_scalar_df(path_dict):
+    '''
+    Computes a scalar dataframe that contains all the extracted sessions
+     recorded scalar values along with their metadata.
+
+    Parameters
+    ----------
+    path_dict (dict): dictionary of session folder names paired with their extraction paths
+
+    Returns
+    -------
+    scalar_df (pd.DataFrame): DataFrame containing loaded scalar info from each h5 extraction file.
+    '''
+
+    scalars = scalar_attributes()
+    scalar_dfs = []
+    # Get scalar dicts for all the sessions
+    for k, v in path_dict.items():
+        # Get relevant extraction paths
+        h5path = path_dict[k].replace('mp4', 'h5')
+        yamlpath = path_dict[k].replace('mp4', 'yaml')
+
+        with open(yamlpath, 'r') as f:
+            stat_dict = yaml.safe_load(f)
+
+        metadata = stat_dict['metadata']
+
+        f = h5py.File(h5path, 'r')['scalars']
+        tmp = {}
+        for key in scalars:
+            tmp[key] = f[key][()]
+
+        sess_df = pd.DataFrame.from_dict(tmp)
+        for mk, mv in metadata.items():
+            if isinstance(mv, list):
+                mv = mv[0]
+            sess_df[mk] = mv
+
+        scalar_dfs.append(sess_df)
+
+    scalar_df = pd.concat(scalar_dfs)
+    return scalar_df
+
+def validate_extractions_wrapper(input_dir):
+    '''
+    Wrapper function to test the measured scalar values to determine whether some sessions should be
+     flagged and diagnosed before aggregating the sessions.
+
+    Parameters
+    ----------
+    input_dir (str): path to parent directory containing all the extracted session folders
+
+    Returns
+    -------
+    '''
+
+    # Get paths to extracted sessions
+    paths = get_session_paths(input_dir, extracted=True)
+    status_dicts = {}
+
+    # Get default flags
+    flags = {
+        'scalar_anomaly': {},
+        'dropped_frames': False,
+        'corrupted': False,
+        'stationary': False,
+        'missing': False,
+        'size_anomaly': False
+    }
+
+    # Get flags
+    for k, v in paths.items():
+        yamlpath = paths[k].replace('mp4', 'yaml')
+
+        with open(yamlpath, 'r') as f:
+            stat_dict = yaml.safe_load(f)
+            status_dicts[stat_dict['metadata']['SessionName']] = deepcopy(flags)
+
+        h5path = paths[k].replace('mp4', 'h5')
+        timestamps = h5py.File(h5path, 'r')['timestamps'][()]
+
+        # Count dropped frame percentage
+        dropped_frames = check_timestamp_error_percentage(timestamps, fps=30)
+        if dropped_frames >= 0.05:
+            status_dicts[stat_dict['metadata']['SessionName']]['dropped_frames'] = True
+
+    # Get scalar dataframe including all sessions
+    scalar_df = get_scalar_df(paths)
+    mean_df = scalar_df.groupby('SessionName', as_index=False).mean()
+
+    # Get sessions within interquartile range
+    q1 = scalar_df.quantile(.25)
+    q2 = scalar_df.quantile(.75)
+
+    # Scalar values to measure
+    val_keys = ['area_mm', 'length_mm', 'width_mm', 'height_ave_mm']
+
+    # Get scalar anomalies based on quartile ranges
+    for key in val_keys:
+        mask = mean_df[key].between(q1[key], q2[key], inclusive=True)
+        iqr = mean_df.loc[~mask]
+
+        for s in list(iqr.SessionName):
+            status_dicts[s]['scalar_anomaly'][key] = True
+
+    sessionNames = list(scalar_df.SessionName.unique())
+    # Run tests
+    for s in sessionNames:
+        df = scalar_df[scalar_df['SessionName'] == s]
+
+        # Count stationary frames
+        stat_percent = count_stationary_frames(df)/len(df)
+        if stat_percent >= 0.05:
+            status_dicts[s]['stationary'] = [True, stat_percent]
+
+        # Get frames with missing mouse
+        missing_percent = count_missing_mouse_frames(df)/len(df)
+        if missing_percent >= 0.05:
+            status_dicts[s]['missing'] = [True, missing_percent]
+
+        # Get frames with mouse sizes that are too small
+        size_anomaly = count_frames_with_small_areas(df)/len(df)
+        if size_anomaly >= 0.05:
+            status_dicts[s]['size_anomaly'] = [True, size_anomaly]
+
+    # Get dict of anomalies
+    anomaly_dict = {}
+    for k, v in status_dicts.items():
+        anomaly_dict[k] = []
+        for k1, v1 in v.items():
+            if isinstance(v1, list):
+                if v1[0] == True:
+                    anomaly_dict[k].append(f'{k1}: {str(v1[1]*100)[:5]}%')
+            elif isinstance(v1, dict):
+                anomaly_dict[k].append(v1)
+
+    print('Results:\n')
+    errors = ['missing', 'dropped_frames']
+    # Print results
+    for k, v in anomaly_dict.items():
+        if v == [{}]:
+            v = 'No detected errors or warnings'
+            print(f'\t{k}: {v}')
+        else:
+            print(f'\t{k}:')
+            for x in v:
+                if x in errors:
+                    t = 'Error'
+                elif isinstance(x, dict):
+                    t = 'Warning - Scalar Anomalies'
+                    x = list(x.keys())
+                else:
+                    t = 'Warning'
+                    # test percentage
+                    percent = float(x.split(': ')[1].replace('%', ''))
+                    if percent >= 5:
+                        t = 'Error'
+                print(f'\t\t{t}: {x}')
 
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
@@ -310,22 +469,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     print('Processing:', input_file)
     # get the basic metadata
 
-    flags = {
-                'scalar_anomaly': False,
-                'dropped_frames': False,
-                'corrupted': False,
-                'stationary': False,
-                'missing': False,
-                'size_anomaly': False
-             }
-
     status_dict = {
         'parameters': deepcopy(config_data),
         'complete': False,
         'skip': False,
         'uuid': str(uuid.uuid4()),
         'metadata': '',
-        'flags': deepcopy(flags)
     }
 
     # handle tarball stuff
@@ -451,28 +600,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                                                 str_els=str_els,
                                                 output_dir=output_dir,
                                                 output_filename=output_filename)
-        tmp = {}
-        for key in scalars:
-            tmp[key] = f['scalars'][key][()]
-
-        scalar_df = pd.DataFrame.from_dict(tmp)
-
-        corrupted_percent = count_nan_rows(scalar_df)/nframes
-        missing_percent = count_missing_mouse_frames(scalar_df)/nframes
-        stationary_percent = count_stationary_frames(scalar_df)/nframes
-        inconsistent_sized_frames_percent = count_frames_with_small_areas(scalar_df)/nframes
-
-        if missing_percent >= 0.05:
-            status_dict['flags']['missing'] = True
-
-        if corrupted_percent >= 0.05:
-            status_dict['flags']['corrupted'] = True
-
-        if stationary_percent >= 0.05:
-            status_dict['flags']['stationary'] = True
-
-        if inconsistent_sized_frames_percent >= 0.05:
-            status_dict['flags']['size_anomaly'] = True
 
     print('\n')
 
