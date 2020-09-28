@@ -10,9 +10,11 @@ import scipy.signal
 import skimage.measure
 import scipy.interpolate
 import skimage.morphology
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
+from os.path import exists, join, dirname
+from moseq2_extract.io.image import read_image, write_image
 from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
 
@@ -108,31 +110,39 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground (2d numpy array):  r x c, background image
     '''
 
-    try:
-        if frames_file.endswith(('dat', 'mkv')):
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-        elif frames_file.endswith('avi'):
-            finfo = moseq2_extract.io.video.get_video_info(frames_file)
-    except AttributeError as e:
-        finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+    bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
-    frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-    frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
-
-    for i, frame in enumerate(frame_idx):
+    # Compute background image if it doesn't exist. Otherwise, load from file
+    if not exists(bground_path):
         try:
             if frames_file.endswith(('dat', 'mkv')):
-                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
+                finfo = moseq2_extract.io.video.get_raw_info(frames_file)
             elif frames_file.endswith('avi'):
-                frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+                finfo = moseq2_extract.io.video.get_video_info(frames_file)
         except AttributeError as e:
-            print('Error reading frames:', e)
-            print('Attempting raw file read...')
-            frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
-        frame_store[i] = cv2.medianBlur(frs, med_scale)
+        frame_idx = np.arange(0, finfo['nframes'], frame_stride)
+        frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
+        for i, frame in enumerate(frame_idx):
+            try:
+                if frames_file.endswith(('dat')):
+                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
+                elif frames_file.endswith(('avi', 'mkv')):
+                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
+            except AttributeError as e:
+                print('Error reading frames:', e)
+                print('Attempting raw file read...')
+                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
 
-    return get_bground_im(frame_store)
+            frame_store[i] = cv2.medianBlur(frs, med_scale)
+
+        bground = get_bground_im(frame_store)
+        write_image(bground_path, bground, scale=True)
+    else:
+        bground = read_image(bground_path, scale=True)
+
+    return bground
 
 
 def get_bbox(roi):
@@ -582,7 +592,8 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     features['centroid_x_mm'] = centroid_mm[:, 0]
     features['centroid_y_mm'] = centroid_mm[:, 1]
 
-    # Compute size features
+    # based on the centroid of the mouse, get the mm_to_px conversion
+
     features['width_px'] = np.min(track_features['axis_length'], axis=1)
     features['length_px'] = np.max(track_features['axis_length'], axis=1)
     features['area_px'] = np.sum(masked_frames, axis=(1, 2))
@@ -591,28 +602,29 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     features['length_mm'] = features['length_px'] * px_to_mm[:, 0]
     features['area_mm'] = features['area_px'] * px_to_mm.mean(axis=1)
 
+    features['angle'] = track_features['orientation']
+
     nmask = np.sum(masked_frames, axis=(1, 2))
 
     for i in range(nframes):
         if nmask[i] > 0:
-            features['height_ave_mm'][i] = np.mean(frames[i, masked_frames[i]])
+            features['height_ave_mm'][i] = np.mean(
+                frames[i, masked_frames[i]])
 
-    # Get angles mouse is facing
-    features['angle'] = track_features['orientation']
-
-    # Get speed features
     vel_x = np.diff(np.concatenate((features['centroid_x_px'][:1], features['centroid_x_px'])))
     vel_y = np.diff(np.concatenate((features['centroid_y_px'][:1], features['centroid_y_px'])))
     vel_z = np.diff(np.concatenate((features['height_ave_mm'][:1], features['height_ave_mm'])))
 
     features['velocity_2d_px'] = np.hypot(vel_x, vel_y)
-    features['velocity_3d_px'] = np.sqrt(np.square(vel_x)+np.square(vel_y) + np.square(vel_z))
+    features['velocity_3d_px'] = np.sqrt(
+        np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
 
     vel_x = np.diff(np.concatenate((features['centroid_x_mm'][:1], features['centroid_x_mm'])))
     vel_y = np.diff(np.concatenate((features['centroid_y_mm'][:1], features['centroid_y_mm'])))
 
     features['velocity_2d_mm'] = np.hypot(vel_x, vel_y)
-    features['velocity_3d_mm'] = np.sqrt(np.square(vel_x)+np.square(vel_y) + np.square(vel_z))
+    features['velocity_3d_mm'] = np.sqrt(
+        np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
 
     features['velocity_theta'] = np.arctan2(vel_y, vel_x)
 
@@ -641,7 +653,7 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
         padded_centroids = np.pad(features['centroid'],
                                   (((centroid_hampel_span // 2, centroid_hampel_span // 2)),
                                    (0, 0)),
-                                  'constant', constant_values=np.nan)
+                                  'constant', constant_values = np.nan)
         for i in range(1):
             vws = strided_app(padded_centroids[:, i], centroid_hampel_span, 1)
             med = np.nanmedian(vws, axis=1)
