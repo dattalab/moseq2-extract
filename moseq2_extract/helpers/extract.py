@@ -27,7 +27,6 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
 
     Returns
     -------
-    config_data (dict): dictionary containing updated extraction validation parameter values
     '''
 
     # Writing computed scalars to h5 file
@@ -41,8 +40,6 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
     # Writing flip classifier results to h5
     if config_data['flip_classifier']:
         h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
-
-    return config_data
 
 def process_extract_batches(input_file, config_data, bground_im, roi,
                             frame_batches, first_frame_idx, str_els,
@@ -109,7 +106,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         frame_range = frame_range[offset:]
 
         if h5_file is not None:
-            config_data = write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset)
+            write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset)
 
         # Create empty array for output movie with filtered video and cropped mouse on the top left
         nframes, rows, cols = results['chunk'][offset:].shape
@@ -132,8 +129,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     if video_pipe is not None:
         video_pipe.stdin.close()
         video_pipe.wait()
-
-    return config_data
 
 def run_local_extract(to_extract, config_file, skip_extracted=False):
     '''

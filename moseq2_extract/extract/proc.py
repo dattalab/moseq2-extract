@@ -124,13 +124,12 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
-
         for i, frame in enumerate(frame_idx):
             try:
-                if frames_file.endswith(('dat', 'mkv')):
-                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame)).squeeze()
-                elif frames_file.endswith('avi'):
-                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)]).squeeze()
+                if frames_file.endswith(('dat')):
+                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
+                elif frames_file.endswith(('avi', 'mkv')):
+                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
             except AttributeError as e:
                 print('Error reading frames:', e)
                 print('Attempting raw file read...')
@@ -392,21 +391,19 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     # seeing enormous speed gains w/ opencv
     filtered_frames = frames.copy().astype(frame_dtype)
 
-    for i in tqdm(range(frames.shape[0]),
-                       disable=not progress_bar, desc='Cleaning frames'):
-
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Cleaning frames'):
+        # Erode Frames
         if iters_min is not None and iters_min > 0:
             filtered_frames[i] = cv2.erode(filtered_frames[i], strel_min, iters_min)
-
+        # Median Blur
         if prefilter_space is not None and np.all(np.array(prefilter_space) > 0):
             for j in range(len(prefilter_space)):
                 filtered_frames[i] = cv2.medianBlur(filtered_frames[i], prefilter_space[j])
-
+        # Tail Filter
         if iters_tail is not None and iters_tail > 0:
             filtered_frames[i] = cv2.morphologyEx(
                 filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
-
-
+    # Temporal Median Filter
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
         for j in range(len(prefilter_time)):
             filtered_frames = scipy.signal.medfilt(
@@ -437,12 +434,14 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
 
     nframes = frames.shape[0]
 
+    # Get frame mask
     if type(mask) is np.ndarray and mask.size > 0:
         has_mask = True
     else:
         has_mask = False
         mask = np.zeros((frames.shape), 'uint8')
 
+    # Pack contour features into dict
     features = {
         'centroid': np.full((nframes, 2), np.nan),
         'orientation': np.full((nframes,), np.nan),
@@ -450,18 +449,21 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     }
 
     for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing moments'):
-
+        # Threshold frame to compute mask
         frame_mask = frames[i] > frame_threshold
 
+        # Incorporate largest connected component with frame mask
         if use_cc:
             cc_mask = get_largest_cc((frames[[i]] > mask_threshold).astype('uint8')).squeeze()
             frame_mask = np.logical_and(cc_mask, frame_mask)
 
+        # Apply mask
         if has_mask:
             frame_mask = np.logical_and(frame_mask, mask[i] > mask_threshold)
         else:
             mask[i] = frame_mask
 
+        # Get contours in frame
         cnts, hierarchy = cv2.findContours(
             frame_mask.astype('uint8'),
             cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -472,6 +474,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
 
         mouse_cnt = tmp.argmax()
 
+        # Get features from contours
         for key, value in im_moment_features(cnts[mouse_cnt]).items():
             features[key][i] = value
 
@@ -496,7 +499,11 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
     '''
 
     nframes = frames.shape[0]
+
+    # Prepare cropped frame array
     cropped_frames = np.zeros((nframes, crop_size[0], crop_size[1]), frames.dtype)
+
+    # Get window dimensions
     win = (crop_size[0] // 2, crop_size[1] // 2 + 1)
     border = (crop_size[1], crop_size[1], crop_size[0], crop_size[0])
 
@@ -505,8 +512,10 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
         if np.any(np.isnan(features['centroid'][i])):
             continue
 
+        # Get bounded frames
         use_frame = cv2.copyMakeBorder(frames[i], *border, cv2.BORDER_CONSTANT, 0)
 
+        # Get row and column centroids
         rr = np.arange(features['centroid'][i, 1]-win[0],
                        features['centroid'][i, 1]+win[1]).astype('int16')
         cc = np.arange(features['centroid'][i, 0]-win[0],
@@ -515,10 +524,12 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
         rr = rr+crop_size[0]
         cc = cc+crop_size[1]
 
+        # Ensure centroids are in bounded frame
         if (np.any(rr >= use_frame.shape[0]) or np.any(rr < 1)
                 or np.any(cc >= use_frame.shape[1]) or np.any(cc < 1)):
             continue
 
+        # Rotate the frame such that the mouse is oriented facing east
         rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
                                           -np.rad2deg(features['orientation'][i]), 1)
         cropped_frames[i] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
@@ -546,6 +557,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
 
     nframes = frames.shape[0]
 
+    # Pack features into dict
     features = {
         'centroid_x_px': np.zeros((nframes,), 'float32'),
         'centroid_y_px': np.zeros((nframes,), 'float32'),
@@ -566,9 +578,11 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
         'velocity_theta': np.zeros((nframes,)),
     }
 
+    # Get mm centroid
     centroid_mm = convert_pxs_to_mm(track_features['centroid'], true_depth=true_depth)
     centroid_mm_shift = convert_pxs_to_mm(track_features['centroid'] + 1, true_depth=true_depth)
 
+    # Based on the centroid of the mouse, get the mm_to_px conversion
     px_to_mm = np.abs(centroid_mm_shift - centroid_mm)
     masked_frames = np.logical_and(frames > min_height, frames < max_height)
 

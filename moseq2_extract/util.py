@@ -278,7 +278,7 @@ def get_strels(config_data):
 
     Parameters
     ----------
-    config_data (dict): dict containing strel parameters
+    config_data (dict): dict containing cv2 Structuring Element parameters
 
     Returns
     -------

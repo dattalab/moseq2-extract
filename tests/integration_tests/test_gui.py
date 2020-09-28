@@ -4,98 +4,13 @@ import shutil
 import ruamel.yaml as yaml
 from unittest import TestCase
 from .test_cli import write_fake_movie
-from moseq2_extract.helpers.data import get_session_paths
 from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
-from moseq2_extract.gui import update_progress, check_progress, generate_config_command, view_extraction, \
-    generate_index_command, aggregate_extract_results_command, download_flip_command, \
-    find_roi_command, sample_extract_command, extract_command, extract_found_sessions
+from moseq2_extract.gui import generate_config_command, generate_index_command, \
+    aggregate_extract_results_command, download_flip_command, \
+    find_roi_command, extract_command, extract_found_sessions
 
 
 class GUITests(TestCase):
-
-    progress_vars = {'base_dir': './', 'config_file': 'TBD', 'index_file': 'TBD', 'train_data_dir': 'TBD',
-                     'pca_dirname': 'TBD',
-                     'scores_filename': 'TBD', 'scores_path': 'TBD', 'model_path': 'TBD', 'crowd_dir': 'TBD',
-                     'plot_path': './plots/'}
-
-    def test_update_progress(self):
-
-        temp_prog = self.progress_vars
-
-        progress_path = 'data/test_progress.yaml'
-
-        with open(progress_path, 'w') as f:
-            yaml.safe_dump(temp_prog, f)
-
-        update_progress(progress_path, 'config_file', 1)
-
-        # simulate opening file
-        with open(progress_path, 'r') as f:
-            test_progress = yaml.safe_load(f)
-
-        assert test_progress != temp_prog, "dict was not saved correctly"
-        os.remove(progress_path)
-
-    def test_restore_progress_vars(self):
-        temp_prog = self.progress_vars
-
-        progress_path = 'data/test_restore_progress.yaml'
-        with open(progress_path, 'w') as f:
-            yaml.safe_dump(temp_prog, f)
-
-        # simulate opening file
-        with open(progress_path, 'r') as f:
-            progress1 = yaml.safe_load(f)
-
-        assert progress1 == temp_prog, "dict was not returned correctly"
-        os.remove(progress_path)
-
-    def test_check_progress(self):
-
-        # test file does not exist case
-        input_dir = 'data/'
-        progress_path = 'data/test_check_progress.yaml'
-
-        # case: file does not exist
-        if os.path.isfile(progress_path):
-            os.remove(progress_path)
-
-        progress_vars = check_progress(input_dir, progress_path)
-        assert os.path.isfile(os.path.join(progress_path)), "progress yaml was not created"
-
-        '''
-        # simulate opening file
-        with open(progress_path, 'r') as f:
-            progress1 = yaml.safe_load(f)
-
-        for k,v in progress1.items():
-            if k != 'base_dir' and k != 'plot_path':
-                assert v in self.progress_vars.values(), "read dict values to dont match simulated data"
-
-        # now test case when file exists
-        stdin = 'data/tmp_stdin.txt'
-        with open(stdin, 'w') as f:
-            f.write('Y')
-
-        sys.stdin = open(stdin)
-
-        progress_vars = check_progress(input_dir, progress_path)
-
-        assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 2, \
-            "progress retrieval from pre-existing file failed"
-
-        with open(stdin, 'w') as f:
-            f.write('N')
-
-        sys.stdin = open(stdin)
-
-        progress_vars = check_progress(input_dir, progress_path)
-
-        assert len(set([config, index, tdd, pcadir, scores, model, score_path, cdir, pp])) == 2, \
-            "ignoring pre-existing progress file failed"
-        os.remove(stdin)
-        os.remove(progress_path)
-        '''
 
     def test_generate_config_command(self):
 
@@ -129,21 +44,6 @@ class GUITests(TestCase):
         ret = generate_config_command(config_path)
         assert 'success' in ret, "overwriting failed"
         os.remove(config_path)
-        os.remove(stdin)
-
-    def test_view_extractions(self):
-        extractions = ['1','2','3','4']
-
-        stdin = 'data/tmp_stdin.txt'
-        # retain old version
-        with open(stdin, 'w') as f:
-            f.write('1,2,3')
-
-        sys.stdin = open(stdin)
-
-        ret = view_extraction(extractions, default=-1)
-        assert len(ret) == 3, "function did not return the correct number of extractions to view"
-        assert ret == ['1', '2', '3'], "function returned incorrect extractions to view"
         os.remove(stdin)
 
     def test_generate_index_command(self):
@@ -195,37 +95,6 @@ class GUITests(TestCase):
         images, filenames = find_roi_command(input_dir, config_path, select_session=True)
         assert (len(filenames) == 3), "incorrect number of rois were computed"
         assert (len(images) == 3), "incorrect number of rois images were computed"
-        shutil.rmtree(data_path)
-        os.remove(stdin)
-        os.remove(config_path)
-
-    def test_sample_extract_command(self):
-
-        config_path = 'data/test_sample_ex_config.yaml'
-        generate_config_command(config_path)
-
-        # writing a file to test following pipeline
-        input_dir = 'data/'
-        data_path = 'data/test_session/'
-        data_filepath = os.path.join(data_path, 'test_sample_extract_depth.dat')
-
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-
-        write_fake_movie(data_filepath)
-        assert(os.path.isfile(data_filepath)), "fake movie was not written correctly"
-
-        stdin = 'data/stdin.txt'
-
-        # select test file
-        with open(stdin, 'w') as f:
-            f.write('1')
-
-        sys.stdin = open(stdin)
-
-        output_dir = sample_extract_command(input_dir, config_path, 40, exts=['.dat'], select_session=True)
-        assert os.path.exists(output_dir), "sample_proc directory was not created"
-
         shutil.rmtree(data_path)
         os.remove(stdin)
         os.remove(config_path)

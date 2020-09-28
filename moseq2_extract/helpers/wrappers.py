@@ -24,11 +24,10 @@ from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames, \
                                               count_frames_with_small_areas, check_timestamp_error_percentage
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
-                                    copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
-from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
-                        convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
-                        clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
-                        get_frame_range_indices, check_filter_sizes, get_scalar_df
+from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
+                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
+                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels,\
+                        get_scalar_df
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
