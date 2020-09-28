@@ -23,7 +23,7 @@ from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_
                             copy_manifest_results, build_index_dict, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes
+                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -328,12 +328,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         yaml.safe_dump(status_dict, f)
 
     # Get Structuring Elements for extraction
-    str_els = {
-        'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
-        'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
-        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
-        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
-    }
+    str_els = get_strels(config_data)
 
     # Compute ROIs
     roi, bground_im, first_frame = get_roi_wrapper(input_file, config_data, output_dir=output_dir)

@@ -270,6 +270,29 @@ def load_found_session_paths(input_dir, exts):
 
     return sorted(files)
 
+def get_strels(config_data):
+    '''
+    Get dictionary object of cv2 StructuringElements for image filtering given
+    a dict of configurations parameters.
+
+    Parameters
+    ----------
+    config_data (dict): dict containing cv2 Structuring Element parameters
+
+    Returns
+    -------
+    str_els (dict): dict containing cv2 StructuringElements used for image filtering
+    '''
+
+    str_els = {
+        'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
+        'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
+        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
+        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
+    }
+
+    return str_els
+
 
 def select_strel(string='e', size=(10, 10)):
     '''
