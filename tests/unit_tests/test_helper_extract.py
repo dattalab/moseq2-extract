@@ -76,11 +76,9 @@ class TestHelperExtract(TestCase):
             create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars_attrs, nframes,
                               roi, bground_im, first_frame, None)
 
-            video_pipe = process_extract_batches(g, data_file, config_data, bground_im, roi, scalars, frame_batches,
-                                                 first_frame_idx, str_els, output_dir, output_filename)
-            if video_pipe:
-                video_pipe.stdin.close()
-                video_pipe.wait()
+            process_extract_batches(data_file, config_data, bground_im, roi, frame_batches,
+                                    first_frame_idx, str_els, output_dir, output_filename,
+                                    scalars=scalars, h5_file=g)
 
         assert os.path.exists(os.path.join(output_dir, f'{output_filename}.h5'))
         os.remove(os.path.join(output_dir, f'{output_filename}.h5'))
