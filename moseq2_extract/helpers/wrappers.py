@@ -11,28 +11,24 @@ import h5py
 import shutil
 import warnings
 import numpy as np
-import pandas as pd
 import urllib.request
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
-import ipywidgets as widgets
 from moseq2_extract.io.image import write_image
-from IPython.display import display, clear_output
 from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames, \
                                               count_frames_with_small_areas, check_timestamp_error_percentage
-from moseq2_extract.interactive.controller import InteractiveFindRoi, InteractiveExtractionViewer
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, load_h5s, build_manifest, \
                                     copy_manifest_results, build_index_dict, check_completion_status, get_session_paths
 from moseq2_extract.util import get_strels, select_strel, gen_batch_sequence, scalar_attributes, \
                         convert_raw_to_avi_function, set_bground_to_plane_fit, recursive_find_h5s, \
                         clean_dict, graduate_dilated_wall_area, h5_to_dict, set_bg_roi_weights, \
-                        get_frame_range_indices, check_filter_sizes
+                        get_frame_range_indices, check_filter_sizes, get_scalar_df
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -67,103 +63,6 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             shutil.move(new_file, tup[1])
         except Exception:
             raise Exception
-
-def interactive_roi_wrapper(data_path, config_file, session_config=None):
-    '''
-
-    Interactive ROI detection wrapper function. Users can use run this wrapper
-    to find the required extraction parameters, as well as preview examples of the extraction
-    with the found parameters.
-
-    Parameters
-    ----------
-    data_path (str): Path to base directory containing session folders.
-    config_data (dict): ROI and Extraction configuration parameters
-    session_parameters (str): Path to file containing individual session parameter sets.
-
-    Returns
-    -------
-    None
-    '''
-    roi_app = InteractiveFindRoi(data_path, config_file, session_config)
-    
-    # Run interactive application
-    selout = widgets.interactive_output(roi_app.interactive_find_roi_session_selector,
-                                        {'session': roi_app.sess_select})
-    display(selout)
-
-    def on_value_change(change):
-        '''
-        Callback function for DropDown menu that is triggered when the
-         user changes the currently selected session.
-
-        Parameters
-        ----------
-        change (ipywidgets event): User changes current value of sess_select
-
-        Returns
-        -------
-        '''
-
-        print("Loading Background...")
-        clear_output()
-        display(selout)
-
-    # Watch for change in inputted session
-    selout.observe(on_value_change, names='value')
-
-def interactive_extraction_preview_wrapper(input_dir):
-
-    viewer = InteractiveExtractionViewer(data_path=input_dir)
-
-    # Run interactive application
-    selout = widgets.interactive_output(viewer.get_extraction,
-                                        {'input_file': viewer.sess_select})
-    display(viewer.sess_select, selout)
-
-
-def get_scalar_df(path_dict):
-    '''
-    Computes a scalar dataframe that contains all the extracted sessions
-     recorded scalar values along with their metadata.
-
-    Parameters
-    ----------
-    path_dict (dict): dictionary of session folder names paired with their extraction paths
-
-    Returns
-    -------
-    scalar_df (pd.DataFrame): DataFrame containing loaded scalar info from each h5 extraction file.
-    '''
-
-    scalars = scalar_attributes()
-    scalar_dfs = []
-    # Get scalar dicts for all the sessions
-    for k, v in path_dict.items():
-        # Get relevant extraction paths
-        h5path = path_dict[k].replace('mp4', 'h5')
-        yamlpath = path_dict[k].replace('mp4', 'yaml')
-
-        with open(yamlpath, 'r') as f:
-            stat_dict = yaml.safe_load(f)
-
-        metadata = stat_dict['metadata']
-
-        f = h5py.File(h5path, 'r')['scalars']
-        tmp = {}
-        for key in scalars:
-            tmp[key] = f[key][()]
-
-        sess_df = pd.DataFrame.from_dict(tmp)
-        for mk, mv in metadata.items():
-            if isinstance(mv, list):
-                mv = mv[0]
-            sess_df[mk] = mv
-
-        scalar_dfs.append(sess_df)
-
-    scalar_df = pd.concat(scalar_dfs)
-    return scalar_df
 
 def validate_extractions_wrapper(input_dir):
     '''
@@ -381,7 +280,6 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     print(f'Index file path: {indexpath}')
     return indexpath
-
 
 def get_roi_wrapper(input_file, config_data, output_dir=None):
     '''

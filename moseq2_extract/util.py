@@ -11,6 +11,7 @@ import h5py
 import click
 import warnings
 import numpy as np
+import pandas as pd
 from glob import glob
 from copy import deepcopy
 import ruamel.yaml as yaml
@@ -845,6 +846,50 @@ def click_param_annot(click_cmd):
         if isinstance(p, click.Option):
             annotations[p.human_readable_name] = p.help
     return annotations
+
+def get_scalar_df(path_dict):
+    '''
+    Computes a scalar dataframe that contains all the extracted sessions
+     recorded scalar values along with their metadata.
+
+    Parameters
+    ----------
+    path_dict (dict): dictionary of session folder names paired with their extraction paths
+
+    Returns
+    -------
+    scalar_df (pd.DataFrame): DataFrame containing loaded scalar info from each h5 extraction file.
+    '''
+
+    scalars = scalar_attributes()
+    scalar_dfs = []
+
+    # Get scalar dicts for all the sessions
+    for k, v in path_dict.items():
+        # Get relevant extraction paths
+        h5path = path_dict[k].replace('mp4', 'h5')
+        yamlpath = path_dict[k].replace('mp4', 'yaml')
+
+        with open(yamlpath, 'r') as f:
+            stat_dict = yaml.safe_load(f)
+
+        metadata = stat_dict['metadata']
+
+        f = h5py.File(h5path, 'r')['scalars']
+        tmp = {}
+        for key in scalars:
+            tmp[key] = f[key][()]
+
+        sess_df = pd.DataFrame.from_dict(tmp)
+        for mk, mv in metadata.items():
+            if isinstance(mv, list):
+                mv = mv[0]
+            sess_df[mk] = mv
+
+        scalar_dfs.append(sess_df)
+
+    scalar_df = pd.concat(scalar_dfs)
+    return scalar_df
 
 def get_bucket_center(img, true_depth, threshold=650):
     '''
