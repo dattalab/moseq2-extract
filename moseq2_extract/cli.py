@@ -112,14 +112,11 @@ def common_avi_options(function):
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
-def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type, bg_roi_depth_range,
-             bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
-             bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, bg_roi_erode,
-             erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file, progress_bar):
+def find_roi(input_file, output_dir, **config_data):
 
-    click_data = click.get_current_context().params
-    get_roi_wrapper(input_file, click_data, output_dir)
+    get_roi_wrapper(input_file, config_data, output_dir)
 
+# TODO: use common_avi_options here too
 @cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\
                                             video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
@@ -163,20 +160,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
 @click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')
 @click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')
 @click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')
-def extract(input_file, crop_size, num_frames, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weights, camera_type,
-            bg_roi_depth_range, bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel,
-            bg_roi_fill_holes, bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations,
-            min_height, max_height, detected_true_depth, fps, flip_classifier, flip_classifier_smoothing,
-            use_tracking_model, tracking_model_ll_threshold, tracking_model_mask_threshold, use_cc,
-            tracking_model_ll_clip, tracking_model_segment, tracking_model_init, cable_filter_iters, cable_filter_shape,
-            cable_filter_size, tail_filter_iters, tail_filter_size, tail_filter_shape, spatial_filter_size,
-            temporal_filter_size, chunk_size, chunk_overlap, output_dir, write_movie, use_plane_bground,
-            frame_dtype, centroid_hampel_span, centroid_hampel_sig, angle_hampel_span, angle_hampel_sig,
-            model_smoothing_clips, frame_trim, config_file, compress, compress_chunk_size, compress_threads,
-            bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip_completed, progress_bar):
+def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 
-    click_data = click.get_current_context().params
-    extract_wrapper(input_file, output_dir, click_data, num_frames=num_frames, skip=skip_completed)
+    extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
@@ -202,7 +188,7 @@ def generate_config(output_file):
 @cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
-@click.option('--subpath', type=str, default='/proc/', help='Path substring to regulate paths included in an index file.')
+@click.option('--subpath', type=str, default='proc/', help='Path substring to regulate paths included in an index file.')
 def generate_index(input_dir, output_file, subpath):
 
     output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
@@ -223,6 +209,7 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
+    # TODO: implement as a wrapper function, like the other cli functions
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
@@ -234,12 +221,8 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
         frames = load_movie_data(input_file, batch)
-        video_pipe = write_frames(output_file,
-                                  frames,
-                                  pipe=video_pipe,
-                                  close_pipe=False,
-                                  threads=threads,
-                                  fps=fps)
+        video_pipe = write_frames(output_file, frames, pipe=video_pipe,
+                                  close_pipe=False, threads=threads, fps=fps)
 
     if video_pipe:
         video_pipe.stdin.close()
@@ -264,6 +247,7 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+    # TODO: implement as a wrapper function, like the other cli functions
 
     if output_file is None:
         base_filename = os.path.splitext(os.path.basename(input_file))[0]
