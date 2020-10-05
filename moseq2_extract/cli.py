@@ -33,6 +33,32 @@ click.core.Option.__init__ = new_init
 def cli():
     pass
 
+def load_config_params(config_file, click_data):
+    '''
+    If a config file path is provided as a CLI parameter, it will be loaded, and used
+     to update all the input Click parameters with the contents of the file.
+
+    Parameters
+    ----------
+    config_file (str): Path to config file.
+    click_data (dict): dict of all the function parameter key-value pairings
+
+    Returns
+    -------
+    click_data (dict): updated dict of input parameters
+    '''
+
+    if isinstance(config_file, str):
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config_data = yaml.safe_load(f)
+
+            for key in config_data.keys():
+                click_data[key] = config_data[key]
+
+    return click_data
+
+
 def common_roi_options(function):
     '''
     Decorator function for grouping shared ROI related parameters.
@@ -116,8 +142,9 @@ def find_roi(input_file, bg_roi_dilate, bg_roi_shape, bg_roi_index, bg_roi_weigh
              bg_roi_gradient_filter, bg_roi_gradient_threshold, bg_roi_gradient_kernel, bg_roi_fill_holes,
              bg_sort_roi_by_position, bg_sort_roi_by_position_max_rois, dilate_iterations, bg_roi_erode,
              erode_iterations, noise_tolerance, output_dir, use_plane_bground, config_file, progress_bar):
-
+    
     click_data = click.get_current_context().params
+    click_data = load_config_params(config_file, click_data)
     get_roi_wrapper(input_file, click_data, output_dir)
 
 @cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\
@@ -176,6 +203,7 @@ def extract(input_file, crop_size, num_frames, bg_roi_dilate, bg_roi_shape, bg_r
             bg_roi_erode, erode_iterations, noise_tolerance, compute_raw_scalars, skip_completed, progress_bar):
 
     click_data = click.get_current_context().params
+    click_data = load_config_params(config_file, click_data)
     extract_wrapper(input_file, output_dir, click_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
