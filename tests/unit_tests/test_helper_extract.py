@@ -12,9 +12,34 @@ from moseq2_extract.helpers.data import create_extract_h5
 from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import generate_config_command, download_flip_command
 from moseq2_extract.util import scalar_attributes, gen_batch_sequence, load_metadata
-from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches
+from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches, write_extracted_chunk_to_h5
 
 class TestHelperExtract(TestCase):
+
+    def test_write_extracted_chunk_to_h5(self):
+
+        output_dir = 'data/'
+        output_filename = 'test_out'
+        offset = 0
+        frame_range = range(0, 100)
+        scalars = ['speed']
+        config_data = {'flip_classifier': False}
+        results = {'depth_frames': np.zeros((100, 10, 10)),
+                   'mask_frames': np.zeros((100, 10, 10)),
+                   'scalars': {'speed': np.ones((100, 1))}
+                   }
+
+        out_file = os.path.join(output_dir, f'{output_filename}.h5')
+
+        with h5py.File(out_file, 'w') as f:
+            f.create_dataset(f'scalars/speed', (100, 1), 'float32', compression='gzip')
+            f.create_dataset(f'frames', (100, 10, 10), 'float32', compression='gzip')
+            f.create_dataset(f'frames_mask', (100, 10, 10), 'float32', compression='gzip')
+
+            write_extracted_chunk_to_h5(f, results, config_data, scalars, frame_range, offset)
+
+        assert os.path.exists(out_file)
+        os.remove(out_file)
 
     def test_process_extract_batches(self):
 
