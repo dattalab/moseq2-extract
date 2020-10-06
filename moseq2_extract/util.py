@@ -16,8 +16,19 @@ from glob import glob
 from copy import deepcopy
 import ruamel.yaml as yaml
 from typing import Pattern
-from cytoolz import valmap, assoc
+from cytoolz import valmap
 from moseq2_extract.io.image import write_image
+
+
+def filter_warnings(func):
+    def apply_warning_filters(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
+            warnings.simplefilter(action='ignore', category=FutureWarning)
+            warnings.simplefilter(action='ignore', category=UserWarning)
+            return func(*args, **kwargs)
+    return apply_warning_filters
+
 
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
@@ -135,7 +146,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
         yield seq[i:i + chunk_size]
 
 
-def load_timestamps(timestamp_file, col=0):
+def load_timestamps(timestamp_file, col=0, alternate=False):
     '''
     Read timestamps from space delimited text file.
 
@@ -143,6 +154,7 @@ def load_timestamps(timestamp_file, col=0):
     ----------
     timestamp_file (str): path to timestamp file
     col (int): column in ts file read.
+    alternate (boolean): flag set to true if timestamps were saved in a csv file
 
     Returns
     -------
@@ -169,6 +181,10 @@ def load_timestamps(timestamp_file, col=0):
         warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
             imputing missing data.')
 
+    # if timestamps were saved in a csv file
+    if alternate:
+        ts = ts * 1000
+
     return ts
 
 def set_bg_roi_weights(config_data):
@@ -186,11 +202,12 @@ def set_bg_roi_weights(config_data):
     '''
 
     # Auto-setting background weights
-    if config_data.get('camera_type', None) == 'kinect':
+    camera_type = config_data.get('camera_type', None)
+    if camera_type == 'kinect':
         config_data['bg_roi_weights'] = (1, .1, 1)
-    elif config_data.get('camera_type', None) == 'azure':
+    elif camera_type == 'azure':
         config_data['bg_roi_weights'] = (10, 0.1, 1)
-    elif config_data.get('camera_type', None) == 'realsense':
+    elif camera_type == 'realsense':
         config_data['bg_roi_weights'] = (10, 1, 4)
     else:
         warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
@@ -242,7 +259,7 @@ def load_metadata(metadata_file):
         if os.path.exists(metadata_file):
             with open(metadata_file, 'r') as f:
                 metadata = json.load(f)
-    except TypeError as e:
+    except TypeError:
         # try loading directly
         metadata = json.load(metadata_file)
 
@@ -288,8 +305,8 @@ def get_strels(config_data):
     str_els = {
         'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
         'strel_erode': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode'])),
-        'strel_tail': select_strel((config_data['tail_filter_shape'], config_data['tail_filter_size'])),
-        'strel_min': select_strel((config_data['cable_filter_shape'], config_data['cable_filter_size']))
+        'strel_tail': select_strel(config_data['tail_filter_shape'], tuple(config_data['tail_filter_size'])),
+        'strel_min': select_strel(config_data['cable_filter_shape'], tuple(config_data['cable_filter_size']))
     }
 
     return str_els
@@ -316,7 +333,6 @@ def select_strel(string='e', size=(10, 10)):
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
 
     return strel
-
 
 def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), true_depth=673.1):
     '''
@@ -374,7 +390,7 @@ def scalar_attributes():
         'centroid_x_mm': 'X centroid (mm)',
         'centroid_y_mm': 'Y centroid (mm)',
         'velocity_2d_mm': '2D velocity (mm / frame), note that missing frames are not accounted for',
-        'velocity_3d_mm': '2D velocity (mm / frame), note that missing frames are not accounted for',
+        'velocity_3d_mm': '3D velocity (mm / frame), note that missing frames are not accounted for',
         'width_mm': 'Mouse width (mm)',
         'length_mm': 'Mouse length (mm)',
         'area_mm': 'Mouse area (mm)',
@@ -423,7 +439,7 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
             base_command += ' --{}'.format(k)
 
     print(base_command)
-    print('\n')
+    print()
 
     os.system(base_command)
 
@@ -522,6 +538,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     h5s = []
     yamls = []
     for root, dirs, files in os.walk(root_dir):
+        # TODO: why can't sample be in root?
         if 'sample' not in root:
             for file in files:
                 yaml_file = yaml_string.format(os.path.splitext(file)[0])
@@ -574,6 +591,7 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     # find any occurrences of `replace_with`, i.e. (--)
     return re.sub(replace_with * 2, replace_with, out)
 
+# TODO: understand this function
 def load_textdata(data_file, dtype=np.float32):
     '''
     Loads timestamp from txt/csv file
@@ -640,8 +658,7 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
 
     if 'start_time' in keys:
         # process the time value
-        val = keys['start_time']
-        keys = assoc(keys, 'start_time', time_str_for_filename(val))
+        keys['start_time'] = time_str_for_filename(keys['start_time'])
 
     if snake_case:
         keys = valmap(camel_to_snake, keys)
@@ -662,13 +679,7 @@ def read_yaml(yaml_file):
     '''
 
     with open(yaml_file, 'r') as f:
-        dat = f.read()
-        try:
-            return_dict = yaml.safe_load(dat)
-        except AttributeError:
-            return_dict = yaml.safe_load(dat)
-
-    return return_dict
+        return yaml.safe_load(f)
 
 def mouse_threshold_filter(h5file, thresh=0):
     '''
@@ -781,6 +792,7 @@ def camel_to_snake(s):
     return _underscorer2.sub(r'\1_\2', subbed).lower()
 
 
+# TODO: re-assess what this function needs to do
 def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     session_pattern=r'session_\d+\.(?:tgz|tar\.gz)',
                                     filename='.dat',
@@ -809,7 +821,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     proc_dirs = []
     for root, _, files in os.walk(root_dir):
         for file in files:
-            if filename in file:  # test for uncompressed session
+            if file.endswith(filename):  # test for uncompressed session
                 status_file = os.path.join(root, yaml_path)
                 metadata_file = os.path.join(root, metadata_path)
 
@@ -821,6 +833,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                 continue  # skip this current file as it does not look like session data
 
             # perform checks
+            # TODO: check if extraction completed even if a status file is present
             if skip_checks or (not os.path.exists(status_file) and os.path.exists(metadata_file)):
                 proc_dirs.append(os.path.join(root, file))
 
@@ -847,6 +860,8 @@ def click_param_annot(click_cmd):
             annotations[p.human_readable_name] = p.help
     return annotations
 
+# TODO: understand why the values in path_dict are movie paths.
+# TODO: what is different about this function compared to the one in moseq2-viz
 def get_scalar_df(path_dict):
     '''
     Computes a scalar dataframe that contains all the extracted sessions
@@ -865,22 +880,20 @@ def get_scalar_df(path_dict):
     scalar_dfs = []
 
     # Get scalar dicts for all the sessions
-    for k, v in path_dict.items():
+    for v in path_dict.values():
         # Get relevant extraction paths
-        h5path = path_dict[k].replace('mp4', 'h5')
-        yamlpath = path_dict[k].replace('mp4', 'yaml')
+        h5path = v.replace('mp4', 'h5')
+        yamlpath = v.replace('mp4', 'yaml')
 
         with open(yamlpath, 'r') as f:
             stat_dict = yaml.safe_load(f)
 
         metadata = stat_dict['metadata']
 
-        f = h5py.File(h5path, 'r')['scalars']
-        tmp = {}
-        for key in scalars:
-            tmp[key] = f[key][()]
+        with h5py.File(h5path, 'r') as f:
+            tmp = {key: f[key][()] for key in scalars}
 
-        sess_df = pd.DataFrame.from_dict(tmp)
+        sess_df = pd.DataFrame(tmp)
         for mk, mv in metadata.items():
             if isinstance(mv, list):
                 mv = mv[0]

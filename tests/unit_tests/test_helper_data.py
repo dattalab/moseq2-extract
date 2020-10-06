@@ -121,23 +121,21 @@ class TestHelperData(TestCase):
             tar.add(os.path.join(dirname, 'metadata.json'), arcname='metadata.json')
             tar.add(os.path.join(dirname, 'depth_ts.txt'), arcname='depth_ts.txt')
 
-        input_file, acq_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(tmp_file, dirname)
+        input_file, acq_metadata, timestamps, tar = handle_extract_metadata(tmp_file, dirname)
 
         assert isinstance(acq_metadata, dict)
         assert len(timestamps.shape) == 1
         assert tar != None
-        assert alternate_correct == False
 
         os.remove(tmp_file)
 
         tmp_file = 'data/test_vid.dat'
         write_fake_movie(tmp_file)
 
-        input_file, acq_metadata, timestamps, alternate_correct, tar = handle_extract_metadata(tmp_file, dirname)
+        input_file, acq_metadata, timestamps, tar = handle_extract_metadata(tmp_file, dirname)
 
         assert isinstance(acq_metadata, dict)
         assert len(timestamps.shape) == 1
         assert tar == None
-        assert alternate_correct == False
 
         os.remove(tmp_file)

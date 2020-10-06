@@ -23,6 +23,7 @@ from pkg_resources import get_distribution
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
 
+# TODO: what's different about this function and recursive_find_unextracted_dirs / recursive_find_h5s
 def get_session_paths(data_dir, extracted=False, exts=['dat', 'mkv', 'avi']):
     '''
     Find all depth recording sessions and their paths (with given extensions)
@@ -102,12 +103,11 @@ def check_completion_status(status_filename):
 
     if os.path.exists(status_filename):
         with open(status_filename, 'r') as f:
-            old_status_dict = yaml.safe_load(f)
-            return old_status_dict['complete']
-    else:
-        return False
+            return yaml.safe_load(f)['complete']
+    return False
 
 # extract all helper function
+# TODO: this seems like it belongs in the gui.py module
 def get_selected_sessions(to_extract, extract_all):
     '''
     Given user input, the function will return either selected sessions to extract, or all the sessions.
@@ -165,7 +165,8 @@ def get_selected_sessions(to_extract, extract_all):
 
         print('You may input comma separated values for individual sessions')
         print('Or you can input a hyphen separated range. E.g. "1-10" selects 10 sessions, including sessions 1 and 10')
-        print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5"')
+        print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5".')
+        print('Press q to quit.')
         while(len(ret_extract) == 0):
             sessions = input('Input your selected sessions to extract: ')
             if 'q' in sessions.lower():
@@ -178,8 +179,7 @@ def get_selected_sessions(to_extract, extract_all):
                 for i in selected_sess_idx:
                     if i not in excluded_sess_idx:
                         ret_extract.append(to_extract[i - 1])
-
-            elif ',' not in sessions and len(sessions) > 0:
+            elif len(sessions) > 0:
                 parse_input(sessions)
                 for i in selected_sess_idx:
                     if i not in excluded_sess_idx:
@@ -192,6 +192,7 @@ def get_selected_sessions(to_extract, extract_all):
 
     return ret_extract
 
+# TODO: Give an example of what's in the file_tup (e.g. the first entry in files_to_use) in the docs
 def build_index_dict(files_to_use):
     '''
     Given a list of files and respective metadatas to include in an index file,
@@ -217,27 +218,26 @@ def build_index_dict(files_to_use):
     index_uuids = []
     for i, file_tup in enumerate(files_to_use):
         if file_tup[2]['uuid'] not in index_uuids:
-            # appending file with default information
-            output_dict['files'].append({
+            tmp = {
                 'path': (file_tup[0], file_tup[1]),
                 'uuid': file_tup[2]['uuid'],
                 'group': 'default',
                 'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'} # fallback metadata
-            })
-
-            index_uuids.append(file_tup[2]['uuid'])
+            }
 
             # handling metadata sub-dictionary values
-            if 'metadata' in file_tup[2].keys():
-                for k, v in file_tup[2]['metadata'].items():
-                    # setting metadata values in a nested dict
-                    output_dict['files'][i]['metadata'][k] = v
+            if 'metadata' in file_tup[2]:
+                tmp['metadata'].update(file_tup[2]['metadata'])
             else:
-                print('skipping', file_tup[0])
-                warnings.warn('Could not locate file metadata! File will be listed with minimal default metadata.')
+                warnings.warn(f'Could not locate metadata for {file_tup[0]}! File will be listed with minimal default metadata.')
+            
+            index_uuids.append(file_tup[2]['uuid'])
+            # appending file with default information
+            output_dict['files'].append(tmp)
 
     return output_dict
 
+# TODO: this doesn't look like it loads h5s - it looks like it loads metadata
 def load_h5s(to_load, snake_case=True):
     '''
     aggregate_results() Helper Function to load h5 files.
@@ -395,6 +395,8 @@ def copy_manifest_results(manifest, output_dir):
             for k2, v2 in v['additional_metadata'].items():
                 new_key = '/metadata/misc/{}'.format(k2)
                 with h5py.File(new_h5_path, "a") as f:
+                    # TODO: stick with one string format throughout the repository.
+                    # either f"{var}" or "{}".format(var).
                     f.create_dataset('{}/data'.format(new_key), data=v2["data"])
                     f.create_dataset('{}/timestamps'.format(new_key), data=v2["timestamps"])
 
@@ -425,9 +427,12 @@ def handle_extract_metadata(input_file, dirname):
     alternate_correct (bool): indicator for whether an alternate timestamp file was used
     tar (bool): indicator for whether the file is compressed.
     '''
+    tar = None
+    tar_members = None
+    alternate_correct = False
 
     # Handle TAR files
-    if str(input_file).endswith('.tar.gz') or str(input_file).endswith('.tgz'):
+    if input_file.endswith(('.tar.gz', '.tgz')):
         print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
         dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
@@ -435,12 +440,8 @@ def handle_extract_metadata(input_file, dirname):
         tar = tarfile.open(input_file, 'r:gz')
         tar_members = tar.getmembers()
         tar_names = [_.name for _ in tar_members]
+        # TODO: understand this - is this only here for tests? if so, it should be re-tooled
         input_file = tar_members[tar_names.index('test_vid.dat')]
-    else:
-        tar = None
-        tar_members = None
-
-    alternate_correct = False
 
     if tar is not None:
         # Handling tar paths
@@ -461,9 +462,9 @@ def handle_extract_metadata(input_file, dirname):
             alternate_correct = True
 
     acquisition_metadata = load_metadata(metadata_path)
-    timestamps = load_timestamps(timestamp_path, col=0)
+    timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
 
-    return input_file, acquisition_metadata, timestamps, alternate_correct, tar
+    return input_file, acquisition_metadata, timestamps, tar
 
 
 # extract h5 helper function

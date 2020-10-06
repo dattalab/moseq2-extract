@@ -12,10 +12,13 @@ import ruamel.yaml as yaml
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
 from moseq2_extract.helpers.data import get_selected_sessions
-from moseq2_extract.util import recursive_find_unextracted_dirs, load_found_session_paths
+from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_session_paths,
+                                 filter_warnings)
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
                                             generate_index_wrapper, aggregate_extract_results_wrapper
 
+
+@filter_warnings
 def generate_config_command(output_file):
     '''
     Generates configuration file to use throughout pipeline.
@@ -29,23 +32,18 @@ def generate_config_command(output_file):
     (str): status message.
     '''
 
-    warnings.simplefilter(action='ignore', category=yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
-
     from .cli import extract
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
     input_dir = os.path.dirname(output_file)
+    # TODO: Do we want this?
     params['input_dir'] = input_dir
-    params['detected_true_depth'] = 'auto'
 
     # Check if the file already exists, and prompt user if they would like to overwrite pre-existing file
     if os.path.exists(output_file):
-        print('This file already exists, would you like to overwrite it? [Y -> yes, else -> exit]')
-        ow = input()
+        ow = input('This file already exists, would you like to overwrite it? [y -> yes, n -> no] ')
         if ow.lower() == 'y':
             # Updating config file
             with open(output_file, 'w') as f:
@@ -59,6 +57,8 @@ def generate_config_command(output_file):
 
     return 'Configuration file has been successfully generated.'
 
+
+@filter_warnings
 def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False):
     '''
     Searches for all depth files within input_directory with selected extension
@@ -75,32 +75,28 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     -------
     None
     '''
-
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
+    # error out early
+    if not os.path.exists(config_file):
+        raise IOError(f'Config file {config_file} does not exist')
 
     to_extract = []
 
     # find directories with .dat files that either have incomplete or no extractions
     if isinstance(ext, str):
-        to_extract = recursive_find_unextracted_dirs(input_dir, filename=ext)
-        to_extract = [e for e in to_extract if e.endswith(ext)]
-    elif isinstance(ext, list):
-        for ex in ext:
-            tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
-            to_extract += [e for e in tmp if e.endswith(ex)]
+        ext = [ext]
+    for ex in ext:
+        tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
+        # TODO: return to ask if this should be here
+        to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
     temp = sorted([sess_dir for sess_dir in to_extract if '/tmp/' not in sess_dir])
     to_extract = get_selected_sessions(temp, extract_all)
 
-    if not os.path.exists(config_file):
-        raise IOError(f'Config file {config_file} does not exist')
-
     run_local_extract(to_extract, config_file, skip_extracted)
 
     print('Extractions Complete.')
+
 
 def generate_index_command(input_dir, output_file, subpath='proc/'):
     '''
@@ -121,6 +117,8 @@ def generate_index_command(input_dir, output_file, subpath='proc/'):
     print('Index file successfully generated.')
     return output_file
 
+
+@filter_warnings
 def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold=0.0):
     '''
     Finds all extracted h5, yaml and avi files and copies them all to a
@@ -138,10 +136,6 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     -------
     indexpath (str): path to newly generated index file.
     '''
-
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
 
     output_dir = os.path.join(input_dir, output_dir)
 
@@ -170,6 +164,7 @@ def download_flip_command(output_dir, config_file="", selection=1):
     flip_file_wrapper(config_file, output_dir, selected_flip=selection)
 
 
+@filter_warnings
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):
     '''
     Computes ROI files given depth file.
@@ -189,10 +184,6 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     images (list of 2d arrays): list of 2d array images to graph in Notebook.
     filenames (list): list of paths to respective image paths
     '''
-
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
 
     files = load_found_session_paths(input_dir, exts)
 
@@ -222,6 +213,8 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     print(f'ROIs were successfully computed in {output_dir}')
     return images, filenames
 
+
+@filter_warnings
 def extract_command(input_file, output_dir, config_file, num_frames=None, skip=False):
     '''
     Command to extract a full depth file
@@ -238,10 +231,6 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     -------
     None
     '''
-
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
 
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)

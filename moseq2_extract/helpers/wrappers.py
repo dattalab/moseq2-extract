@@ -17,10 +17,10 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
 from moseq2_extract.io.image import write_image
-from moseq2_extract.util import mouse_threshold_filter
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from moseq2_extract.util import mouse_threshold_filter, filter_warnings
 from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames, \
                                               count_frames_with_small_areas, check_timestamp_error_percentage
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
@@ -52,19 +52,21 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
     # then stage the copy
 
-    for i, tup in tqdm(enumerate(to_load), total=len(to_load), desc='Copying data to yamls'):
+    for tup in tqdm(to_load, desc='Copying data to yamls'):
         with h5py.File(tup[2], 'r') as f:
             tmp = clean_dict(h5_to_dict(f, h5_metadata_path))
             tup[0]['metadata'] = dict(tmp)
 
         try:
-            new_file = '{}_update.yaml'.format(os.path.basename(tup[1]))
+            new_file = f'{os.path.basename(tup[1])}_update.yaml'
             with open(new_file, 'w+') as f:
                 yaml.safe_dump(tup[0], f)
             shutil.move(new_file, tup[1])
+        # TODO: remove this (what's it doing?) or replace with something useful
         except Exception:
             raise Exception
 
+# TODO: go through this function more carefully
 def validate_extractions_wrapper(input_dir):
     '''
     Wrapper function to test the measured scalar values to determine whether some sessions should be
@@ -94,14 +96,15 @@ def validate_extractions_wrapper(input_dir):
 
     # Get flags
     for k, v in paths.items():
-        yamlpath = paths[k].replace('mp4', 'yaml')
+        yamlpath = v.replace('mp4', 'yaml')
 
         with open(yamlpath, 'r') as f:
             stat_dict = yaml.safe_load(f)
             status_dicts[stat_dict['metadata']['SessionName']] = deepcopy(flags)
 
-        h5path = paths[k].replace('mp4', 'h5')
-        timestamps = h5py.File(h5path, 'r')['timestamps'][()]
+        h5path = v.replace('mp4', 'h5')
+        with h5py.File(h5path, 'r') as h5f:
+            timestamps = h5f['timestamps'][()]
 
         # Count dropped frame percentage
         dropped_frames = check_timestamp_error_percentage(timestamps, fps=30)
@@ -181,6 +184,7 @@ def validate_extractions_wrapper(input_dir):
                         t = 'Error'
                 print(f'\t\t{t}: {x}')
 
+@filter_warnings
 def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     '''
     Generates index file containing a summary of all extracted sessions.
@@ -196,10 +200,6 @@ def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     output_file (str): path to index file.
     '''
 
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
-
     # gather the h5s and the pca scores file
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
@@ -208,18 +208,17 @@ def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
 
     # Ensuring all retrieved extracted session h5s have the appropriate metadata
     # included in their results_00.h5 file
-    try:
-        for file in file_with_uuids:
+    for file in file_with_uuids:
+        try:
             if 'metadata' not in file[2]:
                 copy_h5_metadata_to_yaml_wrapper(input_dir, file[0])
-    except:
-        warnings.warn(f'Metadata for session {file[0]} not found. \
-        File may be listed with minimal/defaulted metadata in index file.')
+        except:
+            warnings.warn(f'Metadata for session {file[0]} not found. \
+            File may be listed with minimal/defaulted metadata in index file.')
 
     # Filtering out sessions that do not contain the required subpath in their paths.
     # Ensures that there are no sample extractions included in the index file.
-    keep_samples = [i for i, f in enumerate(file_with_uuids) if subpath in f[0]]
-    files_to_use = [tup for i, tup in enumerate(file_with_uuids) if i in keep_samples]
+    files_to_use = list(filter(lambda f: subpath in f[0], file_with_uuids))
 
     print(f'Number of sessions included in index file: {len(files_to_use)}')
 
@@ -262,12 +261,11 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
     def filter_h5(args):
         '''remove h5's that should be skipped or extraction wasn't complete'''
         _dict, _h5 = args
-        return complete(_dict) and not_in_output(_h5) and mtf(_h5)
+        return complete(_dict) and not_in_output(_h5) and mtf(_h5) and ('sample' not in _dict)
 
     # load in all of the h5 files, grab the extraction metadata, reformat to make nice 'n pretty
     # then stage the copy
     to_load = list(filter(filter_h5, zip(dicts, h5s)))
-    to_load = [tup for tup in to_load if 'sample' not in tup[1]]
     
     loaded = load_h5s(to_load)
 
@@ -277,7 +275,10 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     print('Results successfully aggregated in', output_dir)
 
-    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'), subpath=os.path.dirname(output_dir).split('/')[-1])
+    # TODO: figure out what this subpath means
+    subpath = os.path.basename(os.path.dirname(output_dir))
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'),
+                                       subpath=subpath)
 
     print(f'Index file path: {indexpath}')
     return indexpath
@@ -320,6 +321,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
     strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
+    # TODO: update how get_roi returns - should be fewer outputs unless active dev
     rois, plane, _, _, _, _ = get_roi(bground_im,
                                       **config_data,
                                       strel_dilate=strel_dilate,
@@ -369,11 +371,11 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # get the basic metadata
 
     status_dict = {
-        'parameters': deepcopy(config_data),
         'complete': False,
         'skip': False,
         'uuid': str(uuid.uuid4()),
         'metadata': '',
+        'parameters': deepcopy(config_data)
     }
 
     # handle tarball stuff
@@ -394,7 +396,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    input_file, acquisition_metadata, timestamps, alternate_correct, config_data['tar'] = handle_extract_metadata(input_file, dirname)
+    input_file, acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, dirname)
 
     if isinstance(timestamps, type(np.array)):
         dropped_frame_percentage = check_timestamp_error_percentage(timestamps, config_data['fps'])
@@ -410,12 +412,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if timestamps is not None:
         timestamps = timestamps[first_frame_idx:last_frame_idx]
 
-    # Handle alternative timestamp path time-scale formatting
-    if alternate_correct:
-        timestamps *= 1000.0
-
     scalars_attrs = scalar_attributes()
-    scalars = list(scalars_attrs.keys())
+    scalars = list(scalars_attrs)
 
     # Get frame chunks to extract
     frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap'], offset=first_frame_idx))
@@ -430,15 +428,19 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # TODO: i thought we were removing the done.txt file - clear this up
     # Non-functional indicator for extraction completion statuspytx
     done_file = os.path.join(output_dir, 'done.txt')
 
     # Ensure index is int
+    # TODO: check-in with Caleb about this
     if isinstance(config_data["bg_roi_index"], list):
         config_data["bg_roi_index"] = config_data["bg_roi_index"][0]
 
     output_filename = f'results_{config_data["bg_roi_index"]:02d}'
     status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
+    movie_filename = os.path.join(output_dir, f'{output_filename}.mp4')
+    results_filename = os.path.join(output_dir, f'{output_filename}.h5')
 
     # Check if session has already been extracted
     if check_completion_status(status_filename) and skip:
@@ -480,7 +482,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     }
 
     # farm out the batches and write to an hdf5 file
-    with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as f:
+    with h5py.File(results_filename, 'w') as f:
         # Write scalars, roi, acquisition metadata, etc. to h5 file
         create_extract_h5(**extraction_data,
                           h5_file=f,
@@ -491,16 +493,14 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                           timestamps=timestamps)
 
         # Write crop-rotated results to h5 file and write video preview mp4 file
-        config_data = process_extract_batches(**extraction_data,
-                                                h5_file=f,
-                                                input_file=input_file,
-                                                config_data=config_data,
-                                                scalars=scalars,
-                                                str_els=str_els,
-                                                output_dir=output_dir,
-                                                output_filename=output_filename)
+        process_extract_batches(**extraction_data, h5_file=f,
+                                input_file=input_file,
+                                config_data=config_data,
+                                scalars=scalars,
+                                str_els=str_els,
+                                output_mov_path=movie_filename)
 
-    print('\n')
+    print()
 
     # Compress the depth file to avi format; compresses original raw file by ~8x.
     try:
@@ -513,7 +513,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     except AttributeError as e:
         print('Error converting raw video to avi format, continuing anyway...')
         print(e)
-        pass
 
     status_dict['complete'] = True
 
@@ -525,6 +524,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     return output_dir
 
+@filter_warnings
 def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     '''
     Wrapper function to download and save flip classifiers.
@@ -539,9 +539,6 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     -------
     None
     '''
-    warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    warnings.simplefilter(action='ignore', category=UserWarning)
 
     flip_files = {
         'large mice with fibers':
@@ -588,4 +585,5 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
             yaml.safe_dump(config_data, f)
     except Exception as e:
         print('Unexpected error:', e)
+        # TODO: only returns something during this error
         return 'Could not update configuration file flip classifier path'
