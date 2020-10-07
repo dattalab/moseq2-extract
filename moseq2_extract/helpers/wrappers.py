@@ -533,7 +533,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     ----------
     config_file (str): path to config file
     output_dir (str): path to directory to save classifier in.
-    selected_flip (int): index of desired flip classifier.
+    selected_flip (int or str): int: index of desired flip classifier; str: path to flip file
 
     Returns
     -------
@@ -567,12 +567,15 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    selection = flip_files[key_list[selected_flip]]
+    if isinstance(selected_flip, int):
+        selection = flip_files[key_list[selected_flip]]
 
-    output_filename = os.path.join(output_dir, os.path.basename(selection))
+        output_filename = os.path.join(output_dir, os.path.basename(selection))
 
-    urllib.request.urlretrieve(selection, output_filename)
-    print('Successfully downloaded flip file to', output_filename)
+        urllib.request.urlretrieve(selection, output_filename)
+        print('Successfully downloaded flip file to', output_filename)
+    else:
+        output_filename = selected_flip
 
     # Update the config file with the latest path to the flip classifier
     try:

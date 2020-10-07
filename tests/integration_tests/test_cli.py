@@ -9,7 +9,7 @@ import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, \
-    convert_raw_to_avi, copy_slice, generate_index, aggregate_extract_results
+    convert_raw_to_avi, copy_slice, generate_index, aggregate_extract_results, load_config_params
 
 def write_fake_movie(data_path):
     edge_size = 40
@@ -52,6 +52,16 @@ def write_fake_movie(data_path):
 
 
 class CLITests(TestCase):
+
+    def test_load_config_params(self):
+
+        test_config = 'data/config.yaml'
+        click_data = {}
+        with open(test_config, 'r') as f:
+            test_config_data = yaml.safe_load(f)
+
+        click_data = load_config_params(test_config, click_data)
+        assert test_config_data == click_data
 
     def test_aggregate_extract_results(self):
 

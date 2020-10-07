@@ -33,6 +33,32 @@ click.core.Option.__init__ = new_init
 def cli():
     pass
 
+def load_config_params(config_file, click_data):
+    '''
+    If a config file path is provided as a CLI parameter, it will be loaded, and used
+     to update all the input Click parameters with the contents of the file.
+
+    Parameters
+    ----------
+    config_file (str): Path to config file.
+    click_data (dict): dict of all the function parameter key-value pairings
+
+    Returns
+    -------
+    click_data (dict): updated dict of input parameters
+    '''
+
+    if isinstance(config_file, str):
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config_data = yaml.safe_load(f)
+
+            for key in config_data.keys():
+                click_data[key] = config_data[key]
+
+    return click_data
+
+
 def common_roi_options(function):
     '''
     Decorator function for grouping shared ROI related parameters.
