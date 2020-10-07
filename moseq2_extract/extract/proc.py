@@ -200,6 +200,7 @@ def get_roi(depth_image,
             bg_roi_gradient_kernel=7,
             bg_roi_gradient_threshold=3000,
             bg_roi_fill_holes=True,
+            get_all_data=False,
             **kwargs):
     '''
     Get an ROI using RANSAC plane fitting and simple blob features
@@ -218,6 +219,7 @@ def get_roi(depth_image,
     bg_roi_gradient_kernel (tuple): Kernel size of length 2, e.g. (1, 1.5)
     bg_roi_gradient_threshold (int): Threshold for noise gradient filtering
     bg_roi_fill_holes (bool): Boolean to fill any missing regions within the ROI.
+    get_all_data (bool): If True, returns all ROI data, else, only return ROIs and computed Planes
     kwargs (dict) Dictionary containing `bg_roi_depth_range` parameter for plane_ransac()
 
     Returns
@@ -302,7 +304,10 @@ def get_roi(depth_image,
         del rois[del_roi]
         del bboxes[del_roi]
 
-    return rois, roi_plane, bboxes, label_im, ranks, shape_index
+    if get_all_data == True:
+        return rois, roi_plane, bboxes, label_im, ranks, shape_index
+    else:
+        return rois, roi_plane
 
 
 def apply_roi(frames, roi):

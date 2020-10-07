@@ -143,7 +143,6 @@ class GUITests(TestCase):
         out_dir = 'data/test_extract/proc/'
 
         assert(os.path.isdir(out_dir)), "proc directory was not created"
-        assert(os.path.isfile(os.path.join(out_dir, 'done.txt'))), "extraction did not finish"
         assert ('completed' in ret), "GUI command failed"
 
         shutil.rmtree('data/flip/')

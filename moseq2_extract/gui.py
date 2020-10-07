@@ -7,16 +7,97 @@ to facilitate Jupyter notebook usage.
 '''
 
 import os
-import warnings
 import ruamel.yaml as yaml
+from ast import literal_eval
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
-from moseq2_extract.helpers.data import get_selected_sessions
-from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_session_paths,
-                                 filter_warnings)
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
                                             generate_index_wrapper, aggregate_extract_results_wrapper
+from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_session_paths, filter_warnings)
 
+def get_selected_sessions(to_extract, extract_all):
+    '''
+    Given user input, the function will return either selected sessions to extract, or all the sessions.
+
+    Parameters
+    ----------
+    to_extract (list): list of paths to sessions to extract
+    extract_all (bool): boolean to include all sessions and skip user-input prompt.
+
+    Returns
+    -------
+    to_extract (list): new list of selected sessions to extract.
+    '''
+
+    selected_sess_idx, excluded_sess_idx, ret_extract = [], [], []
+
+    def parse_input(s):
+        '''
+        Parses user input, looking for specifically numbered sessions, ranges of sessions,
+        and/or sessions to exclude.
+
+        Function will alter the parent functions variables {selected_sess_idx, excluded_sess_idx} according to the
+        user input.
+        Parameters
+        ----------
+        s (str): User input session indices.
+        Examples: "1", or "1,2,3" == "1-3", or "e 1-3" to exclude sessions 1-3.
+
+        Returns
+        -------
+
+        '''
+        if 'e' not in s and '-' not in s:
+            if isinstance(literal_eval(s), int):
+                selected_sess_idx.append(int(s))
+        elif 'e' not in s and '-' in s:
+            ss = s.split('-')
+            if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
+                for i in range(int(ss[0]), int(ss[1]) + 1):
+                    selected_sess_idx.append(i)
+        elif 'e' in s:
+            s = s.strip('e')
+            if '-' not in s:
+                if isinstance(literal_eval(s), int):
+                    excluded_sess_idx.append(int(s))
+            else:
+                ss = s.split('-')
+                if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
+                    for i in range(int(ss[0]), int(ss[1]) + 1):
+                        excluded_sess_idx.append(i)
+
+    if len(to_extract) > 1 and not extract_all:
+        for i, sess in enumerate(to_extract):
+            print(f'[{str(i + 1)}] {sess}')
+
+        print('You may input comma separated values for individual sessions')
+        print('Or you can input a hyphen separated range. E.g. "1-10" selects 10 sessions, including sessions 1 and 10')
+        print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5".')
+        print('Press q to quit.')
+        while(len(ret_extract) == 0):
+            sessions = input('Input your selected sessions to extract: ')
+            if 'q' in sessions.lower():
+                return []
+            if ',' in sessions:
+                selection = sessions.split(',')
+                for s in selection:
+                    s = s.strip()
+                    parse_input(s)
+                for i in selected_sess_idx:
+                    if i not in excluded_sess_idx:
+                        ret_extract.append(to_extract[i - 1])
+            elif len(sessions) > 0:
+                parse_input(sessions)
+                for i in selected_sess_idx:
+                    if i not in excluded_sess_idx:
+                        if i-1 < len(to_extract):
+                            ret_extract.append(to_extract[i - 1])
+            else:
+                print('Invalid input. Try again or press q to quit.')
+    else:
+        return to_extract
+
+    return ret_extract
 
 @filter_warnings
 def generate_config_command(output_file):
@@ -36,10 +117,6 @@ def generate_config_command(output_file):
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-
-    input_dir = os.path.dirname(output_file)
-    # TODO: Do we want this?
-    params['input_dir'] = input_dir
 
     # Check if the file already exists, and prompt user if they would like to overwrite pre-existing file
     if os.path.exists(output_file):
@@ -86,7 +163,6 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
         ext = [ext]
     for ex in ext:
         tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
-        # TODO: return to ask if this should be here
         to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
@@ -97,8 +173,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
     print('Extractions Complete.')
 
-
-def generate_index_command(input_dir, output_file, subpath='proc/'):
+def generate_index_command(input_dir, output_file):
     '''
     Generates Index File based on aggregated sessions
 
@@ -106,14 +181,13 @@ def generate_index_command(input_dir, output_file, subpath='proc/'):
     ----------
     input_dir (str): path to aggregated_results/ dir
     output_file (str): index file name
-    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
     output_file (str): path to index file.
     '''
 
-    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file)
     print('Index file successfully generated.')
     return output_file
 

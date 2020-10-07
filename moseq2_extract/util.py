@@ -11,7 +11,6 @@ import h5py
 import click
 import warnings
 import numpy as np
-import pandas as pd
 from glob import glob
 from copy import deepcopy
 import ruamel.yaml as yaml
@@ -538,21 +537,19 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     h5s = []
     yamls = []
     for root, dirs, files in os.walk(root_dir):
-        # TODO: why can't sample be in root?
-        if 'sample' not in root:
-            for file in files:
-                yaml_file = yaml_string.format(os.path.splitext(file)[0])
-                if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
-                    try:
-                        with h5py.File(os.path.join(root, file), 'r') as f:
-                            if 'frames' not in f.keys():
-                                continue
-                    except OSError:
-                        warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
-                        continue
-                    h5s.append(os.path.join(root, file))
-                    yamls.append(os.path.join(root, yaml_file))
-                    dicts.append(read_yaml(os.path.join(root, yaml_file)))
+        for file in files:
+            yaml_file = yaml_string.format(os.path.splitext(file)[0])
+            if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
+                try:
+                    with h5py.File(os.path.join(root, file), 'r') as f:
+                        if 'frames' not in f.keys():
+                            continue
+                except OSError:
+                    warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
+                    continue
+                h5s.append(os.path.join(root, file))
+                yamls.append(os.path.join(root, yaml_file))
+                dicts.append(read_yaml(os.path.join(root, yaml_file)))
 
     return h5s, dicts, yamls
 
@@ -591,10 +588,11 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     # find any occurrences of `replace_with`, i.e. (--)
     return re.sub(replace_with * 2, replace_with, out)
 
-# TODO: understand this function
 def load_textdata(data_file, dtype=np.float32):
     '''
-    Loads timestamp from txt/csv file
+    Loads timestamp from txt/csv file.
+    Timestamps are separated by newlines and have a space-separated data indicator,
+    (in most cases, the indicator equals 0)
 
     Parameters
     ----------
@@ -612,7 +610,10 @@ def load_textdata(data_file, dtype=np.float32):
     with open(data_file, "r") as f:
         for line in f.readlines():
             tmp = line.split(' ', 1)
+            # appending timestamp value
             timestamps.append(int(float(tmp[0])))
+
+            # append data indicator value
             clean_data = np.fromstring(tmp[1].replace(" ", "").strip(), sep=',', dtype=dtype)
             data.append(clean_data)
 
@@ -792,13 +793,12 @@ def camel_to_snake(s):
     return _underscorer2.sub(r'\1_\2', subbed).lower()
 
 
-# TODO: re-assess what this function needs to do
 def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     session_pattern=r'session_\d+\.(?:tgz|tar\.gz)',
                                     filename='.dat',
                                     yaml_path='proc/results_00.yaml',
                                     metadata_path='metadata.json',
-                                    skip_checks=True):
+                                    skip_checks=False):
     '''
     Recursively find unextracted (or incompletely extracted) directories
 
@@ -816,6 +816,8 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     proc_dirs (1d-list): list of paths to each unextracted session's proc/ directory
     '''
 
+    from moseq2_extract.helpers.data import check_completion_status
+
     session_archive_pattern = re.compile(session_pattern)
 
     proc_dirs = []
@@ -832,13 +834,11 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
             else:
                 continue  # skip this current file as it does not look like session data
 
-            # perform checks
-            # TODO: check if extraction completed even if a status file is present
-            if skip_checks or (not os.path.exists(status_file) and os.path.exists(metadata_file)):
+            # perform checks, append depth file to list if extraction is missing or incomplete
+            if skip_checks or (not check_completion_status(status_file) and os.path.exists(metadata_file)):
                 proc_dirs.append(os.path.join(root, file))
 
     return proc_dirs
-
 
 def click_param_annot(click_cmd):
     '''
@@ -859,50 +859,6 @@ def click_param_annot(click_cmd):
         if isinstance(p, click.Option):
             annotations[p.human_readable_name] = p.help
     return annotations
-
-# TODO: understand why the values in path_dict are movie paths.
-# TODO: what is different about this function compared to the one in moseq2-viz
-def get_scalar_df(path_dict):
-    '''
-    Computes a scalar dataframe that contains all the extracted sessions
-     recorded scalar values along with their metadata.
-
-    Parameters
-    ----------
-    path_dict (dict): dictionary of session folder names paired with their extraction paths
-
-    Returns
-    -------
-    scalar_df (pd.DataFrame): DataFrame containing loaded scalar info from each h5 extraction file.
-    '''
-
-    scalars = scalar_attributes()
-    scalar_dfs = []
-
-    # Get scalar dicts for all the sessions
-    for v in path_dict.values():
-        # Get relevant extraction paths
-        h5path = v.replace('mp4', 'h5')
-        yamlpath = v.replace('mp4', 'yaml')
-
-        with open(yamlpath, 'r') as f:
-            stat_dict = yaml.safe_load(f)
-
-        metadata = stat_dict['metadata']
-
-        with h5py.File(h5path, 'r') as f:
-            tmp = {key: f[key][()] for key in scalars}
-
-        sess_df = pd.DataFrame(tmp)
-        for mk, mv in metadata.items():
-            if isinstance(mv, list):
-                mv = mv[0]
-            sess_df[mk] = mv
-
-        scalar_dfs.append(sess_df)
-
-    scalar_df = pd.concat(scalar_dfs)
-    return scalar_df
 
 def get_bucket_center(img, true_depth, threshold=650):
     '''

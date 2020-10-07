@@ -6,6 +6,7 @@ These functions perform all the data processing from start to finish, and are sh
 '''
 
 import os
+import sys
 import uuid
 import h5py
 import shutil
@@ -18,18 +19,14 @@ from tqdm.auto import tqdm
 from cytoolz import partial
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
-from moseq2_extract.io.video import load_movie_data, get_movie_info
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from moseq2_extract.util import mouse_threshold_filter, filter_warnings
-from moseq2_extract.extract.validation import count_nan_rows, count_missing_mouse_frames, count_stationary_frames, \
-                                              count_frames_with_small_areas, check_timestamp_error_percentage
+from moseq2_extract.io.video import load_movie_data, get_movie_info, write_frames
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
-                                        load_h5s, build_manifest, get_session_paths, copy_manifest_results, \
-                                        check_completion_status
+                                        load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels,\
-                        get_scalar_df
+                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -57,135 +54,15 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             tmp = clean_dict(h5_to_dict(f, h5_metadata_path))
             tup[0]['metadata'] = dict(tmp)
 
-        try:
-            new_file = f'{os.path.basename(tup[1])}_update.yaml'
-            with open(new_file, 'w+') as f:
-                yaml.safe_dump(tup[0], f)
+        new_file = f'{os.path.basename(tup[1])}_update.yaml'
+        with open(new_file, 'w+') as f:
+            yaml.safe_dump(tup[0], f)
+
+        if new_file != tup[1]:
             shutil.move(new_file, tup[1])
-        # TODO: remove this (what's it doing?) or replace with something useful
-        except Exception:
-            raise Exception
-
-# TODO: go through this function more carefully
-def validate_extractions_wrapper(input_dir):
-    '''
-    Wrapper function to test the measured scalar values to determine whether some sessions should be
-     flagged and diagnosed before aggregating the sessions.
-
-    Parameters
-    ----------
-    input_dir (str): path to parent directory containing all the extracted session folders
-
-    Returns
-    -------
-    '''
-
-    # Get paths to extracted sessions
-    paths = get_session_paths(input_dir, extracted=True)
-    status_dicts = {}
-
-    # Get default flags
-    flags = {
-        'scalar_anomaly': {},
-        'dropped_frames': False,
-        'corrupted': False,
-        'stationary': False,
-        'missing': False,
-        'size_anomaly': False
-    }
-
-    # Get flags
-    for k, v in paths.items():
-        yamlpath = v.replace('mp4', 'yaml')
-
-        with open(yamlpath, 'r') as f:
-            stat_dict = yaml.safe_load(f)
-            status_dicts[stat_dict['metadata']['SessionName']] = deepcopy(flags)
-
-        h5path = v.replace('mp4', 'h5')
-        with h5py.File(h5path, 'r') as h5f:
-            timestamps = h5f['timestamps'][()]
-
-        # Count dropped frame percentage
-        dropped_frames = check_timestamp_error_percentage(timestamps, fps=30)
-        if dropped_frames >= 0.05:
-            status_dicts[stat_dict['metadata']['SessionName']]['dropped_frames'] = True
-
-    # Get scalar dataframe including all sessions
-    scalar_df = get_scalar_df(paths)
-    mean_df = scalar_df.groupby('SessionName', as_index=False).mean()
-
-    # Get sessions within interquartile range
-    q1 = scalar_df.quantile(.25)
-    q2 = scalar_df.quantile(.75)
-
-    # Scalar values to measure
-    val_keys = ['area_mm', 'length_mm', 'width_mm', 'height_ave_mm']
-
-    # Get scalar anomalies based on quartile ranges
-    for key in val_keys:
-        mask = mean_df[key].between(q1[key], q2[key], inclusive=True)
-        iqr = mean_df.loc[~mask]
-
-        for s in list(iqr.SessionName):
-            status_dicts[s]['scalar_anomaly'][key] = True
-
-    sessionNames = list(scalar_df.SessionName.unique())
-    # Run tests
-    for s in sessionNames:
-        df = scalar_df[scalar_df['SessionName'] == s]
-
-        # Count stationary frames
-        stat_percent = count_stationary_frames(df)/len(df)
-        if stat_percent >= 0.05:
-            status_dicts[s]['stationary'] = [True, stat_percent]
-
-        # Get frames with missing mouse
-        missing_percent = count_missing_mouse_frames(df)/len(df)
-        if missing_percent >= 0.05:
-            status_dicts[s]['missing'] = [True, missing_percent]
-
-        # Get frames with mouse sizes that are too small
-        size_anomaly = count_frames_with_small_areas(df)/len(df)
-        if size_anomaly >= 0.05:
-            status_dicts[s]['size_anomaly'] = [True, size_anomaly]
-
-    # Get dict of anomalies
-    anomaly_dict = {}
-    for k, v in status_dicts.items():
-        anomaly_dict[k] = []
-        for k1, v1 in v.items():
-            if isinstance(v1, list):
-                if v1[0] == True:
-                    anomaly_dict[k].append(f'{k1}: {str(v1[1]*100)[:5]}%')
-            elif isinstance(v1, dict):
-                anomaly_dict[k].append(v1)
-
-    print('Results:\n')
-    errors = ['missing', 'dropped_frames']
-    # Print results
-    for k, v in anomaly_dict.items():
-        if v == [{}]:
-            v = 'No detected errors or warnings'
-            print(f'\t{k}: {v}')
-        else:
-            print(f'\t{k}:')
-            for x in v:
-                if x in errors:
-                    t = 'Error'
-                elif isinstance(x, dict):
-                    t = 'Warning - Scalar Anomalies'
-                    x = list(x.keys())
-                else:
-                    t = 'Warning'
-                    # test percentage
-                    percent = float(x.split(': ')[1].replace('%', ''))
-                    if percent >= 5:
-                        t = 'Error'
-                print(f'\t\t{t}: {x}')
 
 @filter_warnings
-def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
+def generate_index_wrapper(input_dir, output_file):
     '''
     Generates index file containing a summary of all extracted sessions.
 
@@ -193,7 +70,6 @@ def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
     ----------
     input_dir (str): directory to search for extracted sessions.
     output_file (str): preferred name of the index file.
-    subpath (str): subdirectory that all sessions must exist within
 
     Returns
     -------
@@ -216,14 +92,10 @@ def generate_index_wrapper(input_dir, output_file, subpath='proc/'):
             warnings.warn(f'Metadata for session {file[0]} not found. \
             File may be listed with minimal/defaulted metadata in index file.')
 
-    # Filtering out sessions that do not contain the required subpath in their paths.
-    # Ensures that there are no sample extractions included in the index file.
-    files_to_use = list(filter(lambda f: subpath in f[0], file_with_uuids))
-
-    print(f'Number of sessions included in index file: {len(files_to_use)}')
+    print(f'Number of sessions included in index file: {len(file_with_uuids)}')
 
     # Create index file in dict form
-    output_dict = build_index_dict(files_to_use)
+    output_dict = build_index_dict(file_with_uuids)
 
     # write out index yaml
     with open(output_file, 'w') as f:
@@ -242,7 +114,6 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
     input_dir (str): path to base directory containing all session folders
     format (str): string format for metadata to use as the new aggregated filename
     output_dir (str): name of the directory to create and store all results in
-    subpath (str): subdirectory that all sessions must exist within
     mouse_threshold (float): threshold value of mean frame depth to include session frames
 
     Returns
@@ -267,7 +138,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
     # then stage the copy
     to_load = list(filter(filter_h5, zip(dicts, h5s)))
     
-    loaded = load_h5s(to_load)
+    loaded = load_extraction_meta_from_h5s(to_load)
 
     manifest = build_manifest(loaded, format=format)
 
@@ -275,10 +146,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     print('Results successfully aggregated in', output_dir)
 
-    # TODO: figure out what this subpath means
-    subpath = os.path.basename(os.path.dirname(output_dir))
-    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'),
-                                       subpath=subpath)
+    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'))
 
     print(f'Index file path: {indexpath}')
     return indexpath
@@ -321,12 +189,12 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
     strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
-    # TODO: update how get_roi returns - should be fewer outputs unless active dev
-    rois, plane, _, _, _, _ = get_roi(bground_im,
-                                      **config_data,
-                                      strel_dilate=strel_dilate,
-                                      strel_erode=strel_erode
-                                      )
+    rois, plane = get_roi(bground_im,
+                          **config_data,
+                          strel_dilate=strel_dilate,
+                          strel_erode=strel_erode,
+                          get_all_data=False
+                          )
 
     if config_data['use_plane_bground']:
         print('Using plane fit for background...')
@@ -396,12 +264,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    input_file, acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, dirname)
-
-    if isinstance(timestamps, type(np.array)):
-        dropped_frame_percentage = check_timestamp_error_percentage(timestamps, config_data['fps'])
-        if dropped_frame_percentage >= 0.05:
-            status_dict['flags']['dropped_frames'] = True
+    acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, dirname)
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -428,12 +291,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # TODO: i thought we were removing the done.txt file - clear this up
-    # Non-functional indicator for extraction completion statuspytx
-    done_file = os.path.join(output_dir, 'done.txt')
-
     # Ensure index is int
-    # TODO: check-in with Caleb about this
     if isinstance(config_data["bg_roi_index"], list):
         config_data["bg_roi_index"] = config_data["bg_roi_index"][0]
 
@@ -446,10 +304,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if check_completion_status(status_filename) and skip:
         print('Skipping...')
         return
-
-    # Removing done.txt file if it already exists
-    if os.path.exists(done_file):
-        os.remove(done_file)
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
@@ -519,9 +373,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
-    with open(done_file, 'w') as f:
-        f.write('done')
-
     return output_dir
 
 @filter_warnings
@@ -587,6 +438,125 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
         with open(config_file, 'w') as f:
             yaml.safe_dump(config_data, f)
     except Exception as e:
+        print('Could not update configuration file flip classifier path')
         print('Unexpected error:', e)
-        # TODO: only returns something during this error
-        return 'Could not update configuration file flip classifier path'
+
+def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads):
+    '''
+    Wrapper function used to convert/compress a raw depth file into
+     an avi file (with depth values) that is 8x smaller.
+
+    Parameters
+    ----------
+    input_file (str): Path to depth file to convert
+    output_file (str): Path to avi output file
+    chunk_size (int): Size of frame chunks to iteratively process
+    fps (int): Frames per second.
+    delete (bool): Delete the original depth file if True.
+    threads (int): Number of threads used to encode video.
+
+    Returns
+    -------
+    '''
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
+
+    vid_info = get_movie_info(input_file)
+    frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
+    video_pipe = None
+
+    for batch in tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        video_pipe = write_frames(output_file, frames, pipe=video_pipe,
+                                  close_pipe=False, threads=threads, fps=fps)
+
+    if video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting', input_file)
+        os.remove(input_file)
+
+def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+    '''
+    Wrapper function to copy a segment of an input depth recording into a new video file.
+
+    Parameters
+    ----------
+    input_file (str): Path to depth file to read segment from
+    output_file (str): Path to outputted video file with copied slice.
+    copy_slice (2-tuple): Frame range to copy from input file.
+    chunk_size (int): Size of frame chunks to iteratively process
+    fps (int): Frames per second.
+    delete (bool): Delete the original depth file if True.
+    threads (int): Number of threads used to encode video.
+
+    Returns
+    -------
+    '''
+
+    if output_file is None:
+        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        avi_encode = True
+        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
+    else:
+        output_filename, ext = os.path.splitext(os.path.basename(output_file))
+        if ext == '.avi':
+            avi_encode = True
+        else:
+            avi_encode = False
+
+    vid_info = get_movie_info(input_file)
+    copy_slice = (copy_slice[0], np.minimum(copy_slice[1], vid_info['nframes']))
+    nframes = copy_slice[1] - copy_slice[0]
+    offset = copy_slice[0]
+
+    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    video_pipe = None
+
+    if os.path.exists(output_file):
+        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
+        if overwrite != '':
+            sys.exit(0)
+
+    for batch in tqdm(frame_batches, desc='Encoding batches'):
+        frames = load_movie_data(input_file, batch)
+        if avi_encode:
+            video_pipe = write_frames(output_file,
+                                      frames,
+                                      pipe=video_pipe,
+                                      close_pipe=False,
+                                      threads=threads,
+                                      fps=fps)
+        else:
+            with open(output_file, "ab") as f:
+                f.write(frames.astype('uint16').tobytes())
+
+    if avi_encode and video_pipe:
+        video_pipe.stdin.close()
+        video_pipe.wait()
+
+    for batch in tqdm(frame_batches, desc='Checking data integrity'):
+        raw_frames = load_movie_data(input_file, batch)
+        encoded_frames = load_movie_data(output_file, batch)
+
+        if not np.array_equal(raw_frames, encoded_frames):
+            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
+
+    print('Encoding successful')
+
+    if delete:
+        print('Deleting', input_file)
+        os.remove(input_file)

@@ -102,7 +102,7 @@ class TestHelperExtract(TestCase):
                               roi, bground_im, first_frame, None)
 
             process_extract_batches(data_file, config_data, bground_im, roi, frame_batches,
-                                    first_frame_idx, str_els, output_dir, output_filename,
+                                    first_frame_idx, str_els, os.path.join(output_dir, output_filename+'.mp4'),
                                     scalars=scalars, h5_file=g)
 
         assert os.path.exists(os.path.join(output_dir, f'{output_filename}.h5'))

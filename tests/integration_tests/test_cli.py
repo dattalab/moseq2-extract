@@ -108,7 +108,6 @@ class CLITests(TestCase):
                                catch_exceptions=False)
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
-        assert ('done.txt' in os.listdir(os.path.dirname(output_dir))), "extraction was interrupted"
         shutil.rmtree('data/test_out/')
         os.remove(data_path)
 

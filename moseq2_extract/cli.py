@@ -7,15 +7,12 @@ Note: These functions simply read all the parameters into a dictionary,
 '''
 
 import os
-import sys
 import click
-import numpy as np
 import ruamel.yaml as yaml
-from tqdm.auto import tqdm
-from moseq2_extract.util import (gen_batch_sequence, command_with_config)
-from moseq2_extract.io.video import (get_movie_info, load_movie_data, write_frames)
-from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
-                                            generate_index_wrapper, aggregate_extract_results_wrapper
+from moseq2_extract.util import command_with_config
+from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
+                                             generate_index_wrapper, aggregate_extract_results_wrapper,
+                                             convert_raw_to_avi_wrapper, copy_slice_wrapper)
 
 orig_init = click.core.Option.__init__
 
@@ -133,8 +130,6 @@ def common_avi_options(function):
     function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
     return function
 
-
-
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
@@ -142,11 +137,10 @@ def find_roi(input_file, output_dir, **config_data):
 
     get_roi_wrapper(input_file, config_data, output_dir)
 
-# TODO: use common_avi_options here too
-@cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\
-                                            video of the mouse and saves the output+metadata to h5 files in the given output directory.")
+@cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\                                            video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_roi_options
+@common_avi_options
 @click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')
 @click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')
 @click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')
@@ -154,7 +148,6 @@ def find_roi(input_file, output_dir, **config_data):
 @click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
             This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')
 @click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")
-@click.option('--fps', default=30, type=int, help='Frame rate of camera')
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
 @click.option('--use-cc', default=True, type=bool, help="Extract features using largest connected components.")
@@ -172,7 +165,6 @@ def find_roi(input_file, output_dir, **config_data):
 @click.option('--tail-filter-shape', default='ellipse', type=str, help='Tail filter shape')
 @click.option('--spatial-filter-size', '-s', default=[3], type=int, help='Space prefilter kernel (median filter, must be odd)', multiple=True)
 @click.option('--temporal-filter-size', '-t', default=[0], type=int, help='Time prefilter kernel (median filter, must be odd)', multiple=True)
-@click.option('--chunk-size', default=1000, type=int, help='Number of frames for each processing iteration')
 @click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')
 @click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')
 @click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')
@@ -214,10 +206,9 @@ def generate_config(output_file):
 @cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
-@click.option('--subpath', type=str, default='proc/', help='Path substring to regulate paths included in an index file.')
-def generate_index(input_dir, output_file, subpath):
+def generate_index(input_dir, output_file):
 
-    output_file = generate_index_wrapper(input_dir, output_file, subpath=subpath)
+    output_file = generate_index_wrapper(input_dir, output_file)
 
     if output_file != None:
         print(f'Index file: {output_file} was successfully generated.')
@@ -235,37 +226,10 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
-    # TODO: implement as a wrapper function, like the other cli functions
 
-    if output_file is None:
-        base_filename = os.path.splitext(os.path.basename(input_file))[0]
-        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
+    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads)
 
-    vid_info = get_movie_info(input_file)
-    frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
-    video_pipe = None
 
-    for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
-        video_pipe = write_frames(output_file, frames, pipe=video_pipe,
-                                  close_pipe=False, threads=threads, fps=fps)
-
-    if video_pipe:
-        video_pipe.stdin.close()
-        video_pipe.wait()
-
-    for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
-
-        if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
-
-    print('Encoding successful')
-
-    if delete:
-        print('Deleting', input_file)
-        os.remove(input_file)
 
 
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
@@ -273,61 +237,9 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice to copy')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
-    # TODO: implement as a wrapper function, like the other cli functions
 
-    if output_file is None:
-        base_filename = os.path.splitext(os.path.basename(input_file))[0]
-        avi_encode = True
-        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
-    else:
-        output_filename, ext = os.path.splitext(os.path.basename(output_file))
-        if ext == '.avi':
-            avi_encode = True
-        else:
-            avi_encode = False
+    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads)
 
-    vid_info = get_movie_info(input_file)
-    copy_slice = (copy_slice[0], np.minimum(copy_slice[1], vid_info['nframes']))
-    nframes = copy_slice[1] - copy_slice[0]
-    offset = copy_slice[0]
-
-    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
-    video_pipe = None
-
-    if os.path.exists(output_file):
-        overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
-        if overwrite != '':
-            sys.exit(0)
-
-    for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
-        if avi_encode:
-            video_pipe = write_frames(output_file,
-                                      frames,
-                                      pipe=video_pipe,
-                                      close_pipe=False,
-                                      threads=threads,
-                                      fps=fps)
-        else:
-            with open(output_file, "ab") as f:
-                f.write(frames.astype('uint16').tobytes())
-
-    if avi_encode and video_pipe:
-        video_pipe.stdin.close()
-        video_pipe.wait()
-
-    for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
-
-        if not np.array_equal(raw_frames, encoded_frames):
-            raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
-
-    print('Encoding successful')
-
-    if delete:
-        print('Deleting', input_file)
-        os.remove(input_file)
 
 
 if __name__ == '__main__':
