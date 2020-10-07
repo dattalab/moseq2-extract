@@ -55,7 +55,6 @@ def load_config_params(config_file, click_data):
 
     return click_data
 
-
 def common_roi_options(function):
     '''
     Decorator function for grouping shared ROI related parameters.
@@ -135,6 +134,7 @@ def common_avi_options(function):
 @common_roi_options
 def find_roi(input_file, output_dir, **config_data):
 
+    config_data = load_config_params(config_data['config_file'], config_data)
     get_roi_wrapper(input_file, config_data, output_dir)
 
 @cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\                                            video of the mouse and saves the output+metadata to h5 files in the given output directory.")
@@ -180,6 +180,7 @@ def find_roi(input_file, output_dir, **config_data):
 @click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')
 def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 
+    config_data = load_config_params(config_data['config_file'], config_data)
     extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
@@ -229,9 +230,6 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 
     convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads)
 
-
-
-
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_avi_options
@@ -239,8 +237,6 @@ def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
 
     copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads)
-
-
 
 if __name__ == '__main__':
     cli()
