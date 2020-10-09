@@ -310,6 +310,15 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
+    # Loading individual session config parameters if it exists
+    if exists(config_data.get('session_config_path', '')):
+        with open(config_data['session_config_path'], 'r') as f:
+            session_configs = yaml.safe_load(f)
+            session_key = basename(dirname(input_file))
+
+            # If key is found, update config_data, otherwise, use default dict
+            config_data = session_configs.get(session_key, config_data)
+
     extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
 
     return 'Extraction completed.'
