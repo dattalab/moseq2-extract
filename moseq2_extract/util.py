@@ -1,7 +1,6 @@
 '''
 General helper/convenience utilities that are implemented throughout the extract package.
 '''
-
 import os
 import re
 import cv2
@@ -17,6 +16,7 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
+from os.path import join, exists, splitext, basename
 
 
 def filter_warnings(func):
@@ -89,7 +89,7 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     plane_im = (np.dot(coords.T, plane[:2]) + plane[3]) / -plane[2]
     plane_im = plane_im.reshape(bground_im.shape)
 
-    write_image(os.path.join(output_dir, 'bground.tiff'), plane_im, scale=True)
+    write_image(join(output_dir, 'bground.tiff'), plane_im, scale=True)
 
     return plane_im
 
@@ -255,7 +255,7 @@ def load_metadata(metadata_file):
     metadata = {}
 
     try:
-        if os.path.exists(metadata_file):
+        if exists(metadata_file):
             with open(metadata_file, 'r') as f:
                 metadata = json.load(f)
     except TypeError:
@@ -283,7 +283,7 @@ def load_found_session_paths(input_dir, exts):
 
     files = []
     for ext in exts:
-        files.extend(glob(os.path.join(input_dir, '*/*' + ext), recursive=True))
+        files.extend(glob(join(input_dir, '*/*' + ext), recursive=True))
 
     return sorted(files)
 
@@ -418,7 +418,7 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     None
     '''
 
-    new_file = '{}.avi'.format(os.path.splitext(input_file)[0])
+    new_file = '{}.avi'.format(splitext(input_file)[0])
     print('Converting {} to {}'.format(input_file, new_file))
     # turn into os system call...
     use_kwargs = {
@@ -538,18 +538,18 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     yamls = []
     for root, dirs, files in os.walk(root_dir):
         for file in files:
-            yaml_file = yaml_string.format(os.path.splitext(file)[0])
-            if file.endswith(ext) and os.path.exists(os.path.join(root, yaml_file)):
+            yaml_file = yaml_string.format(splitext(file)[0])
+            if file.endswith(ext) and exists(join(root, yaml_file)):
                 try:
-                    with h5py.File(os.path.join(root, file), 'r') as f:
+                    with h5py.File(join(root, file), 'r') as f:
                         if 'frames' not in f.keys():
                             continue
                 except OSError:
-                    warnings.warn('Error reading {}, skipping...'.format(os.path.join(root, file)))
+                    warnings.warn('Error reading {}, skipping...'.format(join(root, file)))
                     continue
-                h5s.append(os.path.join(root, file))
-                yamls.append(os.path.join(root, yaml_file))
-                dicts.append(read_yaml(os.path.join(root, yaml_file)))
+                h5s.append(join(root, file))
+                yamls.append(join(root, yaml_file))
+                dicts.append(read_yaml(join(root, yaml_file)))
 
     return h5s, dicts, yamls
 
@@ -824,19 +824,19 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     for root, _, files in os.walk(root_dir):
         for file in files:
             if file.endswith(filename):  # test for uncompressed session
-                status_file = os.path.join(root, yaml_path)
-                metadata_file = os.path.join(root, metadata_path)
+                status_file = join(root, yaml_path)
+                metadata_file = join(root, metadata_path)
 
             elif session_archive_pattern.fullmatch(file):  # test for compressed session
-                session_name = os.path.basename(file).replace('.tar.gz', '').replace('.tgz', '')
-                status_file = os.path.join(root, session_name, yaml_path)
-                metadata_file = os.path.join(root, '{}.json'.format(session_name))
+                session_name = basename(file).replace('.tar.gz', '').replace('.tgz', '')
+                status_file = join(root, session_name, yaml_path)
+                metadata_file = join(root, '{}.json'.format(session_name))
             else:
                 continue  # skip this current file as it does not look like session data
 
             # perform checks, append depth file to list if extraction is missing or incomplete
-            if skip_checks or (not check_completion_status(status_file) and os.path.exists(metadata_file)):
-                proc_dirs.append(os.path.join(root, file))
+            if skip_checks or (not check_completion_status(status_file) and exists(metadata_file)):
+                proc_dirs.append(join(root, file))
 
     return proc_dirs
 
@@ -980,6 +980,6 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     bground_im = np.where(mask == True, old_bg, bground_im)
     bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
 
-    write_image(os.path.join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
+    write_image(join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
 
     return bground_im

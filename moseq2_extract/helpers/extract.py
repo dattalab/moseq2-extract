@@ -5,7 +5,6 @@ These functions are primarily called from inside the extract_wrapper() function.
 
 '''
 
-import os
 import numpy as np
 from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk

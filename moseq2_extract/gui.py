@@ -9,6 +9,7 @@ to facilitate Jupyter notebook usage.
 import os
 import ruamel.yaml as yaml
 from ast import literal_eval
+from os.path import dirname, basename, exists, join
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
@@ -119,7 +120,7 @@ def generate_config_command(output_file):
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
 
     # Check if the file already exists, and prompt user if they would like to overwrite pre-existing file
-    if os.path.exists(output_file):
+    if exists(output_file):
         ow = input('This file already exists, would you like to overwrite it? [y -> yes, n -> no] ')
         if ow.lower() == 'y':
             # Updating config file
@@ -153,7 +154,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     None
     '''
     # error out early
-    if not os.path.exists(config_file):
+    if not exists(config_file):
         raise IOError(f'Config file {config_file} does not exist')
 
     to_extract = []
@@ -211,9 +212,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     indexpath (str): path to newly generated index file.
     '''
 
-    output_dir = os.path.join(input_dir, output_dir)
+    output_dir = join(input_dir, output_dir)
 
-    if not os.path.exists(output_dir):
+    if not exists(output_dir):
         os.makedirs(output_dir)
 
     indexpath = aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
@@ -276,7 +277,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     with open(config_file, 'r') as f:
         config_data = yaml.safe_load(f)
 
-    output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+    output_dir = join(dirname(input_file), 'proc')
     get_roi_wrapper(input_file, config_data, output_dir)
 
     with open(config_file, 'w') as g:

@@ -4,7 +4,6 @@ Wrapper functions for all functionality afforded by MoSeq2-Extract.
 These functions perform all the data processing from start to finish, and are shared between the CLI and GUI.
 
 '''
-
 import os
 import sys
 import uuid
@@ -20,6 +19,7 @@ from cytoolz import partial
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
+from os.path import join, exists, dirname, basename, abspath, splitext
 from moseq2_extract.util import mouse_threshold_filter, filter_warnings
 from moseq2_extract.io.video import load_movie_data, get_movie_info, write_frames
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
@@ -54,7 +54,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
             tmp = clean_dict(h5_to_dict(f, h5_metadata_path))
             tup[0]['metadata'] = dict(tmp)
 
-        new_file = f'{os.path.basename(tup[1])}_update.yaml'
+        new_file = f'{basename(tup[1])}_update.yaml'
         with open(new_file, 'w+') as f:
             yaml.safe_dump(tup[0], f)
 
@@ -80,7 +80,7 @@ def generate_index_wrapper(input_dir, output_file):
     # uuids should match keys in the scores file
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
 
-    file_with_uuids = [(os.path.abspath(h5), os.path.abspath(yml), meta) for h5, yml, meta in zip(h5s, yamls, dicts)]
+    file_with_uuids = [(abspath(h5), abspath(yml), meta) for h5, yml, meta in zip(h5s, yamls, dicts)]
 
     # Ensuring all retrieved extracted session h5s have the appropriate metadata
     # included in their results_00.h5 file
@@ -123,7 +123,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     h5s, dicts, _ = recursive_find_h5s(input_dir)
 
-    not_in_output = lambda f: not os.path.exists(os.path.join(output_dir, os.path.basename(f)))
+    not_in_output = lambda f: not exists(join(output_dir, basename(f)))
     complete = lambda d: d['complete'] and not d['skip']
 
     # only include real extracted mice with this filter func
@@ -146,7 +146,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
     print('Results successfully aggregated in', output_dir)
 
-    indexpath = generate_index_wrapper(output_dir, os.path.join(input_dir, 'moseq2-index.yaml'))
+    indexpath = generate_index_wrapper(output_dir, join(input_dir, 'moseq2-index.yaml'))
 
     print(f'Index file path: {indexpath}')
     return indexpath
@@ -169,9 +169,9 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     '''
 
     if output_dir == None:
-        output_dir = os.path.join(os.path.dirname(input_file), 'proc')
+        output_dir = join(dirname(input_file), 'proc')
 
-    if not os.path.exists(output_dir):
+    if not exists(output_dir):
         os.makedirs(output_dir)
 
     # checks camera type to set appropriate bg_roi_weights
@@ -179,10 +179,10 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     print('Getting background...')
     bground_im = get_bground_im_file(input_file)
-    write_image(os.path.join(output_dir, 'bground.tiff'), bground_im, scale=True)
+    write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0) # there is a tar object flag that must be set!!
-    write_image(os.path.join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
+    write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=config_data['bg_roi_depth_range'])
 
     print('Getting roi...')
@@ -213,7 +213,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     for idx in bg_roi_index:
         roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(os.path.join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
+        write_image(join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
 
     return roi, bground_im, first_frame
 
@@ -247,7 +247,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     }
 
     # handle tarball stuff
-    dirname = os.path.dirname(input_file)
+    in_dirname = dirname(input_file)
 
     video_metadata = get_movie_info(input_file)
 
@@ -264,7 +264,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, dirname)
+    acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -283,12 +283,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # set up the output directory
     if output_dir is None:
-        output_dir = os.path.join(dirname, 'proc')
+        output_dir = join(in_dirname, 'proc')
     else:
-        if os.path.dirname(output_dir) != dirname:
-            output_dir = os.path.join(dirname, output_dir)
+        if dirname(output_dir) != in_dirname:
+            output_dir = join(in_dirname, output_dir)
 
-    if not os.path.exists(output_dir):
+    if not exists(output_dir):
         os.makedirs(output_dir)
 
     # Ensure index is int
@@ -296,9 +296,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         config_data["bg_roi_index"] = config_data["bg_roi_index"][0]
 
     output_filename = f'results_{config_data["bg_roi_index"]:02d}'
-    status_filename = os.path.join(output_dir, f'{output_filename}.yaml')
-    movie_filename = os.path.join(output_dir, f'{output_filename}.mp4')
-    results_filename = os.path.join(output_dir, f'{output_filename}.h5')
+    status_filename = join(output_dir, f'{output_filename}.yaml')
+    movie_filename = join(output_dir, f'{output_filename}.mp4')
+    results_filename = join(output_dir, f'{output_filename}.h5')
 
     # Check if session has already been extracted
     if check_completion_status(status_filename) and skip:
@@ -415,13 +415,13 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
             print('Please enter a number')
             continue
 
-    if not os.path.exists(output_dir):
+    if not exists(output_dir):
         os.makedirs(output_dir)
 
     if isinstance(selected_flip, int):
         selection = flip_files[key_list[selected_flip]]
 
-        output_filename = os.path.join(output_dir, os.path.basename(selection))
+        output_filename = join(output_dir, basename(selection))
 
         urllib.request.urlretrieve(selection, output_filename)
         print('Successfully downloaded flip file to', output_filename)
@@ -460,8 +460,8 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
     '''
 
     if output_file is None:
-        base_filename = os.path.splitext(os.path.basename(input_file))[0]
-        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
+        base_filename = splitext(basename(input_file))[0]
+        output_file = join(dirname(input_file), f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
     frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
@@ -508,11 +508,11 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     '''
 
     if output_file is None:
-        base_filename = os.path.splitext(os.path.basename(input_file))[0]
+        base_filename = splitext(basename(input_file))[0]
         avi_encode = True
-        output_file = os.path.join(os.path.dirname(input_file), f'{base_filename}.avi')
+        output_file = join(dirname(input_file), f'{base_filename}.avi')
     else:
-        output_filename, ext = os.path.splitext(os.path.basename(output_file))
+        output_filename, ext = splitext(basename(output_file))
         if ext == '.avi':
             avi_encode = True
         else:
@@ -526,7 +526,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
     video_pipe = None
 
-    if os.path.exists(output_file):
+    if exists(output_file):
         overwrite = input('Press ENTER to overwrite your previous extraction, else to end the process.')
         if overwrite != '':
             sys.exit(0)
