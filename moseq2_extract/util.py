@@ -545,7 +545,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
                         if 'frames' not in f.keys():
                             continue
                 except OSError:
-                    warnings.warn('Error reading {}, skipping...'.format(join(root, file)))
+                    warnings.warn(f'Error reading {join(root, file)}, skipping...')
                     continue
                 h5s.append(join(root, file))
                 yamls.append(join(root, yaml_file))

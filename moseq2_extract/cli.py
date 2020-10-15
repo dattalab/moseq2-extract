@@ -137,7 +137,9 @@ def find_roi(input_file, output_dir, **config_data):
     config_data = load_config_params(config_data['config_file'], config_data)
     get_roi_wrapper(input_file, config_data, output_dir)
 
-@cli.command(name="extract", cls=command_with_config('config_file'), help="Processes raw input depth recordings to output a cropped and oriented\                                            video of the mouse and saves the output+metadata to h5 files in the given output directory.")
+@cli.command(name="extract", cls=command_with_config('config_file'),
+             help="Processes raw input depth recordings to output a cropped and oriented"
+             "video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
 @common_roi_options
 @common_avi_options
