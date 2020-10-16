@@ -3,7 +3,7 @@ ROI detection pre-processing utilities for fitting a plane to an input depth ima
 '''
 
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 def plane_fit3(points):

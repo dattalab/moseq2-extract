@@ -10,7 +10,7 @@ import scipy.signal
 import skimage.measure
 import scipy.interpolate
 import skimage.morphology
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
 from os.path import exists, join, dirname

@@ -44,8 +44,8 @@ def command_with_config(config_file_param_name):
             param_cli = {k: tuple(v) if type(v) is list else v for k, v in ctx.params.items()}
 
             if config_file is not None:
-                with open(config_file) as f:
-                    config_data = dict(yaml.safe_load(f))
+
+                config_data = read_yaml(config_file)
                 # modified to only use keys that are actually defined in options
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
                                for k, v in config_data.items() if k in param_defaults.keys()}
@@ -418,8 +418,8 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     None
     '''
 
-    new_file = '{}.avi'.format(splitext(input_file)[0])
-    print('Converting {} to {}'.format(input_file, new_file))
+    new_file = f'{splitext(input_file)[0]}.avi'
+    print(f'Converting {input_file} to {new_file}')
     # turn into os system call...
     use_kwargs = {
         'output-file': new_file,
@@ -430,12 +430,12 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     use_flags = {
         'delete': delete
     }
-    base_command = 'moseq2-extract convert-raw-to-avi {}'.format(input_file)
+    base_command = f'moseq2-extract convert-raw-to-avi {input_file}'
     for k, v in use_kwargs.items():
-        base_command += ' --{} {}'.format(k, v)
+        base_command += f' --{k} {v}'
     for k, v in use_flags.items():
         if v:
-            base_command += ' --{}'.format(k)
+            base_command += f' --{k}'
 
     print(base_command)
     print()

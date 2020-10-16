@@ -10,6 +10,7 @@ import os
 import ruamel.yaml as yaml
 from ast import literal_eval
 from os.path import dirname, basename, exists, join
+from moseq2_extract.util import read_yaml
 from moseq2_extract.io.image import read_tiff_files
 from moseq2_extract.helpers.extract import run_local_extract
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
@@ -274,8 +275,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
         input_file = files[default_session]
 
     print(f'Processing session: {input_file}')
-    with open(config_file, 'r') as f:
-        config_data = yaml.safe_load(f)
+    config_data = read_yaml(config_file)
 
     output_dir = join(dirname(input_file), 'proc')
     get_roi_wrapper(input_file, config_data, output_dir)
@@ -307,8 +307,7 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     None
     '''
 
-    with open(config_file, 'r') as f:
-        config_data = yaml.safe_load(f)
+    config_data = read_yaml(config_file)
 
     # Loading individual session config parameters if it exists
     if exists(config_data.get('session_config_path', '')):

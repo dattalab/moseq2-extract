@@ -9,7 +9,7 @@ Note: These functions simply read all the parameters into a dictionary,
 import os
 import click
 import ruamel.yaml as yaml
-from moseq2_extract.util import command_with_config
+from moseq2_extract.util import command_with_config, read_yaml
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
                                              convert_raw_to_avi_wrapper, copy_slice_wrapper)
@@ -30,30 +30,6 @@ click.core.Option.__init__ = new_init
 def cli():
     pass
 
-def load_config_params(config_file, click_data):
-    '''
-    If a config file path is provided as a CLI parameter, it will be loaded, and used
-     to update all the input Click parameters with the contents of the file.
-
-    Parameters
-    ----------
-    config_file (str): Path to config file.
-    click_data (dict): dict of all the function parameter key-value pairings
-
-    Returns
-    -------
-    click_data (dict): updated dict of input parameters
-    '''
-
-    if isinstance(config_file, str):
-        if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                config_data = yaml.safe_load(f)
-
-            for key in config_data.keys():
-                click_data[key] = config_data[key]
-
-    return click_data
 
 def common_roi_options(function):
     '''
@@ -134,7 +110,6 @@ def common_avi_options(function):
 @common_roi_options
 def find_roi(input_file, output_dir, **config_data):
 
-    config_data = load_config_params(config_data['config_file'], config_data)
     get_roi_wrapper(input_file, config_data, output_dir)
 
 @cli.command(name="extract", cls=command_with_config('config_file'),
@@ -182,7 +157,6 @@ def find_roi(input_file, output_dir, **config_data):
 @click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')
 def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 
-    config_data = load_config_params(config_data['config_file'], config_data)
     extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip_completed)
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")

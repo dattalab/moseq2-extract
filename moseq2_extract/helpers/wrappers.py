@@ -20,8 +20,8 @@ from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from os.path import join, exists, dirname, basename, abspath, splitext
-from moseq2_extract.util import mouse_threshold_filter, filter_warnings
 from moseq2_extract.io.video import load_movie_data, get_movie_info, write_frames
+from moseq2_extract.util import mouse_threshold_filter, filter_warnings, read_yaml
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
                                         load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
@@ -400,7 +400,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
     }
 
-    key_list = list(flip_files.keys())
+    key_list = list(flip_files)
 
     for idx, (k, v) in enumerate(flip_files.items()):
         print(f'[{idx}] {k} ---> {v}')
@@ -418,21 +418,16 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     if not exists(output_dir):
         os.makedirs(output_dir)
 
-    if isinstance(selected_flip, int):
-        selection = flip_files[key_list[selected_flip]]
+    selection = flip_files[key_list[selected_flip]]
 
-        output_filename = join(output_dir, basename(selection))
+    output_filename = join(output_dir, basename(selection))
 
-        urllib.request.urlretrieve(selection, output_filename)
-        print('Successfully downloaded flip file to', output_filename)
-    else:
-        output_filename = selected_flip
+    urllib.request.urlretrieve(selection, output_filename)
+    print('Successfully downloaded flip file to', output_filename)
 
     # Update the config file with the latest path to the flip classifier
     try:
-        with open(config_file, 'r') as f:
-            config_data = yaml.safe_load(f)
-
+        config_data = read_yaml(config_file)
         config_data['flip_classifier'] = output_filename
 
         with open(config_file, 'w') as f:

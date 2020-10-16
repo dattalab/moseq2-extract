@@ -8,7 +8,7 @@ import tarfile
 import datetime
 import subprocess
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 

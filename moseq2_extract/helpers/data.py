@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from cytoolz import keymap
 from pkg_resources import get_distribution
 from os.path import exists, join, dirname, basename, splitext
-from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
+from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read_yaml, \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
 
 def check_completion_status(status_filename):
@@ -34,8 +34,7 @@ def check_completion_status(status_filename):
     '''
 
     if exists(status_filename):
-        with open(status_filename, 'r') as f:
-            return yaml.safe_load(f)['complete']
+        return read_yaml(status_filename)['complete']
     return False
 
 def build_index_dict(files_to_use):
