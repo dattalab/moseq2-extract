@@ -400,25 +400,23 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
     }
 
-    key_list = list(flip_files)
-
-    for idx, (k, v) in enumerate(flip_files.items()):
-        print(f'[{idx}] {k} ---> {v}')
+    if selected_flip is None:
+        key_list = list(flip_files)
+        for idx, (k, v) in enumerate(flip_files.items()):
+            print(f'[{idx}] {k} ---> {v}')
 
     # prompt for user selection if not already inputted
     while selected_flip is None:
         try:
-            selected_flip = int(input('Enter a selection '))
-            if selected_flip > len(flip_files.keys()):
-                selected_flip = None
+            selected_flip = key_list[int(input('Enter a selection '))]
         except ValueError:
-            print('Please enter a number')
+            print('Please enter a valid number listed above')
             continue
 
     if not exists(output_dir):
         os.makedirs(output_dir)
 
-    selection = flip_files[key_list[selected_flip]]
+    selection = flip_files[selected_flip]
 
     output_filename = join(output_dir, basename(selection))
 
