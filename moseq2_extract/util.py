@@ -16,7 +16,7 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
-from os.path import join, exists, splitext, basename
+from os.path import join, exists, splitext, basename, abspath
 
 
 def filter_warnings(func):
@@ -532,24 +532,22 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     dicts (list): list of found metadata files
     yamls (list): list of found yaml files
     '''
+    if not ext.startswith('.'):
+        ext = '.' + ext
 
-    dicts = []
-    h5s = []
-    yamls = []
-    for root, dirs, files in os.walk(root_dir):
-        for file in files:
-            yaml_file = yaml_string.format(splitext(file)[0])
-            if file.endswith(ext) and exists(join(root, yaml_file)):
-                try:
-                    with h5py.File(join(root, file), 'r') as f:
-                        if 'frames' not in f.keys():
-                            continue
-                except OSError:
-                    warnings.warn(f'Error reading {join(root, file)}, skipping...')
-                    continue
-                h5s.append(join(root, file))
-                yamls.append(join(root, yaml_file))
-                dicts.append(read_yaml(join(root, yaml_file)))
+    def has_frames(f):
+        try:
+            with h5py.File(f, 'r') as h5f:
+                return 'frames' in h5f
+        except OSError:
+            warnings.warn(f'Error reading {f}, skipping...')
+            return False
+
+    h5s = glob(join(abspath(root_dir), '**', f'*{ext}'), recursive=True)
+    h5s = filter(lambda f: exists(yaml_string.format(f.replace(ext, ''))), h5s)
+    h5s = list(filter(has_frames, h5s))
+    yamls = list(map(lambda f: yaml_string.format(f.replace(ext, '')), h5s))
+    dicts = list(map(read_yaml, yamls))
 
     return h5s, dicts, yamls
 
@@ -570,6 +568,7 @@ def escape_path(path):
 
     return re.sub(r'\s', '\ ', path)
 
+
 def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     '''
     Removes invalid characters for a file name from a string.
@@ -587,6 +586,7 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     out = re.sub(r'[ <>:"/\\|?*\']', replace_with, file_str)
     # find any occurrences of `replace_with`, i.e. (--)
     return re.sub(replace_with * 2, replace_with, out)
+
 
 def load_textdata(data_file, dtype=np.float32):
     '''
