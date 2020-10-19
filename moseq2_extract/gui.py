@@ -164,7 +164,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     if isinstance(ext, str):
         ext = [ext]
     for ex in ext:
-        tmp = recursive_find_unextracted_dirs(input_dir, filename=ex)
+        tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=True)
         to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
