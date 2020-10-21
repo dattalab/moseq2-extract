@@ -826,7 +826,6 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
             if file.endswith(filename):  # test for uncompressed session
                 status_file = join(root, yaml_path)
                 metadata_file = join(root, metadata_path)
-
             elif session_archive_pattern.fullmatch(file):  # test for compressed session
                 session_name = basename(file).replace('.tar.gz', '').replace('.tgz', '')
                 status_file = join(root, session_name, yaml_path)

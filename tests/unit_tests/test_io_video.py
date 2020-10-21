@@ -1,7 +1,11 @@
 import os
+import math
+import tarfile
 import numpy as np
+from os.path import join
 import numpy.testing as npt
 from unittest import TestCase
+from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
     get_movie_info, load_movie_data
@@ -22,7 +26,7 @@ class TestVideoIO(TestCase):
 
         data_path = 'data/fake_raw_depth.dat'
 
-        test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+        test_data = np.random.randint(0, 256, size=(100, 424, 512), dtype='int16')
         test_data.tofile(data_path)
 
         vid_info = get_raw_info(data_path)
@@ -32,6 +36,14 @@ class TestVideoIO(TestCase):
         npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
         npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
         os.remove(data_path)
+
+        avi_path = 'data/test-out.avi'
+        vid_info = get_raw_info(avi_path)
+
+        npt.assert_equal(vid_info['bytes'], 15824724)
+        npt.assert_equal(vid_info['nframes'], test_data.shape[0])
+        npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
+        npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
 
     def test_ffv1(self):
 

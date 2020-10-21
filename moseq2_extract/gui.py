@@ -58,14 +58,14 @@ def get_selected_sessions(to_extract, extract_all):
                 for i in range(int(ss[0]), int(ss[1]) + 1):
                     selected_sess_idx.append(i)
         elif 'e' in s:
-            s = s.strip('e')
-            if '-' not in s:
-                if isinstance(literal_eval(s), int):
-                    excluded_sess_idx.append(int(s))
+            ss = s.strip('e ')
+            if '-' not in ss:
+                if isinstance(literal_eval(ss), int):
+                    excluded_sess_idx.append(int(ss))
             else:
-                ss = s.split('-')
-                if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
-                    for i in range(int(ss[0]), int(ss[1]) + 1):
+                ssd = ss.split('-')
+                if isinstance(literal_eval(ssd[0]), int) and isinstance(literal_eval(ssd[1]), int):
+                    for i in range(int(ssd[0]), int(ssd[1]) + 1):
                         excluded_sess_idx.append(i)
 
     if len(to_extract) > 1 and not extract_all:
@@ -90,7 +90,11 @@ def get_selected_sessions(to_extract, extract_all):
                         ret_extract.append(to_extract[i - 1])
             elif len(sessions) > 0:
                 parse_input(sessions)
-                for i in selected_sess_idx:
+                if len(selected_sess_idx) > 0:
+                    iters = selected_sess_idx
+                else:
+                    iters = range(1, len(to_extract)+1)
+                for i in iters:
                     if i not in excluded_sess_idx:
                         if i-1 < len(to_extract):
                             ret_extract.append(to_extract[i - 1])

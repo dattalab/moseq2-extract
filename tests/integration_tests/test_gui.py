@@ -7,10 +7,46 @@ from .test_cli import write_fake_movie
 from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
 from moseq2_extract.gui import generate_config_command, generate_index_command, \
     aggregate_extract_results_command, download_flip_command, \
-    find_roi_command, extract_command, extract_found_sessions
+    find_roi_command, extract_command, extract_found_sessions, get_selected_sessions
 
 
 class GUITests(TestCase):
+
+    def test_get_selected_sessions(self):
+
+        to_extract = ['a', 'b', 'c']
+        extract_all = False
+
+        stdin = 'data/tmp_stdin.txt'
+
+        with open(stdin, 'w') as f:
+            f.write('1,2,3')
+
+        sys.stdin = open(stdin)
+
+        test_ret = get_selected_sessions(to_extract, extract_all)
+        assert test_ret == to_extract
+
+        with open(stdin, 'w') as f:
+            f.write('1-3')
+
+        sys.stdin = open(stdin)
+        test_ret = get_selected_sessions(to_extract, extract_all)
+        assert sorted(test_ret) == sorted(to_extract)
+
+        with open(stdin, 'w') as f:
+            f.write('1')
+
+        sys.stdin = open(stdin)
+        test_ret = get_selected_sessions(to_extract, extract_all)
+        assert test_ret == [to_extract[0]]
+
+        with open(stdin, 'w') as f:
+            f.write('e 2-3')
+
+        sys.stdin = open(stdin)
+        test_ret = get_selected_sessions(to_extract, extract_all)
+        assert test_ret == [to_extract[0]]
 
     def test_generate_config_command(self):
 

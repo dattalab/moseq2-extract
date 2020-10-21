@@ -6,10 +6,11 @@ import numpy as np
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.io.image import read_image
-from moseq2_extract.extract.proc import get_roi, crop_and_rotate_frames,\
-    get_frame_features, compute_scalars, clean_frames, get_largest_cc
+from moseq2_extract.extract.proc import get_roi, crop_and_rotate_frames, model_smoother, \
+    get_frame_features, compute_scalars, clean_frames, get_largest_cc, feature_hampel_filter
 
 class TestExtractProc(TestCase):
+
     def test_get_roi(self):
         # load in a bunch of ROIs where we have some ground truth
         bground_list = glob.glob('data/tiffs/bground*.tiff')
@@ -173,3 +174,60 @@ class TestExtractProc(TestCase):
 
         fake_movie = np.tile(fake_mouse, (100, 1, 1))
         cleaned_fake_movie = clean_frames(fake_movie, prefilter_time=(3,))
+
+    def test_feature_hampel_filter(self):
+
+        fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 20))
+
+        tmp_image = np.zeros((80, 80), dtype='int8')
+        center = np.array(tmp_image.shape) // 2
+
+        mouse_dims = np.array(fake_mouse.shape) // 2
+
+        tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+        center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+        fake_movie = np.tile(tmp_image, (100, 1, 1))
+        fake_features, mask = get_frame_features(fake_movie, frame_threshold=0.01)
+
+        smoothed_features = feature_hampel_filter(fake_features,
+                                                  centroid_hampel_span=5,
+                                                  centroid_hampel_sig=5,
+                                                  angle_hampel_span=5,
+                                                  angle_hampel_sig=3)
+
+        assert list(smoothed_features.keys()) == list(fake_features.keys())
+        for k in smoothed_features.keys():
+            assert smoothed_features[k].all() == fake_features[k].all()
+
+    def test_model_smoother(self):
+
+        fake_mouse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 20))
+
+        tmp_image = np.zeros((80, 80), dtype='int8')
+        center = np.array(tmp_image.shape) // 2
+
+        mouse_dims = np.array(fake_mouse.shape) // 2
+
+        tmp_image[center[0] - mouse_dims[0]:center[0] + mouse_dims[0],
+        center[1] - mouse_dims[1]:center[1] + mouse_dims[1]] = fake_mouse
+
+        fake_movie = np.tile(tmp_image, (100, 1, 1))
+        fake_features, mask = get_frame_features(fake_movie, frame_threshold=0.01)
+
+        smoothed_feats = model_smoother(fake_features, ll=None, clips=(-300, -125))
+        assert smoothed_feats == fake_features
+
+        test_ll = np.random.randint(-25, 256, size=(100, 30, 20), dtype='int16')
+        fake_features['axis_length'][0] = [np.nan, np.nan]
+
+        smoothed_feats = model_smoother(fake_features, ll=test_ll, clips=(-300, -125))
+        assert smoothed_feats == fake_features
+
+        test_ll = np.random.randint(-25, 256, size=(100, 30, 20), dtype='int16')
+        fake_features['axis_length'] = np.array([x[0] for x in fake_features['axis_length']])
+        print(fake_features['axis_length'])
+        fake_features['axis_length'][0] = np.nan
+
+        smoothed_feats = model_smoother(fake_features, ll=test_ll, clips=(-300, -125))
+        assert smoothed_feats == fake_features

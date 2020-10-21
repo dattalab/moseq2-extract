@@ -88,12 +88,22 @@ class CLITests(TestCase):
 
         data_path = 'data/extract_test_depth.dat'
         output_dir = 'data/test_out/'
+        config_file = 'data/config.yaml'
+
+        with open(config_file, 'r') as f:
+            config_data = yaml.safe_load(f)
+
+            config_data['flip_classifier'] = None
+
+        with open(config_file, 'w+') as f:
+            yaml.safe_dump(config_data, f)
 
         write_fake_movie(data_path)
         assert os.path.isfile(data_path), "fake movie was not written"
 
         runner = CliRunner()
         result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
+                                         '--config-file', config_file,
                                          '--use-tracking-model', True],
                                catch_exceptions=False)
 
