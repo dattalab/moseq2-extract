@@ -12,9 +12,34 @@ from moseq2_extract.helpers.data import create_extract_h5
 from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.gui import generate_config_command, download_flip_command
 from moseq2_extract.util import scalar_attributes, gen_batch_sequence, load_metadata
-from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches
+from moseq2_extract.helpers.extract import run_local_extract, process_extract_batches, write_extracted_chunk_to_h5
 
 class TestHelperExtract(TestCase):
+
+    def test_write_extracted_chunk_to_h5(self):
+
+        output_dir = 'data/'
+        output_filename = 'test_out'
+        offset = 0
+        frame_range = range(0, 100)
+        scalars = ['speed']
+        config_data = {'flip_classifier': False}
+        results = {'depth_frames': np.zeros((100, 10, 10)),
+                   'mask_frames': np.zeros((100, 10, 10)),
+                   'scalars': {'speed': np.ones((100, 1))}
+                   }
+
+        out_file = os.path.join(output_dir, f'{output_filename}.h5')
+
+        with h5py.File(out_file, 'w') as f:
+            f.create_dataset(f'scalars/speed', (100, 1), 'float32', compression='gzip')
+            f.create_dataset(f'frames', (100, 10, 10), 'float32', compression='gzip')
+            f.create_dataset(f'frames_mask', (100, 10, 10), 'float32', compression='gzip')
+
+            write_extracted_chunk_to_h5(f, results, config_data, scalars, frame_range, offset)
+
+        assert os.path.exists(out_file)
+        os.remove(out_file)
 
     def test_process_extract_batches(self):
 
@@ -76,11 +101,9 @@ class TestHelperExtract(TestCase):
             create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars_attrs, nframes,
                               roi, bground_im, first_frame, None)
 
-            video_pipe = process_extract_batches(g, data_file, config_data, bground_im, roi, scalars, frame_batches,
-                                                 first_frame_idx, str_els, output_dir, output_filename)
-            if video_pipe:
-                video_pipe.stdin.close()
-                video_pipe.wait()
+            process_extract_batches(data_file, config_data, bground_im, roi, frame_batches,
+                                    first_frame_idx, str_els, os.path.join(output_dir, output_filename+'.mp4'),
+                                    scalars=scalars, h5_file=g)
 
         assert os.path.exists(os.path.join(output_dir, f'{output_filename}.h5'))
         os.remove(os.path.join(output_dir, f'{output_filename}.h5'))

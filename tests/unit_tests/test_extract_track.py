@@ -39,6 +39,7 @@ def make_fake_movie():
 
 
 class TestEMTracking(TestCase):
+
     def test_em_get_ll(self):
 
         # draw some random samples
@@ -52,14 +53,14 @@ class TestEMTracking(TestCase):
         for ll_im in ll:
             npt.assert_almost_equal(np.unravel_index(np.argmax(ll_im), im_size), center)
 
-
     def test_em_tracking(self):
 
         # draw some random samples
         fake_movie, tmp_cov, center, im_size, nframes = make_fake_movie()
 
-        parameters = em_tracking(frames=fake_movie, raw_frames=fake_movie)
+        for init in ['raw', 'min', 'med']:
+            parameters = em_tracking(frames=fake_movie, raw_frames=fake_movie, init_method=init)
 
-        # this is very loose atm, need to figure out what's going on here...
-        for mu in parameters['mean']:
-            npt.assert_allclose(mu[:2], center[::-1], atol=5, rtol=0)
+            # this is very loose atm, need to figure out what's going on here...
+            for mu in parameters['mean']:
+                npt.assert_allclose(mu[:2], center[::-1], atol=5, rtol=0)

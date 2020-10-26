@@ -8,6 +8,7 @@ import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
+from moseq2_extract.util import read_yaml
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, \
     convert_raw_to_avi, copy_slice, generate_index, aggregate_extract_results
 
@@ -87,18 +88,24 @@ class CLITests(TestCase):
     def test_extract(self):
 
         data_path = 'data/extract_test_depth.dat'
-        output_dir = 'data/test_out/'
+        config_file = 'data/config.yaml'
+
+        config_data = read_yaml(config_file)
+        config_data['flip_classifier'] = None
+
+        with open(config_file, 'w+') as f:
+            yaml.safe_dump(config_data, f)
 
         write_fake_movie(data_path)
         assert os.path.isfile(data_path), "fake movie was not written"
 
         runner = CliRunner()
         result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
+                                         '--config-file', config_file,
                                          '--use-tracking-model', True],
                                catch_exceptions=False)
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
-        assert ('done.txt' in os.listdir(os.path.dirname(output_dir))), "extraction was interrupted"
         shutil.rmtree('data/test_out/')
         os.remove(data_path)
 

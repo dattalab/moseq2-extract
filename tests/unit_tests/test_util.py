@@ -2,19 +2,22 @@ import os
 import cv2
 import h5py
 import json
+import shutil
 import numpy as np
 import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
+from os.path import exists, dirname
 from moseq2_extract.cli import find_roi
 from moseq2_extract.io.image import read_image
 from ..integration_tests.test_cli import write_fake_movie
-from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps,\
-    select_strel, scalar_attributes, dict_to_h5, click_param_annot, strided_app, \
+from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps, recursive_find_unextracted_dirs, \
+    select_strel, scalar_attributes, dict_to_h5, click_param_annot, strided_app, get_strels, \
     get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, command_with_config, \
     recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, set_bg_roi_weights
 
-class testExtractUtils(TestCase):
+
+class TestExtractUtils(TestCase):
 
     def test_build_path(self):
         out = build_path({'test1': 'value', 'test2': 'value2'}, '{test1}_{test2}')
@@ -42,6 +45,25 @@ class testExtractUtils(TestCase):
         new_config_data = set_bg_roi_weights(test_config_data)
 
         assert new_config_data['bg_roi_weights'] == (1, .1, 1)
+
+    def test_get_strels(self):
+
+        test_input_dict = {
+            'bg_roi_shape': 'ellipse',
+            'tail_filter_shape': 'rect',
+            'cable_filter_shape': 'rect',
+            'tail_filter_size': (7, 7),
+            'cable_filter_size': (7, 7),
+            'bg_roi_dilate': (3, 3),
+            'bg_roi_erode': (4, 4)
+        }
+
+        test_strel_out = get_strels(test_input_dict)
+
+        out_keys = ['strel_dilate', 'strel_erode', 'strel_tail', 'strel_min']
+
+        assert list(test_strel_out.keys()) == out_keys
+
 
     def test_read_yaml(self):
 
@@ -238,6 +260,35 @@ class testExtractUtils(TestCase):
                                  [ 7,  8,  9, 10, 11]])
 
         npt.assert_array_equal(test_out, expected_out)
+
+    def test_recursive_find_unextracted_dirs(self):
+
+        # writing a file to test following pipeline
+        data_path = 'data/test/fake_movie_to_convert.dat'
+        if not exists(dirname(data_path)):
+            os.makedirs(dirname(data_path))
+
+        write_fake_movie(data_path)
+
+        root_dir = 'data/'
+        proc_dirs = recursive_find_unextracted_dirs(root_dir, skip_checks=True)
+        print(proc_dirs)
+        assert len(proc_dirs) == 1
+
+        # writing a file to test following pipeline
+        data_path = 'data/test_2/fake_movie_to_convert.dat'
+        if not exists(dirname(data_path)):
+            os.makedirs(dirname(data_path))
+
+        write_fake_movie(data_path)
+        proc_dirs = recursive_find_unextracted_dirs(root_dir,
+                                                    skip_checks=True,
+                                                    session_pattern=r'fake_movie_to_convert.(?:tgz|tar\.gz)')
+        print(proc_dirs)
+        assert len(proc_dirs) == 2
+        shutil.rmtree('data/test/')
+        shutil.rmtree('data/test_2/')
+
 
     def test_click_param_annot(self):
         ref_dict = {

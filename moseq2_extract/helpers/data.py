@@ -1,9 +1,10 @@
 '''
+
 Data selection, writing, and loading utilities.
 Contains helper functions to aid mostly in handling/storing data during extraction.
 Remainder of functions are used in the data aggregation process.
-'''
 
+'''
 import os
 import h5py
 import shutil
@@ -13,12 +14,11 @@ import numpy as np
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import keymap
-from ast import literal_eval
 from pkg_resources import get_distribution
-from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata,  \
+from os.path import exists, join, dirname, basename, splitext
+from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read_yaml, \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
 
-# extract_wrapper helper function
 def check_completion_status(status_filename):
     '''
     Reads a results_00.yaml (status file) and checks whether the session has been
@@ -33,97 +33,9 @@ def check_completion_status(status_filename):
     complete (bool): If True, data has been extracted to completion.
     '''
 
-    if os.path.exists(status_filename):
-        with open(status_filename, 'r') as f:
-            old_status_dict = yaml.safe_load(f)
-            return old_status_dict['complete']
-    else:
-        return False
-
-# extract all helper function
-def get_selected_sessions(to_extract, extract_all):
-    '''
-    Given user input, the function will return either selected sessions to extract, or all the sessions.
-
-    Parameters
-    ----------
-    to_extract (list): list of paths to sessions to extract
-    extract_all (bool): boolean to include all sessions and skip user-input prompt.
-
-    Returns
-    -------
-    to_extract (list): new list of selected sessions to extract.
-    '''
-
-    selected_sess_idx, excluded_sess_idx, ret_extract = [], [], []
-
-    def parse_input(s):
-        '''
-        Parses user input, looking for specifically numbered sessions, ranges of sessions,
-        and/or sessions to exclude.
-
-        Function will alter the parent functions variables {selected_sess_idx, excluded_sess_idx} according to the
-        user input.
-        Parameters
-        ----------
-        s (str): User input session indices.
-        Examples: "1", or "1,2,3" == "1-3", or "e 1-3" to exclude sessions 1-3.
-
-        Returns
-        -------
-
-        '''
-        if 'e' not in s and '-' not in s:
-            if isinstance(literal_eval(s), int):
-                selected_sess_idx.append(int(s))
-        elif 'e' not in s and '-' in s:
-            ss = s.split('-')
-            if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
-                for i in range(int(ss[0]), int(ss[1]) + 1):
-                    selected_sess_idx.append(i)
-        elif 'e' in s:
-            s = s.strip('e')
-            if '-' not in s:
-                if isinstance(literal_eval(s), int):
-                    excluded_sess_idx.append(int(s))
-            else:
-                ss = s.split('-')
-                if isinstance(literal_eval(ss[0]), int) and isinstance(literal_eval(ss[1]), int):
-                    for i in range(int(ss[0]), int(ss[1]) + 1):
-                        excluded_sess_idx.append(i)
-
-    if len(to_extract) > 1 and not extract_all:
-        for i, sess in enumerate(to_extract):
-            print(f'[{str(i + 1)}] {sess}')
-
-        print('You may input comma separated values for individual sessions')
-        print('Or you can input a hyphen separated range. E.g. "1-10" selects 10 sessions, including sessions 1 and 10')
-        print('You can also exclude a range by prefixing the range selection with the letter "e"; e.g.: "e1-5"')
-        while(len(ret_extract) == 0):
-            sessions = input('Input your selected sessions to extract: ')
-            if 'q' in sessions.lower():
-                return []
-            if ',' in sessions:
-                selection = sessions.split(',')
-                for s in selection:
-                    s = s.strip()
-                    parse_input(s)
-                for i in selected_sess_idx:
-                    if i not in excluded_sess_idx:
-                        ret_extract.append(to_extract[i - 1])
-
-            elif ',' not in sessions and len(sessions) > 0:
-                parse_input(sessions)
-                for i in selected_sess_idx:
-                    if i not in excluded_sess_idx:
-                        if i-1 < len(to_extract):
-                            ret_extract.append(to_extract[i - 1])
-            else:
-                print('Invalid input. Try again or press q to quit.')
-    else:
-        return to_extract
-
-    return ret_extract
+    if exists(status_filename):
+        return read_yaml(status_filename)['complete']
+    return False
 
 def build_index_dict(files_to_use):
     '''
@@ -132,6 +44,9 @@ def build_index_dict(files_to_use):
     It will contain all the inputted file paths with their respective uuids, group names, and metadata.
 
     Note: This is a direct helper function for generate_index_wrapper().
+
+    You can expect the following structure from file_tup elements:
+     ('path_to_extracted_h5', 'path_to_extracted_yaml', {file_status_dict})
 
     Parameters
     ----------
@@ -150,30 +65,28 @@ def build_index_dict(files_to_use):
     index_uuids = []
     for i, file_tup in enumerate(files_to_use):
         if file_tup[2]['uuid'] not in index_uuids:
-            # appending file with default information
-            output_dict['files'].append({
+            tmp = {
                 'path': (file_tup[0], file_tup[1]),
                 'uuid': file_tup[2]['uuid'],
                 'group': 'default',
                 'metadata': {'SessionName': f'default_{i}', 'SubjectName': f'default_{i}'} # fallback metadata
-            })
-
-            index_uuids.append(file_tup[2]['uuid'])
+            }
 
             # handling metadata sub-dictionary values
-            if 'metadata' in file_tup[2].keys():
-                for k, v in file_tup[2]['metadata'].items():
-                    # setting metadata values in a nested dict
-                    output_dict['files'][i]['metadata'][k] = v
+            if 'metadata' in file_tup[2]:
+                tmp['metadata'].update(file_tup[2]['metadata'])
             else:
-                print('skipping', file_tup[0])
-                warnings.warn('Could not locate file metadata! File will be listed with minimal default metadata.')
+                warnings.warn(f'Could not locate metadata for {file_tup[0]}! File will be listed with minimal default metadata.')
+            
+            index_uuids.append(file_tup[2]['uuid'])
+            # appending file with default information
+            output_dict['files'].append(tmp)
 
     return output_dict
 
-def load_h5s(to_load, snake_case=True):
+def load_extraction_meta_from_h5s(to_load, snake_case=True):
     '''
-    aggregate_results() Helper Function to load h5 files.
+    aggregate_results() Helper Function to load extraction metadata from h5 files.
 
     Parameters
     ----------
@@ -204,8 +117,8 @@ def load_h5s(to_load, snake_case=True):
             tmp = keymap(camel_to_snake, tmp)
 
         # Specific use case block: Behavior reinforcement experiments
-        feedback_file = os.path.join(os.path.dirname(_h5f), '..', 'feedback_ts.txt')
-        if os.path.exists(feedback_file):
+        feedback_file = join(dirname(_h5f), '..', 'feedback_ts.txt')
+        if exists(feedback_file):
             timestamps = map(int, load_timestamps(feedback_file, 0))
             feedback_status = map(int, load_timestamps(feedback_file, 1))
             _dict['feedback_timestamps'] = list(zip(timestamps, feedback_status))
@@ -261,8 +174,7 @@ def build_manifest(loaded, format, snake_case=True):
     })
 
     for _dict, _h5f in loaded:
-        print_format = '{}_{}'.format(
-            format, os.path.splitext(os.path.basename(_h5f))[0])
+        print_format = f'{format}_{splitext(basename(_h5f))[0]}'
         if not _dict['extraction_metadata']:
             copy_path = fallback.format(fallback_count)
             fallback_count += 1
@@ -277,8 +189,8 @@ def build_manifest(loaded, format, snake_case=True):
         # add a bonus dictionary here to be copied to h5 file itself
         manifest[_h5f] = {'copy_path': copy_path, 'yaml_dict': _dict, 'additional_metadata': {}}
         for meta in additional_meta:
-            filename = os.path.join(os.path.dirname(_h5f), '..', meta['filename'])
-            if os.path.exists(filename):
+            filename = join(dirname(_h5f), '..', meta['filename'])
+            if exists(filename):
                 try:
                     data, timestamps = load_textdata(filename, dtype=meta['dtype'])
                     manifest[_h5f]['additional_metadata'][meta['var_name']] = {
@@ -304,39 +216,39 @@ def copy_manifest_results(manifest, output_dir):
     None
     '''
 
-    if not os.path.exists(output_dir):
+    if not exists(output_dir):
         os.makedirs(output_dir)
 
     # now the key is the source h5 file and the value is the path to copy to
     for k, v in tqdm(manifest.items(), desc='Copying files'):
 
-        if os.path.exists(os.path.join(output_dir, '{}.h5'.format(v['copy_path']))):
+        if exists(join(output_dir, f'{v["copy_path"]}.h5')):
             continue
 
-        basename = os.path.splitext(os.path.basename(k))[0]
-        dirname = os.path.dirname(k)
+        in_basename = splitext(basename(k))[0]
+        in_dirname = dirname(k)
 
         h5_path = k
-        mp4_path = os.path.join(dirname, '{}.mp4'.format(basename))
+        mp4_path = join(in_dirname, f'{in_basename}.mp4')
 
-        if os.path.exists(h5_path):
-            new_h5_path = os.path.join(output_dir, '{}.h5'.format(v['copy_path']))
+        if exists(h5_path):
+            new_h5_path = join(output_dir, f'{v["copy_path"]}.h5')
             shutil.copyfile(h5_path, new_h5_path)
 
         # if we have additional_meta then crack open the h5py and write to a safe place
         if len(v['additional_metadata']) > 0:
             for k2, v2 in v['additional_metadata'].items():
-                new_key = '/metadata/misc/{}'.format(k2)
+                new_key = f'/metadata/misc/{k2}'
                 with h5py.File(new_h5_path, "a") as f:
-                    f.create_dataset('{}/data'.format(new_key), data=v2["data"])
-                    f.create_dataset('{}/timestamps'.format(new_key), data=v2["timestamps"])
+                    f.create_dataset(f'{new_key}/data', data=v2["data"])
+                    f.create_dataset(f'{new_key}/timestamps', data=v2["timestamps"])
 
-        if os.path.exists(mp4_path):
-            shutil.copyfile(mp4_path, os.path.join(
-                output_dir, '{}.mp4'.format(v['copy_path'])))
+        if exists(mp4_path):
+            shutil.copyfile(mp4_path, join(
+                output_dir, f'{v["copy_path"]}.mp4'))
 
         v['yaml_dict'].pop('extraction_metadata', None)
-        with open('{}.yaml'.format(os.path.join(output_dir, v['copy_path'])), 'w') as f:
+        with open(f'{join(output_dir, v["copy_path"])}.yaml', 'w') as f:
             yaml.safe_dump(v['yaml_dict'], f)
 
 def handle_extract_metadata(input_file, dirname):
@@ -352,28 +264,25 @@ def handle_extract_metadata(input_file, dirname):
 
     Returns
     -------
-    input_file (str): path to decompressed input file (if input_file was originally a tarfile
     acquisition_metadata (dict): key-value pairs of JSON contents
     timestamps (1D array): list of loaded timestamps
     alternate_correct (bool): indicator for whether an alternate timestamp file was used
     tar (bool): indicator for whether the file is compressed.
     '''
 
+    tar = None
+    tar_members = None
+    alternate_correct = False
+
     # Handle TAR files
-    if str(input_file).endswith('.tar.gz') or str(input_file).endswith('.tgz'):
+    if input_file.endswith(('.tar.gz', '.tgz')):
         print(f'Scanning tarball {input_file} (this will take a minute)')
         # compute NEW psuedo-dirname now, `input_file` gets overwritten below with test_vid.dat tarinfo...
-        dirname = os.path.join(dirname, os.path.basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
+        dirname = join(dirname, basename(input_file).replace('.tar.gz', '').replace('.tgz', ''))
 
         tar = tarfile.open(input_file, 'r:gz')
         tar_members = tar.getmembers()
         tar_names = [_.name for _ in tar_members]
-        input_file = tar_members[tar_names.index('test_vid.dat')]
-    else:
-        tar = None
-        tar_members = None
-
-    alternate_correct = False
 
     if tar is not None:
         # Handling tar paths
@@ -385,18 +294,18 @@ def handle_extract_metadata(input_file, dirname):
             alternate_correct = True
     else:
         # Handling non-compressed session paths
-        metadata_path = os.path.join(dirname, 'metadata.json')
-        timestamp_path = os.path.join(dirname, 'depth_ts.txt')
-        alternate_timestamp_path = os.path.join(dirname, 'timestamps.csv')
+        metadata_path = join(dirname, 'metadata.json')
+        timestamp_path = join(dirname, 'depth_ts.txt')
+        alternate_timestamp_path = join(dirname, 'timestamps.csv')
         # Checks for alternative timestamp file if original .txt extension does not exist
-        if not os.path.exists(timestamp_path) and os.path.exists(alternate_timestamp_path):
+        if not exists(timestamp_path) and exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
 
     acquisition_metadata = load_metadata(metadata_path)
-    timestamps = load_timestamps(timestamp_path, col=0)
+    timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
 
-    return input_file, acquisition_metadata, timestamps, alternate_correct, tar
+    return acquisition_metadata, timestamps, tar
 
 
 # extract h5 helper function

@@ -38,7 +38,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
         }
         if filename.endswith(('.mkv', '.avi')):
             try:
-                vid = cv2.VideoCapture(filename).read()
+                vid = cv2.VideoCapture(filename)
                 h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
                                 vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
                                 vid.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -143,8 +143,12 @@ def get_video_info(filename):
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
             'nframes': int(out[3])}
     except:
-        print('Could not process this video extension:', filename)
-        return {}
+        try:
+            finfo = get_raw_info(filename)
+        except:
+            print('Could not process this video extension:', filename)
+            finfo = {}
+        return finfo
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -398,15 +402,14 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
     if type(frames) is int:
         frames = [frames]
-
     try:
-        if filename.lower().endswith(('.dat', '.mkv')):
+        if filename.lower().endswith('.dat'):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
                                          bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
-            frame_data = read_frames(filename, frames)
+        elif filename.lower().endswith(('.avi', '.mkv')):
+            frame_data = read_frames(filename, frames, frame_size=frame_dims)
 
     except AttributeError as e:
         print('Error:', e)

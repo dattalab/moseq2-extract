@@ -97,6 +97,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
         # Threshold chunk depth values at min and max heights
         chunk = threshold_chunk(chunk, min_height, max_height).astype(frame_dtype)
 
+    # Apply ROI mask
     if roi is not None:
         chunk = apply_roi(chunk, roi)
 

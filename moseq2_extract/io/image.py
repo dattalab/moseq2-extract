@@ -3,12 +3,12 @@ Image reading/writing functionality.
 
 Specifically for tiff files containing backgrounds, ROIs, etc.
 '''
-
 import os
 import ast
 import json
 import numpy as np
 from skimage.external import tifffile
+from os.path import join, dirname, exists
 
 def read_tiff_files(input_dir):
     '''
@@ -29,7 +29,7 @@ def read_tiff_files(input_dir):
     filenames = []
     for infile in os.listdir(input_dir):
         if infile[-4:] == "tiff":
-            im = read_image(os.path.join(input_dir, infile))
+            im = read_image(join(input_dir, infile))
             if len(im.shape) == 2:
                 images.append(im)
             elif len(im.shape) == 3:
@@ -75,8 +75,8 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
 
         metadata = {'scale_factor': str(scale_factor)}
 
-    directory = os.path.dirname(file)
-    if not os.path.exists(directory):
+    directory = dirname(file)
+    if not exists(directory):
         os.makedirs(directory)
 
     tifffile.imsave(file, image.astype(dtype), compress=compress, metadata=metadata)

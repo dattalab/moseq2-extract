@@ -17,8 +17,8 @@ They are accessible via CLI or Jupyter Notebook in [moseq2-app](https://github.c
 Usage: moseq2-extract [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help              Show this message and exit.  [default: False]
-  --version           Print version number
+  --version  Show the version and exit.  [default: False]
+  --help     Show this message and exit.  [default: False]
 
 Commands:
   aggregate-results   Copies all extracted results (h5, yaml, avi) files...

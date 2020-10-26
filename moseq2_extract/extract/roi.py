@@ -64,8 +64,7 @@ def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
     if mask is not None:
         use_points = np.logical_and(use_points, mask)
 
-    xx, yy = np.meshgrid(
-        np.arange(depth_image.shape[1]), np.arange(depth_image.shape[0]))
+    xx, yy = np.meshgrid(np.arange(depth_image.shape[1]), np.arange(depth_image.shape[0]))
 
     coords = np.vstack(
         (xx[use_points].ravel(), yy[use_points].ravel(),
@@ -89,9 +88,7 @@ def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
         inliers = dist < noise_tolerance
         ninliers = np.sum(inliers)
 
-        if ((ninliers/npoints) > in_ratio
-                and ninliers > best_num and np.mean(dist) < best_dist):
-
+        if ((ninliers/npoints) > in_ratio and ninliers > best_num and np.mean(dist) < best_dist):
             best_dist = np.mean(dist)
             best_num = ninliers
             best_plane = tmp_plane
