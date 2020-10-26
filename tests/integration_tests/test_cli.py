@@ -8,6 +8,7 @@ import ruamel.yaml as yaml
 import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
+from moseq2_extract.util import read_yaml
 from moseq2_extract.cli import find_roi, extract, download_flip_file, generate_config, \
     convert_raw_to_avi, copy_slice, generate_index, aggregate_extract_results
 
@@ -87,13 +88,10 @@ class CLITests(TestCase):
     def test_extract(self):
 
         data_path = 'data/extract_test_depth.dat'
-        output_dir = 'data/test_out/'
         config_file = 'data/config.yaml'
 
-        with open(config_file, 'r') as f:
-            config_data = yaml.safe_load(f)
-
-            config_data['flip_classifier'] = None
+        config_data = read_yaml(config_file)
+        config_data['flip_classifier'] = None
 
         with open(config_file, 'w+') as f:
             yaml.safe_dump(config_data, f)

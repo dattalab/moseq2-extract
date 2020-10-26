@@ -400,12 +400,12 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
     }
 
+    key_list = list(flip_files)
+
     if selected_flip is None:
-        key_list = list(flip_files)
         for idx, (k, v) in enumerate(flip_files.items()):
             print(f'[{idx}] {k} ---> {v}')
     else:
-        key_list = list(flip_files)
         selected_flip = key_list[selected_flip]
 
     # prompt for user selection if not already inputted
