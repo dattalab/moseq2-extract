@@ -92,7 +92,13 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     if bground is not None:
         # Perform background subtraction
-        chunk = (bground-chunk).astype(frame_dtype)
+        if kwargs['dilate_iterations'] <= 1:
+            chunk = (bground-chunk).astype(frame_dtype)
+        else:
+            # Subtracting only background area where mouse is not on the bucket edge
+            mouse_on_edge = (bground < true_depth) & (chunk < bground)
+            chunk = (bground - chunk) * np.logical_not(mouse_on_edge) + \
+                         (true_depth - chunk) * mouse_on_edge
 
         # Threshold chunk depth values at min and max heights
         chunk = threshold_chunk(chunk, min_height, max_height).astype(frame_dtype)
