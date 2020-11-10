@@ -40,7 +40,7 @@ Run any command with the `--help` flag to display all available options and thei
 
 MoSeq2 uses `sphinx` to generate the documentation in HTML and PDF forms. To install `sphinx`, follow the commands below:
 ```.bash
-pip install sphinx==3.0.3
+pip install sphinx==3.0.3 sphinx_click==2.5.0
 pip install sphinx-rtd-theme
 pip install rst2pdf
 ``` 
