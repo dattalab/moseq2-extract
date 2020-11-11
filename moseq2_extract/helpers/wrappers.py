@@ -322,10 +322,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     print('Detected true depth:', config_data['true_depth'])
 
-    if config_data.get('dilate_iterations', 0) > 1:
-        print('Dilating background')
-        bground_im = graduate_dilated_wall_area(bground_im, config_data, str_els['strel_dilate'], output_dir)
-
     extraction_data = {
         'bground_im': bground_im,
         'roi': roi,
