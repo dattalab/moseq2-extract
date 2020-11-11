@@ -101,7 +101,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
                          (true_depth - chunk) * mouse_on_edge
 
         # Threshold chunk depth values at min and max heights
-        chunk = threshold_chunk(chunk, min_height, max_height).astype(frame_dtype)
+        chunk = threshold_chunk(chunk, min_height, max_height, kwargs['dilate_iterations']).astype(frame_dtype)
 
     # Apply ROI mask
     if roi is not None:

@@ -166,7 +166,7 @@ def get_bbox(roi):
         bbox = np.array([[y.min(), x.min()], [y.max(), x.max()]])
         return bbox
 
-def threshold_chunk(chunk, min_height, max_height):
+def threshold_chunk(chunk, min_height, max_height, dilate_iterations=0):
     '''
     Thresholds out depth values that are less than min_height and larger than
     max_height.
@@ -184,7 +184,9 @@ def threshold_chunk(chunk, min_height, max_height):
     '''
 
     chunk[chunk < min_height] = 0
-    chunk[chunk > max_height] = 0
+
+    if dilate_iterations <= 1:
+        chunk[chunk > max_height] = 0
 
     return chunk
 
