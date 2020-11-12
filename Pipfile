@@ -11,7 +11,7 @@ pytest-cov = "*"
 h5py = '*'
 tqdm = "*"
 scipy = "*"
-numpy = "*"
+numpy = "==1.18.3"
 click = "*"
 awscli = "*"
 joblib = "*"
