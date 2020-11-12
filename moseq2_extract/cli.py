@@ -127,6 +127,8 @@ def find_roi(input_file, output_dir, **config_data):
 @click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")
 @click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')
 @click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')
+@click.option('--graduate-walls', default=True, type=bool, help="Graduates and dilates the background image to compensate for slanted bucket walls. \\_/")
+@click.option('--widen-radius', default=0, type=int, help="Number of pixels to increase/decrease radius by when graduating bucket walls.")
 @click.option('--use-cc', default=True, type=bool, help="Extract features using largest connected components.")
 @click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')
 @click.option('--tracking-model-ll-threshold', default=-100, type=float, help="Threshold on log-likelihood for pixels to use for update during tracking")
