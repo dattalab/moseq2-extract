@@ -3,6 +3,7 @@ Video pre-processing utilities for detecting ROIs and extracting raw data.
 '''
 
 import cv2
+import math
 import joblib
 import scipy.stats
 import numpy as np
@@ -40,8 +41,16 @@ def get_flips(frames, flip_file=None, smoothing=None):
         raise
 
     flip_class = np.where(clf.classes_ == 1)[0]
-    probas = clf.predict_proba(
-        frames.reshape((-1, frames.shape[1] * frames.shape[2])))
+
+    try:
+        probas = clf.predict_proba(
+            frames.reshape((-1, frames.shape[1] * frames.shape[2])))
+    except ValueError:
+        print('WARNING: Input crop-size is not compatible with flip classifier.')
+        accepted_crop = int(math.sqrt(clf.n_features_))
+        print(f'Adjust the crop-size to ({accepted_crop}, {accepted_crop}) to use this flip classifier.')
+        print('The extracted data will NOT be flipped!')
+        probas = np.array([[0]*len(frames), [1]*len(frames)]).T # default output; indicating no flips
 
     if smoothing:
         for i in range(probas.shape[1]):
