@@ -10,6 +10,7 @@ import os
 import click
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
+from copy import deepcopy
 from moseq2_extract.util import command_with_config, read_yaml, recursive_find_unextracted_dirs
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
@@ -186,7 +187,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
     for session in tqdm(to_extract):
-        extract_wrapper(session, output_dir, config_data, num_frames=num_frames,
+        extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
                         skip=skip_completed)
 
     
