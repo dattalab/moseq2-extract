@@ -285,7 +285,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if output_dir is None:
         output_dir = join(in_dirname, 'proc')
     else:
-        if dirname(output_dir) != in_dirname:
+        if in_dirname not in output_dir:
             output_dir = join(in_dirname, output_dir)
 
     if not exists(output_dir):

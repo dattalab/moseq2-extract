@@ -168,7 +168,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     if isinstance(ext, str):
         ext = [ext]
     for ex in ext:
-        tmp = recursive_find_unextracted_dirs(input_dir, filename=ex, skip_checks=True)
+        tmp = recursive_find_unextracted_dirs(input_dir, extension=ex, skip_checks=True)
         to_extract += [e for e in tmp if e.endswith(ex)]
 
     # filter out any incorrectly returned sessions
@@ -315,12 +315,14 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
 
     # Loading individual session config parameters if it exists
     if exists(config_data.get('session_config_path', '')):
-        with open(config_data['session_config_path'], 'r') as f:
-            session_configs = yaml.safe_load(f)
-            session_key = basename(dirname(input_file))
+        session_configs = read_yaml(config_data['session_config_path'])
+        session_key = basename(dirname(input_file))
 
-            # If key is found, update config_data, otherwise, use default dict
-            config_data = session_configs.get(session_key, config_data)
+        # If key is found, update config_data, otherwise, use default dict
+        config_data = session_configs.get(session_key, config_data)
+
+    if output_dir is None:
+        output_dir = config_data.get('output_dir', 'proc')
 
     extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
 

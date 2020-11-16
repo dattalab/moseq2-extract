@@ -146,7 +146,7 @@ def run_local_extract(to_extract, config_file, skip_extracted=False):
 
     for ext in tqdm(to_extract, desc='Extracting Sessions'):
         try:
-            extract_command(ext, 'proc/', config_file=config_file, skip=skip_extracted)
+            extract_command(ext, None, config_file=config_file, skip=skip_extracted)
         except Exception as e:
             print('Unexpected error:', e)
             print('could not extract', ext)
