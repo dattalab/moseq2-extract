@@ -71,7 +71,7 @@ def common_roi_options(function):
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
-    function = click.option('--dilate-iterations', default=0, type=int,
+    function = click.option('--dilate-iterations', default=1, type=int,
                             help='Number of dilation iterations to increase bucket floor size. (Special Cases Only)')(function)
     function = click.option('--bg-roi-erode', default=(1, 1), type=(int, int),
                             help='Size of cv2 Structure Element to erode roi. (Special Cases Only)')(function)
@@ -117,7 +117,7 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")(function)
     function = click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')(function)
     function = click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')(function)
-    function = click.option('--graduate-walls', default=True, type=bool, help="Graduates and dilates the background image to compensate for slanted bucket walls. \\_/")(function)
+    function = click.option('--graduate-walls', default=False, type=bool, help="Graduates and dilates the background image to compensate for slanted bucket walls. \\_/")(function)
     function = click.option('--widen-radius', default=0, type=int, help="Number of pixels to increase/decrease radius by when graduating bucket walls.")(function)
     function = click.option('--use-cc', default=True, type=bool, help="Extract features using largest connected components.")(function)
     function = click.option('--use-tracking-model', default=False, type=bool, help='Use an expectation-maximization style model to aid mouse tracking. Useful for data with cables')(function)
@@ -220,7 +220,7 @@ def generate_index(input_dir, output_file):
 
     output_file = generate_index_wrapper(input_dir, output_file)
 
-    if output_file != None:
+    if output_file is not None:
         print(f'Index file: {output_file} was successfully generated.')
 
 @cli.command(name='aggregate-results', help='Copies all extracted results (h5, yaml, avi) files from all extracted sessions to a new directory,')

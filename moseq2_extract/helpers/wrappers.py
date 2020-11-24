@@ -168,11 +168,12 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     first_frame (2d array): First frame image to plot in GUI
     '''
 
-    if output_dir == None:
+    if output_dir is None:
         output_dir = join(dirname(input_file), 'proc')
+    elif dirname(output_dir) == '' or dirname(output_dir) not in input_file:
+        output_dir = join(dirname(input_file), output_dir)
 
-    if not exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     # checks camera type to set appropriate bg_roi_weights
     config_data = set_bg_roi_weights(config_data)
