@@ -201,7 +201,7 @@ def set_bg_roi_weights(config_data):
     '''
 
     # Auto-setting background weights
-    camera_type = config_data.get('camera_type', None)
+    camera_type = config_data.get('camera_type')
     if camera_type == 'kinect':
         config_data['bg_roi_weights'] = (1, .1, 1)
     elif camera_type == 'azure':
