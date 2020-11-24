@@ -104,7 +104,7 @@ class TestHelperData(TestCase):
 
         assert isinstance(acq_metadata, dict)
         assert len(timestamps.shape) == 1
-        assert tar != None
+        assert tar is not None
 
         os.remove(tmp_file)
 
@@ -115,6 +115,6 @@ class TestHelperData(TestCase):
 
         assert isinstance(acq_metadata, dict)
         assert len(timestamps.shape) == 1
-        assert tar == None
+        assert tar is None
 
         os.remove(tmp_file)

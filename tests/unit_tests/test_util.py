@@ -86,8 +86,8 @@ class TestExtractUtils(TestCase):
         data_file = 'data/depth_ts.txt'
 
         data, timestamps = load_textdata(data_file, np.uint8)
-        assert data.all() != None
-        assert timestamps.all() != None
+        assert data.all() is not None
+        assert timestamps.all() is not None
         assert len(data) == len(timestamps)
 
     def test_time_str_for_filename(self):

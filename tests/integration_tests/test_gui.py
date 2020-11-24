@@ -108,7 +108,7 @@ class GUITests(TestCase):
         generate_config_command(config_path)
 
         out = find_roi_command('data/', config_path, select_session=True)
-        assert (out == None), "roi function did not find any rois to extract"
+        assert (out is None), "roi function did not find any rois to extract"
 
         # writing a file to test following pipeline
         input_dir = 'data/'
