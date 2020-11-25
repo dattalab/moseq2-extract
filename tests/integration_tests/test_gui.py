@@ -107,32 +107,10 @@ class GUITests(TestCase):
 
         generate_config_command(config_path)
 
-        out = find_roi_command('data/', config_path, select_session=True)
-        assert (out is None), "roi function did not find any rois to extract"
-
-        # writing a file to test following pipeline
-        input_dir = 'data/'
-        data_path = 'data/test_session/'
-        data_filepath = os.path.join(data_path, 'test_roi_depth.dat')
-
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-
-        write_fake_movie(data_filepath)
-        assert os.path.isfile(data_filepath)
-
-        stdin = 'data/stdin.txt'
-        # select test file
-        with open(stdin, 'w') as f:
-            f.write('1')
-
-        sys.stdin = open(stdin)
-
-        images, filenames = find_roi_command(input_dir, config_path, select_session=True)
+        images, filenames = find_roi_command('data/', config_path, select_session=False)
         assert (len(filenames) == 3), "incorrect number of rois were computed"
         assert (len(images) == 3), "incorrect number of rois images were computed"
-        shutil.rmtree(data_path)
-        os.remove(stdin)
+
         os.remove(config_path)
 
     def test_extract_command(self):

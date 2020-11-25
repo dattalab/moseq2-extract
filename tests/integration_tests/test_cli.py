@@ -113,12 +113,13 @@ class CLITests(TestCase):
     def test_find_roi(self):
 
         data_path = 'data/roi_test_depth.dat'
+        out_path = 'out/'
         output_dir = 'data/out/'
 
         write_fake_movie(data_path)
 
         runner = CliRunner()
-        result = runner.invoke(find_roi, [data_path, '--output-dir', output_dir])
+        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path])
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
         assert len(glob.glob(output_dir+'*.tiff')) == 3, \
