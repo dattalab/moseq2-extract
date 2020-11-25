@@ -22,6 +22,8 @@ from moseq2_extract.util import convert_pxs_to_mm, strided_app
 def get_flips(frames, flip_file=None, smoothing=None):
     '''
     Predicts frames where mouse orientation is flipped to later correct.
+    If the given flip file is not found or valid, a warning will be emitted and the
+    video will not be flipped.
 
     Parameters
     ----------
@@ -88,7 +90,7 @@ def get_largest_cc(frames, progress_bar=False):
 
 def get_bground_im(frames):
     '''
-    Returns background
+    Returns median 2D frame; AKA background.
 
     Parameters
     ----------
@@ -105,14 +107,15 @@ def get_bground_im(frames):
 
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     '''
-    Returns background from file
+    Returns background from file. If the file is not found, session frames will be read in
+     and a median frame (background) will be computed.
 
     Parameters
     ----------
     frames_file (str): path to data with frames
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
-    kwargs
+    kwargs (dict): extra keyword arguments
 
     Returns
     -------
@@ -212,7 +215,7 @@ def get_roi(depth_image,
             get_all_data=False,
             **kwargs):
     '''
-    Get an ROI using RANSAC plane fitting and simple blob features
+    Compute an ROI using RANSAC plane fitting and simple blob features.
 
     Parameters
     ----------
@@ -383,7 +386,7 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
                  iters_min=None, progress_bar=False):
     '''
-    Simple filtering, median filter and morphological opening.
+    Simple temporal and/or spatial filtering, median filter and morphological opening.
 
     Parameters
     ----------

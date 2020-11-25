@@ -328,7 +328,7 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     bground_im (2d np.ndarray): Computed 2D Background Image.
     first_frame (2d np.ndarray): Computed 2D First Frame Image.
     timestamps (np.array): Array of session timestamps.
-    extract (moseq2_extract.cli.extract function): Used to preseve CLI state parameters in extraction h5.
+    kwargs (dict): additional keyword arguments.
 
     Returns
     -------

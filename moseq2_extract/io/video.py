@@ -221,7 +221,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
                 pixel_format='gray16le', frame_size=None,
                 slices=24, slicecrc=1, mapping=0, get_cmd=False):
     '''
-    Reads in frames from the .nut/.avi file using a pipe from ffmpeg.
+    Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
     Parameters
     ----------
@@ -386,6 +386,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
     Parses file extension to check whether to read the data using ffmpeg (read_frames)
     or to read the frames directly from the file into a numpy array (read_frames_raw).
+    Supports files with extensions ['.dat', '.mkv', '.avi']
 
     Parameters
     ----------
@@ -423,7 +424,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
 def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     '''
-    Returns dict of movie metadata.
+    Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
     Parameters
     ----------
