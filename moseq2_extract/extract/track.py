@@ -269,7 +269,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 
 def em_get_ll(frames, mean, cov, progress_bar=False):
     '''
-    Returns likelihoods for each frame given tracker parameters
+    Returns mouse tracking log-likelihoods for each frame given tracking parameters.
 
     Parameters
     ----------

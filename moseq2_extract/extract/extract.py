@@ -1,10 +1,10 @@
 '''
-Extraction helper utility for performing multiple cleaning, cropping and rotating operations.
+Extraction helper utility for computing scalar feature values performing cleaning, cropping and rotating operations.
 
 Given a "chunk" or segment of an input depth video, this function will first find and subtract the ROI, then
 optionally perform Expectation Maximization tracking for mouse tracking with occlusions such as
 photometry fibers. Next, it will apply some spatial/temporal filtering before cropping, and aligning the rodent
-such that it is always facing east (with the help of the flip classifier).
+such that it is always facing east (with the help of the flip classifier). Finally the scalar values are computed.
 
 It will store each chunk's extracted data and metadata in a dictionary that will be later written to the corresponding
 results_00.h5 file.

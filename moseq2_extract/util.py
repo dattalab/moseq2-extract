@@ -268,6 +268,7 @@ def load_found_session_paths(input_dir, exts):
     '''
     Given an input directory and file extensions, this function will return all
     depth file paths found in the inputted parent (input) directory.
+
     Parameters
     ----------
     input_dir (str): path to parent directory holding all the session folders.
@@ -313,6 +314,7 @@ def get_strels(config_data):
 def select_strel(string='e', size=(10, 10)):
     '''
     Returns structuring element of specified shape.
+    Accepted shapes are 'ellipse' and 'rectangle'. Otherwise, 'ellipse' will be use.
 
     Parameters
     ----------
@@ -371,7 +373,7 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
 
 def scalar_attributes():
     '''
-    Gets scalar attributes
+    Gets scalar attributes dict with names paired with descriptions.
 
     Returns
     -------
@@ -403,7 +405,7 @@ def scalar_attributes():
 
 def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
     '''
-    Converts depth file to avi file.
+    Converts depth file (.dat, '.mkv') to avi file.
 
     Parameters
     ----------
@@ -442,11 +444,10 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
 
     os.system(base_command)
 
-
-
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     '''
     from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
+    Creates subarrays of an array, a, with a given stride and window length.
 
     Parameters
     ----------
@@ -684,7 +685,8 @@ def read_yaml(yaml_file):
 
 def mouse_threshold_filter(h5file, thresh=0):
     '''
-    Filters frames in h5 files by threshold value
+    Filters frames in h5 files by threshold value.
+     Filters out frames with a nanmean < thresh.
 
     Parameters
     ----------
