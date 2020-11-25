@@ -305,7 +305,7 @@ class TestExtractUtils(TestCase):
             'bg_sort_roi_by_position': 'Sort ROIs by position',
             'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
             'bg_roi_fill_holes': 'Fill holes in ROI',
-            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size. (Special Cases Only)',
+            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
             'bg_roi_erode': 'Size of cv2 Structure Element to erode roi. (Special Cases Only)',
             'erode_iterations': 'Number of erosion iterations to decrease bucket floor size. (Special Cases Only)',
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',

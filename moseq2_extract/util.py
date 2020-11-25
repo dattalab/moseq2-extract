@@ -766,7 +766,7 @@ def clean_dict(dct):
         elif isinstance(e, np.ndarray):
             out = e.tolist()
         elif isinstance(e, np.generic):
-            out = np.asscalar(e)
+            out = e.item()
         else:
             out = e
         return out

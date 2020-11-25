@@ -113,7 +113,7 @@ class CLITests(TestCase):
     def test_find_roi(self):
 
         data_path = 'data/roi_test_depth.dat'
-        output_dir = 'data/out/'
+        output_dir = 'out/'
 
         write_fake_movie(data_path)
 
@@ -121,7 +121,7 @@ class CLITests(TestCase):
         result = runner.invoke(find_roi, [data_path, '--output-dir', output_dir])
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
-        assert len(glob.glob(output_dir+'*.tiff')) == 3, \
+        assert len(glob.glob('data/out/*.tiff')) == 3, \
             "ROI files were not generated in the correct directory"
 
         shutil.rmtree(output_dir)
