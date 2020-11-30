@@ -6,7 +6,7 @@
 
 Welcome to moseq2, the latest version of a software package for mouse tracking in depth videos first developed by Alex Wiltschko in the Datta Lab at Harvard Medical School.
 
-Latest version is `0.5.0`
+Latest version is `0.7.0`
 
 ***
 
