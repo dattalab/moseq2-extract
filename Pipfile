@@ -18,7 +18,7 @@ joblib = "*"
 cytoolz = "*"
 matplotlib = '*'
 statsmodels = "*"
-ruamel_yaml = '*'
+ruamel_yaml = '==0.16.5'
 scikit-image = "*"
 scikit-learn = "==0.20.3"
 opencv-python = '*'
