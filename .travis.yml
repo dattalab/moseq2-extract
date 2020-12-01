@@ -23,6 +23,7 @@ jobs:
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
       before_script:
         - make
       script:
@@ -42,6 +43,7 @@ jobs:
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
       before_script:
         - make
       script:
@@ -67,7 +69,7 @@ jobs:
       before_script:
         - make
       script:
-        - pytest --cov=./moseq2_extract/tests/
+        - pytest --cov=./tests/
       after_success:
         - codecov -t $CC_TEST_REPORTER_ID
 
@@ -90,6 +92,6 @@ jobs:
       before_script:
         - make
       script:
-        - pytest --cov=./moseq2_extract/tests/
+        - pytest --cov=./tests/
       after_success:
         - codecov -t $CC_TEST_REPORTER_ID

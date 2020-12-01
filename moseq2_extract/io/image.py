@@ -1,13 +1,44 @@
+'''
+Image reading/writing functionality.
+
+Specifically for tiff files containing backgrounds, ROIs, etc.
+'''
+import os
 import ast
 import json
 import numpy as np
-from pathlib import Path
 from skimage.external import tifffile
+from os.path import join, dirname, exists
 
+def read_tiff_files(input_dir):
+    '''
+    Reads ROI output results (Tiff files) located in the given input_directory
+     into array variables to be graphed in a jupyter notebook.
 
-def write_image(filename, image, scale=True,
-                scale_factor=None, dtype='uint16',
-                metadata={}, compress=0):
+    Parameters
+    ----------
+    input_dir (str): path to directory containing ROI files AKA tiff files.
+
+    Returns
+    -------
+    images (list): list of 2d arrays read from each located tiff file.
+    filenames (list): list of corresponding filenames to each read image.
+    '''
+
+    images = []
+    filenames = []
+    for infile in os.listdir(input_dir):
+        if infile[-4:] == "tiff":
+            im = read_image(join(input_dir, infile))
+            if len(im.shape) == 2:
+                images.append(im)
+            elif len(im.shape) == 3:
+                images.append(im[0])
+            filenames.append(infile)
+
+    return images, filenames
+
+def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', compress=0):
     '''
     Save image data, possibly with scale factor for easy display.
 
@@ -18,7 +49,6 @@ def write_image(filename, image, scale=True,
     scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
     dtype (str): array data type
-    metadata (dict): [UNUSED] dictionary object that contains scaling info
     compress (int): image compression level
 
     Returns
@@ -26,7 +56,7 @@ def write_image(filename, image, scale=True,
     None
     '''
 
-    file = Path(filename)
+    file = filename
 
     metadata = {}
 
@@ -45,21 +75,20 @@ def write_image(filename, image, scale=True,
 
         metadata = {'scale_factor': str(scale_factor)}
 
-    directory = file.parent
-    if not directory.exists():
-        directory.mkdir(parents=True, exist_ok=True)
+    directory = dirname(file)
+    if not exists(directory):
+        os.makedirs(directory)
 
-    tifffile.imsave(file.as_posix(), image.astype(dtype), compress=compress, metadata=metadata)
+    tifffile.imsave(file, image.astype(dtype), compress=compress, metadata=metadata)
 
 
-def read_image(filename, dtype='uint16', scale=True, scale_key='scale_factor'):
+def read_image(filename, scale=True, scale_key='scale_factor'):
     '''
     Load image data, possibly with scale factor...
 
     Parameters
     ----------
-   filename (str): path to file to write to.
-    image (2d numpy array): image to write
+    filename (str): path to file to write to.
     scale (bool): indicates whether to scale image
     scale_key (str): indicates scale factor.
 
