@@ -923,7 +923,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     # Calculate the weight for each pixel
     weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
 
-    return np.clip(1 - weights, 0.08, 0.8)
+    return np.clip(0.98 - weights, 0, 0.81)
 
 
 def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir):
