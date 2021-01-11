@@ -118,7 +118,7 @@ class CLITests(TestCase):
         write_fake_movie(data_path)
 
         runner = CliRunner()
-        result = runner.invoke(find_roi, [data_path, '--output-dir', output_dir])
+        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path])
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
         assert len(glob.glob('data/out/*.tiff')) == 3, \

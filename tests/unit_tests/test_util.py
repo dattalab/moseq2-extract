@@ -275,20 +275,6 @@ class TestExtractUtils(TestCase):
         print(proc_dirs)
         assert len(proc_dirs) == 1
 
-        # writing a file to test following pipeline
-        data_path = 'data/test_2/fake_movie_to_convert.dat'
-        if not exists(dirname(data_path)):
-            os.makedirs(dirname(data_path))
-
-        write_fake_movie(data_path)
-        proc_dirs = recursive_find_unextracted_dirs(root_dir,
-                                                    skip_checks=True,
-                                                    session_pattern=r'fake_movie_to_convert.(?:tgz|tar\.gz)')
-        print(proc_dirs)
-        assert len(proc_dirs) == 2
-        shutil.rmtree('data/test/')
-        shutil.rmtree('data/test_2/')
-
 
     def test_click_param_annot(self):
         ref_dict = {

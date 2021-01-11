@@ -131,9 +131,10 @@ class GUITests(TestCase):
         images, filenames = find_roi_command(input_dir, config_path, select_session=True)
         assert (len(filenames) == 3), "incorrect number of rois were computed"
         assert (len(images) == 3), "incorrect number of rois images were computed"
+
+        os.remove(config_path)
         shutil.rmtree(data_path)
         os.remove(stdin)
-        os.remove(config_path)
 
     def test_extract_command(self):
         configfile = 'data/test_ex_config.yaml'

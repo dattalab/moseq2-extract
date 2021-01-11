@@ -23,6 +23,7 @@ jobs:
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
       before_script:
         - make
       script:
@@ -42,6 +43,7 @@ jobs:
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
       before_script:
         - make
       script:
