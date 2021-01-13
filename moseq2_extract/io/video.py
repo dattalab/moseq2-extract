@@ -83,6 +83,9 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
 
     vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
 
+    if vid_info['dims'] != frame_dims:
+        frame_dims = vid_info['dims']
+
     if type(frames) is int:
         frames = [frames]
     elif not frames or (type(frames) is range) and len(frames) == 0:
