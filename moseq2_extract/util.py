@@ -206,6 +206,8 @@ def set_bg_roi_weights(config_data):
         config_data['bg_roi_weights'] = (1, .1, 1)
     elif camera_type == 'azure':
         config_data['bg_roi_weights'] = (10, 0.1, 1)
+        config_data['frame_dtype'] = '>u2'
+        config_data['pixel_format'] = 'gray16be'
     elif camera_type == 'realsense':
         config_data['bg_roi_weights'] = (10, 1, 4)
     else:

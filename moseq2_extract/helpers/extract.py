@@ -77,7 +77,9 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         raw_chunk = load_movie_data(input_file,
                                     chunk_frames,
                                     frame_dims=bground_im.shape[::-1],
-                                    tar_object=config_data['tar'])
+                                    tar_object=config_data['tar'],
+                                    pixel_format=config_data.get('pixel_format', 'gray16le'),
+                                    frame_dtype=config_data.get('frame_dtype', 'uint16'))
 
         # Get crop-rotated frame batch
         results = extract_chunk(**config_data,

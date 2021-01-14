@@ -105,7 +105,7 @@ def get_bground_im(frames):
     return bground
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -115,6 +115,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     frames_file (str): path to data with frames
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
+    frame_dtype (str): indicates the data type to use when reading the videos.
     kwargs (dict): extra keyword arguments
 
     Returns
@@ -142,18 +143,20 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
                     frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
                 elif frames_file.endswith(('avi', 'mkv')):
                     frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
+                    frame_dtype = frs.dtype
             except AttributeError as e:
                 print('Error reading frames:', e)
                 print('Attempting raw file read...')
                 frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
-
+            
+            frame_dtype = frs.dtype
             frame_store[i] = cv2.medianBlur(frs, med_scale)
 
-        bground = get_bground_im(frame_store)
+        bground = get_bground_im(frame_store).astype(frame_dtype)
         write_image(bground_path, bground, scale=True)
     else:
-        bground = read_image(bground_path, scale=True)
-
+        bground = read_image(bground_path, scale=True).astype(frame_dtype)
+        
     return bground
 
 
