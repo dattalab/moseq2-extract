@@ -414,7 +414,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
                                          frames=frames,
                                          frame_dims=frame_dims,
                                          bit_depth=bit_depth,
-                                         frame_dtype=kwargs.get('frame_dtype', '<i2'))
+                                         dtype=kwargs.get('frame_dtype', '<i2'))
         elif filename.lower().endswith(('.avi', '.mkv')):
             frame_data = read_frames(filename, 
                                     frames, 
@@ -428,7 +428,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
                                      frames=frames,
                                      frame_dims=frame_dims,
                                      bit_depth=bit_depth,
-                                     frame_dtype=kwargs.get('frame_dtype', '<i2'))
+                                     dtype=kwargs.get('frame_dtype', '<i2'))
     return frame_data
 
 

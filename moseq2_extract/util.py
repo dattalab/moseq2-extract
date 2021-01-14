@@ -973,10 +973,10 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
     # create slant gradient
-    bground_im = np.float64((make_gradient(width, height, h, k, a, b, theta)) * 255)
+    bground_im = np.uint16((make_gradient(width, height, h, k, a, b, theta)) * 255)
 
     # scale it back to depth
-    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
+    bground_im *= np.uint16((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
 
     # overlay with actual bucket floor distance
     mask = np.ma.equal(old_bg, old_bg.max())
