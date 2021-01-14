@@ -960,7 +960,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     # getting helper user parameters
     true_depth = config_data['true_depth']
     xoffset = config_data.get('x_bg_offset', -2)
-    yoffset = config_data.get('y_offset', 2)
+    yoffset = config_data.get('y_bg_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
     bg_threshold = config_data.get('bg_threshold', 650)
 
@@ -968,7 +968,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
 
     # set up gradient
-    h, k = cx + xoffset, cy + yoffset   # centroid of gradient circle
+    k, h = cx + xoffset, cy + yoffset   # centroid of gradient circle
     a, b = cx + widen_radius + 67, cy + widen_radius + 67 # x,y radii of gradient circle
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
