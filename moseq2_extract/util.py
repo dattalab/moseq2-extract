@@ -977,8 +977,19 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     bground_im = np.uint16((bground_im/bground_im.max())*true_depth)
 
     # overlay with actual bucket floor distance
-    mask = np.ma.equal(old_bg, old_bg.max())
-    bground_im = np.where(mask == True, old_bg, bground_im)
+    if config_data.get('floor_slant', False):
+        ret, thresh = cv2.threshold(old_bg, np.median(old_bg), true_depth, 0)
+        contours, _ = cv2.findContours(thresh.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros(bground_im.shape, np.uint8)
+
+        cv2.drawContours(mask, contours, -1, (255), -1)
+
+        tmp = np.where(mask == True, bground_im, old_bg)
+        bground_im = np.where(tmp == 0, bground_im, tmp)
+    else:
+        mask = np.ma.equal(old_bg, old_bg.max())
+        bground_im = np.where(mask == True, old_bg, bground_im)
+
     bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
 
     write_image(join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
