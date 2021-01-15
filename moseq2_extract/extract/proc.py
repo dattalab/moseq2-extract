@@ -105,7 +105,7 @@ def get_bground_im(frames):
     return bground
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', rescale_depth=False, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -140,22 +140,34 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype=
         for i, frame in enumerate(frame_idx):
             try:
                 if frames_file.endswith(('dat')):
-                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
+                    frs = moseq2_extract.io.video.read_frames_raw(frames_file,
+                                                                  int(frame),
+                                                                  dtype=frame_dtype,
+                                                                  frame_dims=finfo['dims']).squeeze()
                 elif frames_file.endswith(('avi', 'mkv')):
-                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
-                    frame_dtype = frs.dtype
+                    frs = moseq2_extract.io.video.read_frames(frames_file,
+                                                              [int(frame)], 
+                                                              frame_dtype=frame_dtype,
+                                                              pixel_format=kwargs.get('pixel_format', 'gray16le'),
+                                                              frame_size=finfo['dims']).squeeze()
+                    
             except AttributeError as e:
                 print('Error reading frames:', e)
                 print('Attempting raw file read...')
                 frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
             
-            frame_dtype = frs.dtype
+            if rescale_depth:
+                frs = frs.astype('uint8')
+
             frame_store[i] = cv2.medianBlur(frs, med_scale)
 
         bground = get_bground_im(frame_store).astype(frame_dtype)
         write_image(bground_path, bground, scale=True)
     else:
         bground = read_image(bground_path, scale=True).astype(frame_dtype)
+    
+    if rescale_depth:
+        bground = bground.astype('uint8')
         
     return bground
 

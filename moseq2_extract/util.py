@@ -206,8 +206,6 @@ def set_bg_roi_weights(config_data):
         config_data['bg_roi_weights'] = (1, .1, 1)
     elif camera_type == 'azure':
         config_data['bg_roi_weights'] = (10, 0.1, 1)
-        config_data['frame_dtype'] = '>u2'
-        config_data['pixel_format'] = 'gray16be'
     elif camera_type == 'realsense':
         config_data['bg_roi_weights'] = (10, 1, 4)
     else:
@@ -962,7 +960,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     xoffset = config_data.get('x_bg_offset', -2)
     yoffset = config_data.get('y_bg_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
-    bg_threshold = config_data.get('bg_threshold', 650)
+    bg_threshold = config_data.get('bg_threshold', np.median(bground_im))
 
     # getting bground centroid
     cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)

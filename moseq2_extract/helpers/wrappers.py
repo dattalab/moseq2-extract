@@ -179,7 +179,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     config_data = set_bg_roi_weights(config_data)
 
     print('Getting background...')
-    bground_im = get_bground_im_file(input_file)
+    bground_im = get_bground_im_file(input_file, **config_data)
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
