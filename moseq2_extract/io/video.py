@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 
-def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
+def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     '''
     Gets info from a raw data file with specified frame dimensions and bit depth.
 
@@ -27,13 +27,13 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     file_info (dict): dictionary containing depth file metadata
     '''
 
-    bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
+    bytes_per_frame = (frame_size[0] * frame_size[1] * bit_depth) / 8
 
     if type(filename) is not tarfile.TarInfo:
         file_info = {
             'bytes': os.stat(filename).st_size,
             'nframes': int(os.stat(filename).st_size / bytes_per_frame),
-            'dims': frame_dims,
+            'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
         if filename.endswith(('.mkv', '.avi')):
@@ -58,13 +58,13 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
         file_info = {
             'bytes': filename.size,
             'nframes': int(filename.size / bytes_per_frame),
-            'dims': frame_dims,
+            'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
+def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, dtype="<i2", tar_object=None, **kwargs):
     '''
     Reads in data from raw binary file.
 
@@ -81,7 +81,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     chunk (numpy ndarray): nframes x h x w
     '''
 
-    vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+    vid_info = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
 
     if type(frames) is int:
         frames = [frames]
@@ -89,9 +89,9 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
         frames = range(0, vid_info['nframes'])
 
     seek_point = np.maximum(0, frames[0]*vid_info['bytes_per_frame'])
-    read_points = len(frames)*frame_dims[0]*frame_dims[1]
+    read_points = len(frames)*frame_size[0]*frame_size[1]
 
-    dims = (len(frames), frame_dims[1], frame_dims[0])
+    dims = (len(frames), frame_size[1], frame_size[0])
 
     if type(tar_object) is tarfile.TarFile:
         with tar_object.extractfile(filename) as f:
@@ -218,8 +218,8 @@ def write_frames(filename, frames, threads=6, fps=30,
 
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
-                pixel_format='gray16le', frame_size=None,
-                slices=24, slicecrc=1, mapping=0, get_cmd=False):
+                pixel_format='gray16le', dtype='uint16', frame_size=None,
+                slices=24, slicecrc=1, mapping=0, get_cmd=False, finfo=None, **kwargs):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
@@ -241,10 +241,11 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video (3d numpy array):  frames x h x w
     '''
 
-    try:
-        finfo = get_video_info(filename)
-    except AttributeError as e:
-        finfo = get_raw_info(filename)
+    if finfo is None:
+        try:
+            finfo = get_video_info(filename)
+        except AttributeError as e:
+            finfo = get_raw_info(filename)
 
     if frames is None or len(frames) == 0:
         frames = np.arange(finfo['nframes']).astype('int16')
@@ -283,7 +284,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
+    video = np.frombuffer(out, dtype=dtype).reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
@@ -381,7 +382,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
-def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
+def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, **kwargs):
     '''
 
     Parses file extension to check whether to read the data using ffmpeg (read_frames)
@@ -407,22 +408,22 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
         if filename.lower().endswith('.dat'):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
-                                         frame_dims=frame_dims,
-                                         bit_depth=bit_depth)
+                                         frame_size=frame_size,
+                                         bit_depth=bit_depth, **kwargs)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            frame_data = read_frames(filename, frames, frame_size=frame_dims)
+            frame_data = read_frames(filename, frames, frame_size=frame_size, **kwargs)
 
     except AttributeError as e:
         print('Error:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
-                                     frame_dims=frame_dims,
+                                     frame_size=frame_size,
                                      bit_depth=bit_depth,
                                      **kwargs)
     return frame_data
 
 
-def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -439,11 +440,11 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
 
     try:
         if filename.lower().endswith(('.dat', '.mkv')):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+            metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith('.avi'):
             metadata = get_video_info(filename)
             if metadata == {}:
-                metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+                metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
     except AttributeError as e:
         print('Error:', e)
         metadata = get_raw_info(filename)

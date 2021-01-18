@@ -126,27 +126,18 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
 
     # Compute background image if it doesn't exist. Otherwise, load from file
     if not exists(bground_path):
-        try:
-            if frames_file.endswith(('dat', 'mkv')):
-                finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-            elif frames_file.endswith('avi'):
-                finfo = moseq2_extract.io.video.get_video_info(frames_file)
-        except AttributeError as e:
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+        finfo = moseq2_extract.io.video.get_movie_info(frames_file)
+        # try:
+        #     if frames_file.endswith(('dat', 'mkv')):
+        #         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+        #     elif frames_file.endswith('avi'):
+        # except AttributeError as e:
+        #     finfo = moseq2_extract.io.video.get_raw_info(frames_file)
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
         for i, frame in enumerate(frame_idx):
-            try:
-                if frames_file.endswith(('dat')):
-                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
-                elif frames_file.endswith(('avi', 'mkv')):
-                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
-            except AttributeError as e:
-                print('Error reading frames:', e)
-                print('Attempting raw file read...')
-                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
-
+            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], finfo=finfo, **kwargs).squeeze()
             frame_store[i] = cv2.medianBlur(frs, med_scale)
 
         bground = get_bground_im(frame_store)
