@@ -64,7 +64,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
+def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None, **kwargs):
     '''
     Reads in data from raw binary file.
 
@@ -82,6 +82,9 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     '''
 
     vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+
+    if vid_info['dims'] != frame_dims:
+        frame_dims = vid_info['dims']
 
     if type(frames) is int:
         frames = [frames]
@@ -152,8 +155,8 @@ def get_video_info(filename):
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
-                 pixel_format='gray16le', codec='ffv1', close_pipe=True,
-                 pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False):
+                 pixel_format='gray16le', codec='ffv1', close_pipe=True, pipe=None,
+                 frame_dtype='uint16', slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     '''
     Write frames to avi file using the ffv1 lossless encoder
 
@@ -167,6 +170,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     codec (str): ffmpeg encoding-writer method to use
     close_pipe (bool): indicates to close the open pipe to video when done writing.
     pipe (subProcess.Pipe): pipe to currently open video file.
+    frame_dtype (str): indicates the data type to use when writing the videos 
     slices (int): number of frame slices to write at a time.
     slicecrc (int): check integrity of slices
     frame_size (tuple): shape/dimensions of image.
@@ -208,7 +212,7 @@ def write_frames(filename, frames, threads=6, fps=30,
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for i in tqdm(range(frames.shape[0]), disable=True):
-        pipe.stdin.write(frames[i].astype('uint16').tostring())
+        pipe.stdin.write(frames[i].astype(frame_dtype).tostring())
 
     if close_pipe:
         pipe.stdin.close()
@@ -218,7 +222,7 @@ def write_frames(filename, frames, threads=6, fps=30,
 
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
-                pixel_format='gray16le', frame_size=None,
+                pixel_format='gray16le', frame_size=None, frame_dtype='uint16',
                 slices=24, slicecrc=1, mapping=0, get_cmd=False):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
@@ -231,6 +235,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     fps (int): frame rate of camera in Hz
     pixel_format (str): ffmpeg pixel format of data
     frame_size (str): wxh frame size in pixels
+    frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
     mapping (int): ffmpeg channel mapping; "o:mapping"
@@ -283,7 +288,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype='uint16').reshape((len(frames), frame_size[1], frame_size[0]))
+    video = np.frombuffer(out, dtype=frame_dtype).reshape((len(frames), frame_size[1], frame_size[0]))
     return video
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
@@ -381,7 +386,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
-def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, **kwargs):
+def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, rescale_depth=False, **kwargs):
     '''
 
     Parses file extension to check whether to read the data using ffmpeg (read_frames)
@@ -408,9 +413,14 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_dims=frame_dims,
-                                         bit_depth=bit_depth)
+                                         bit_depth=bit_depth,
+                                         dtype=kwargs.get('frame_dtype', '<i2'))
         elif filename.lower().endswith(('.avi', '.mkv')):
-            frame_data = read_frames(filename, frames, frame_size=frame_dims)
+            frame_data = read_frames(filename, 
+                                    frames, 
+                                    frame_size=frame_dims, 
+                                    pixel_format=kwargs.get('pixel_format', 'gray16le'),
+                                    frame_dtype=kwargs.get('frame_dtype', 'uint16'))
 
     except AttributeError as e:
         print('Error:', e)
@@ -418,7 +428,11 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
                                      frames=frames,
                                      frame_dims=frame_dims,
                                      bit_depth=bit_depth,
-                                     **kwargs)
+                                     dtype=kwargs.get('frame_dtype', '<i2'))
+    
+    if rescale_depth:
+        frame_data = frame_data.astype('uint8')
+
     return frame_data
 
 
