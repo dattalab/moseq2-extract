@@ -248,7 +248,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
             finfo = get_raw_info(filename)
 
     if frames is None or len(frames) == 0:
-        frames = np.arange(finfo['nframes']).astype('int16')
+        frames = np.arange(finfo['nframes'], dtype='int16')
 
     if not frame_size:
         frame_size = finfo['dims']

@@ -182,7 +182,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     bground_im = get_bground_im_file(input_file, **config_data)
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
-    first_frame = load_movie_data(input_file, 0) # there is a tar object flag that must be set!!
+    first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=config_data['bg_roi_depth_range'])
 
@@ -214,7 +214,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     for idx in bg_roi_index:
         roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
+        write_image(join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint16')
 
     return roi, bground_im, first_frame
 

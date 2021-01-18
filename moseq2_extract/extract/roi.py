@@ -60,6 +60,9 @@ def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
     '''
 
     use_points = np.logical_and(depth_image > bg_roi_depth_range[0], depth_image < bg_roi_depth_range[1])
+    if np.sum(use_points) == 0:
+        raise ValueError('No datapoints exist within given "bg roi depth range". '
+                         'Please adjust this parameter to fit your recording sessions.')
 
     if mask is not None:
         use_points = np.logical_and(use_points, mask)
