@@ -88,23 +88,6 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im(frames):
-    '''
-    Returns median 2D frame; AKA background.
-
-    Parameters
-    ----------
-    frames (3d numpy array): frames x r x c, uncropped mouse
-
-    Returns
-    -------
-    bground (2d numpy array):  r x c, background image
-    '''
-
-    bground = np.median(frames, 0)
-    return bground
-
-
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
@@ -140,7 +123,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
             frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], finfo=finfo, **kwargs).squeeze()
             frame_store[i] = cv2.medianBlur(frs, med_scale)
 
-        bground = get_bground_im(frame_store)
+        bground = np.nanmedian(frame_store, axis=0)
         write_image(bground_path, bground, scale=True)
     else:
         bground = read_image(bground_path, scale=True)
