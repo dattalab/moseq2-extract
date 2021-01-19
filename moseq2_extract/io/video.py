@@ -284,7 +284,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype=dtype).reshape((len(frames), frame_size[1], frame_size[0]))
+    video = np.frombuffer(out, dtype=dtype).reshape((len(frames), frame_size[1], frame_size[0])).astype('uint16')
     return video
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
