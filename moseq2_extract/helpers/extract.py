@@ -28,17 +28,19 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
     -------
     '''
 
+    total_frames = len(results['depth_frames'][offset:])
+
     # Writing computed scalars to h5 file
     for scalar in scalars:
-        h5_file[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
+        h5_file[f'scalars/{scalar}'][frame_range[:total_frames]] = results['scalars'][scalar][offset:]
 
     # Writing frames and mask to h5
-    h5_file['frames'][frame_range] = results['depth_frames'][offset:]
-    h5_file['frames_mask'][frame_range] = results['mask_frames'][offset:]
+    h5_file['frames'][frame_range[:total_frames]] = results['depth_frames'][offset:]
+    h5_file['frames_mask'][frame_range[:total_frames]] = results['mask_frames'][offset:]
 
     # Writing flip classifier results to h5
     if config_data['flip_classifier']:
-        h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
+        h5_file['metadata/extraction/flips'][frame_range[:total_frames]] = results['flips'][offset:]
 
 def process_extract_batches(input_file, config_data, bground_im, roi,
                             frame_batches, first_frame_idx, str_els,

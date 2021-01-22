@@ -74,6 +74,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     frames (list or range): frames to extract
     frame_dims (tuple): wxh of frames in pixels
     bit_depth (int): bits per pixel (default: 16)
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
 
     Returns
@@ -233,6 +234,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     threads (int): number of threads to use for decode
     fps (int): frame rate of camera in Hz
     pixel_format (str): ffmpeg pixel format of data
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
@@ -287,7 +289,16 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0])).astype('uint16')
+    try:
+        video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0])).astype('uint16')
+    except:
+        # number of frames was read incorrectly
+        tmp = np.frombuffer(out, dtype=movie_dtype)
+
+        # estimate number of frames based on file size and resize the video
+        nframes = int(tmp.size / frame_size[1] / frame_size[0])
+        video = tmp.reshape((nframes, frame_size[1], frame_size[0])).astype('uint16')
+
     return video
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
