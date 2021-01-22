@@ -24,8 +24,8 @@ def plane_fit3(points):
     # cross prod
     normal = np.array([[a[1]*b[2]-a[2]*b[1]],
                        [a[2]*b[0]-a[0]*b[2]],
-                       [a[0]*b[1]-a[1]*b[0]]])
-    denom = np.sum(np.square(normal))
+                       [a[0]*b[1]-a[1]*b[0]]]).astype('float') 
+    denom = np.sum(np.square(normal)).astype('float') 
     if denom < np.spacing(1):
         plane = np.empty((4,))
         plane[:] = np.nan

@@ -87,6 +87,9 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     if vid_info['dims'] != frame_size:
         frame_size = vid_info['dims']
 
+    if vid_info['dims'] != frame_dims:
+        frame_dims = vid_info['dims']
+
     if type(frames) is int:
         frames = [frames]
     elif not frames or (type(frames) is range) and len(frames) == 0:
@@ -156,8 +159,8 @@ def get_video_info(filename):
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
-                 pixel_format='gray16le', codec='ffv1', close_pipe=True,
-                 pipe=None, slices=24, slicecrc=1, frame_size=None, get_cmd=False):
+                 pixel_format='gray16le', codec='ffv1', close_pipe=True, pipe=None,
+                 frame_dtype='uint16', slices=24, slicecrc=1, frame_size=None, get_cmd=False):
     '''
     Write frames to avi file using the ffv1 lossless encoder
 
@@ -171,6 +174,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     codec (str): ffmpeg encoding-writer method to use
     close_pipe (bool): indicates to close the open pipe to video when done writing.
     pipe (subProcess.Pipe): pipe to currently open video file.
+    frame_dtype (str): indicates the data type to use when writing the videos 
     slices (int): number of frame slices to write at a time.
     slicecrc (int): check integrity of slices
     frame_size (tuple): shape/dimensions of image.
@@ -212,7 +216,7 @@ def write_frames(filename, frames, threads=6, fps=30,
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for i in tqdm(range(frames.shape[0]), disable=True):
-        pipe.stdin.write(frames[i].astype('uint16').tostring())
+        pipe.stdin.write(frames[i].astype(frame_dtype).tostring())
 
     if close_pipe:
         pipe.stdin.close()
@@ -236,6 +240,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
+    frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
     mapping (int): ffmpeg channel mapping; "o:mapping"
@@ -439,7 +444,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
     if rescale_depth:
         frame_data = cv2.convertScaleAbs(frame_data, alpha=(255.0 / 65535.0))
-
+        
     return frame_data
 
 

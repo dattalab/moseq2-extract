@@ -958,9 +958,9 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     # getting helper user parameters
     true_depth = config_data['true_depth']
     xoffset = config_data.get('x_bg_offset', -2)
-    yoffset = config_data.get('y_offset', 2)
+    yoffset = config_data.get('y_bg_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
-    bg_threshold = config_data.get('bg_threshold', 650)
+    bg_threshold = config_data.get('bg_threshold', np.median(bground_im))
 
     # getting bground centroid
     cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
@@ -971,14 +971,25 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
     # create slant gradient
-    bground_im = np.float64((make_gradient(width, height, h, k, a, b, theta)) * 255)
+    bground_im = np.uint16((make_gradient(width, height, h, k, a, b, theta)) * 255)
 
     # scale it back to depth
-    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
+    bground_im = np.uint16((bground_im/bground_im.max())*true_depth)
 
     # overlay with actual bucket floor distance
-    mask = np.ma.equal(old_bg, old_bg.max())
-    bground_im = np.where(mask == True, old_bg, bground_im)
+    if config_data.get('floor_slant', False):
+        ret, thresh = cv2.threshold(old_bg, np.median(old_bg), true_depth, 0)
+        contours, _ = cv2.findContours(thresh.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros(bground_im.shape, np.uint8)
+
+        cv2.drawContours(mask, contours, -1, (255), -1)
+
+        tmp = np.where(mask == True, bground_im, old_bg)
+        bground_im = np.where(tmp == 0, bground_im, tmp)
+    else:
+        mask = np.ma.equal(old_bg, old_bg.max())
+        bground_im = np.where(mask == True, old_bg, bground_im)
+
     bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
 
     write_image(join(output_dir, 'new_bg.tiff'), bground_im, scale=True)
