@@ -88,7 +88,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', rescale_depth=False, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -108,15 +108,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
     # Compute background image if it doesn't exist. Otherwise, load from file
-    if not exists(bground_path):
+    if not exists(bground_path) or kwargs.get('recompute_bg', False):
         finfo = moseq2_extract.io.video.get_movie_info(frames_file)
-        # try:
-        #     if frames_file.endswith(('dat', 'mkv')):
-        #         finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-        #     elif frames_file.endswith('avi'):
-        # except AttributeError as e:
-        #     finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = []
         for i, frame in enumerate(frame_idx):

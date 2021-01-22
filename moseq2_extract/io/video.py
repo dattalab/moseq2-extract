@@ -64,7 +64,7 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, dtype="<i2", tar_object=None, **kwargs):
+def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<i2", tar_object=None, **kwargs):
     '''
     Reads in data from raw binary file.
 
@@ -83,6 +83,9 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
     vid_info = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
 
+    if vid_info['dims'] != frame_size:
+        frame_size = vid_info['dims']
+
     if type(frames) is int:
         frames = [frames]
     elif not frames or (type(frames) is range) and len(frames) == 0:
@@ -97,12 +100,12 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
         with tar_object.extractfile(filename) as f:
             f.seek(int(seek_point))
             chunk = f.read(int(len(frames) * vid_info['bytes_per_frame']))
-            chunk = np.frombuffer(chunk, dtype=np.dtype(dtype)).reshape(dims)
+            chunk = np.frombuffer(chunk, dtype=np.dtype(movie_dtype)).reshape(dims)
     else:
         with open(filename, "rb") as f:
             f.seek(int(seek_point))
             chunk = np.fromfile(file=f,
-                                dtype=np.dtype(dtype),
+                                dtype=np.dtype(movie_dtype),
                                 count=read_points).reshape(dims)
 
     return chunk
@@ -218,7 +221,7 @@ def write_frames(filename, frames, threads=6, fps=30,
 
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30,
-                pixel_format='gray16le', dtype='uint16', frame_size=None,
+                pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
                 slices=24, slicecrc=1, mapping=0, get_cmd=False, finfo=None, **kwargs):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
@@ -284,7 +287,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype=dtype).reshape((len(frames), frame_size[1], frame_size[0])).astype('uint16')
+    video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0])).astype('uint16')
     return video
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
