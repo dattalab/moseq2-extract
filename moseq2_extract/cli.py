@@ -84,6 +84,8 @@ def common_roi_options(function):
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
     function = click.option('--recompute-bg', default=False, help='Overwrite previously computed background image')(
         function)
+    function = click.option('--rescale-depth', default=False, help='Rescales the pixel values to uint8 byte representation. '
+                            'Only set to True if the data is incorrectly represented in the file.')(function)
     function = click.option("--config-file", type=click.Path())(function)
     function = click.option('--progress-bar', '-p', is_flag=True, help='Show verbose progress bars.')(function)
     return function

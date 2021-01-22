@@ -385,7 +385,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
-def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, **kwargs):
+def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, rescale_depth=False, **kwargs):
     '''
 
     Parses file extension to check whether to read the data using ffmpeg (read_frames)
@@ -398,6 +398,8 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     frames (int or list): Frame indices to read in to output array.
     frame_dims (tuple): Video dimensions (nrows, ncols)
     bit_depth (int): Number of bits per pixel, corresponds to image resolution.
+    rescale_depth (bool): rescales the pixel values to uint8 byte representation.
+     Only set to True if the data is incorrectly represented in the file.
     kwargs (dict): Any additional parameters that could be required in read_frames_raw().
 
     Returns
@@ -423,6 +425,10 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
                                      frame_size=frame_size,
                                      bit_depth=bit_depth,
                                      **kwargs)
+
+    if rescale_depth:
+        frame_data = cv2.convertScaleAbs(frame_data, alpha=(255.0 / 65535.0))
+
     return frame_data
 
 

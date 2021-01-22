@@ -88,7 +88,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', rescale_depth=False, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, rescale_depth=False, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -98,6 +98,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype=
     frames_file (str): path to data with frames
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
+    rescale_depth (bool): rescales the pixel values to uint8 byte representation.
+     Only set to True if the data is incorrectly represented in the file.
     kwargs (dict): extra keyword arguments
 
     Returns
@@ -117,6 +119,10 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype=
             frame_store.append(cv2.medianBlur(frs, med_scale))
 
         bground = np.nanmedian(frame_store, axis=0)
+
+        if rescale_depth:
+            bground = cv2.convertScaleAbs(bground, alpha=(255.0 / 65535.0))
+
         write_image(bground_path, bground, scale=True)
     else:
         bground = read_image(bground_path, scale=True)
