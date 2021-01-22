@@ -125,10 +125,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, rescale_dept
 
         write_image(bground_path, bground, scale=True)
     else:
-        bground = read_image(bground_path, scale=True).astype(frame_dtype)
-    
-    if rescale_depth:
-        bground = bground.astype('uint8')
+        bground = read_image(bground_path, scale=True)
         
     return bground
 

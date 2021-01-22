@@ -87,9 +87,6 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     if vid_info['dims'] != frame_size:
         frame_size = vid_info['dims']
 
-    if vid_info['dims'] != frame_dims:
-        frame_dims = vid_info['dims']
-
     if type(frames) is int:
         frames = [frames]
     elif not frames or (type(frames) is range) and len(frames) == 0:
@@ -412,7 +409,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     ----------
     filename (str): Path to file to read video from.
     frames (int or list): Frame indices to read in to output array.
-    frame_dims (tuple): Video dimensions (nrows, ncols)
+    frame_size (tuple): Video dimensions (nrows, ncols)
     bit_depth (int): Number of bits per pixel, corresponds to image resolution.
     rescale_depth (bool): rescales the pixel values to uint8 byte representation.
      Only set to True if the data is incorrectly represented in the file.
