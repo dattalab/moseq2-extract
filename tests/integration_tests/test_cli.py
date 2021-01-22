@@ -102,7 +102,8 @@ class CLITests(TestCase):
         runner = CliRunner()
         result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
                                          '--config-file', config_file,
-                                         '--use-tracking-model', True],
+                                         '--use-tracking-model', True,
+                                         '--bg-roi-depth-range', 0, 1000],
                                catch_exceptions=False)
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
@@ -119,7 +120,8 @@ class CLITests(TestCase):
         write_fake_movie(data_path)
 
         runner = CliRunner()
-        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path])
+        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path,
+                                          '--bg-roi-depth-range', 0, 1000])
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
         assert len(glob.glob(output_dir+'*.tiff')) == 3, \
