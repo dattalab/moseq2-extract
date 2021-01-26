@@ -11,6 +11,40 @@ import numpy as np
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
+def compute_timestamps(filename, output_file):
+    '''
+    Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
+    output data to a csv file.
+
+    Parameters
+    ----------
+    filename (str): path to input file to extract timestamps from.
+    output_file (str): path to output file where the respective timestamps are saved.
+
+    Returns
+    -------
+    '''
+
+    command = [
+        'ffprobe',
+        '-select_streams',
+        '-v:0',
+        '-show_entries',
+        'frame=pkt_pts_time',
+        '-v',
+        'quiet',
+        filename,
+        '-of',
+        'cvs=p=0',
+        f'> {output_file}'
+    ]
+
+    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffprobe.communicate()
+
+    if (err):
+        print('Error:', err)
+        raise err
 
 def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     '''

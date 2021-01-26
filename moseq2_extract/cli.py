@@ -14,7 +14,7 @@ from copy import deepcopy
 from moseq2_extract.util import command_with_config, read_yaml, recursive_find_unextracted_dirs
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
-                                             convert_raw_to_avi_wrapper, copy_slice_wrapper)
+                                             convert_raw_to_avi_wrapper, copy_slice_wrapper, compute_azure_timestamps)
 
 orig_init = click.core.Option.__init__
 
@@ -155,6 +155,13 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')(function)
 
     return function
+
+@cli.command(name="get-timestamps", help="Extracts timestamps from .mkv files and stores them in a .csv file.")
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
+@click.option('--output-file', '-o', type=click.Path(), default='timestamps.csv')
+def get_timestamps(input_file, output_file):
+
+    compute_azure_timestamps(input_file, output_file)
 
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))

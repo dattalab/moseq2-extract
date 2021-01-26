@@ -20,8 +20,8 @@ from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from os.path import join, exists, dirname, basename, abspath, splitext
-from moseq2_extract.io.video import load_movie_data, get_movie_info, write_frames
 from moseq2_extract.util import mouse_threshold_filter, filter_warnings, read_yaml
+from moseq2_extract.io.video import load_movie_data, get_movie_info, write_frames, compute_timestamps
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
                                         load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
@@ -60,6 +60,13 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 
         if new_file != tup[1]:
             shutil.move(new_file, tup[1])
+
+def compute_azure_timestamps(input_file, output_file='timestamps.csv'):
+
+    input_dir = dirname(input_file)
+    output_path = join(input_dir, output_file)
+
+    out = compute_timestamps(input_file, output_path)
 
 @filter_warnings
 def generate_index_wrapper(input_dir, output_file):
