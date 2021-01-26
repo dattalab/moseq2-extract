@@ -28,23 +28,25 @@ def compute_timestamps(filename, output_file):
     command = [
         'ffprobe',
         '-select_streams',
-        '-v:0',
+        'v:0',
         '-show_entries',
         'frame=pkt_pts_time',
-        '-v',
-        'quiet',
+        '-v', 'quiet',
         filename,
         '-of',
-        'cvs=p=0',
-        f'> {output_file}'
+        'csv=p=0'
     ]
 
-    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    fo = open(output_file, 'w')
+
+    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=fo)
     out, err = ffprobe.communicate()
 
     if (err):
         print('Error:', err)
         raise err
+    else:
+        fo.close()
 
 def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     '''
