@@ -296,8 +296,6 @@ class TestExtractUtils(TestCase):
             'output_dir': 'Output directory to save the results h5 file',
             'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
             'recompute_bg': 'Overwrite previously computed background image',
-            'rescale_depth': 'Rescales the pixel values to uint8 byte representation. '
-                             'Only set to True if the data is incorrectly represented in the file.',
             'config_file': None,
             'progress_bar': 'Show verbose progress bars.'
         }

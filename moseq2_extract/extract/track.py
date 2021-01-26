@@ -175,7 +175,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     frames = frames.reshape(frames.shape[0], frames.shape[1]*frames.shape[2])
     pbar = tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
     i = 0
-    repeat, warned = False, False
+    repeat = False
     while i < nframes:
 
         if repeat:
@@ -239,9 +239,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 cov_update = cov
 
         if (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)) and not repeat:
-            if not warned:
-                print('Backing off...')
-                warned = True
+            print('Backing off...')
             repeat = True
             continue
         elif (np.all(mean_update == 0) or np.all(cov_update.ravel() == 0)):

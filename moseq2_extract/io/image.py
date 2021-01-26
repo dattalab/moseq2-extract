@@ -62,7 +62,6 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
 
     if scale:
         max_int = np.iinfo(frame_dtype).max
-        image = image.astype(frame_dtype)
 
         if not scale_factor:
             # scale image to `dtype`'s full range

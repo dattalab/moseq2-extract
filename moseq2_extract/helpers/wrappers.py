@@ -214,7 +214,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     for idx in bg_roi_index:
         roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(join(output_dir, roi_filename), rois[idx], scale=True, frame_dtype='uint16')
+        write_image(join(output_dir, roi_filename), rois[idx], scale=True)
 
     return roi, bground_im, first_frame
 
