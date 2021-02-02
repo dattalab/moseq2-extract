@@ -287,31 +287,13 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
 
-    if(err):
+    if err:
         print('Error:', err)
         return None
 
-    raw_video = np.frombuffer(out, dtype=movie_dtype)
+    video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0]))
 
-    # estimate number of frames based on the read buffer size
-    nframes_by_size = int(raw_video.size / frame_size[1] / frame_size[0])
-
-    if len(frames) != nframes_by_size:
-        nframes = nframes_by_size
-    else:
-        nframes = len(frames)
-
-    # reshape the array according to the true number of frames
-    reshaped_raw = raw_video.reshape((nframes, frame_size[1], frame_size[0])).astype('uint16')
-
-    # creating array that matches the length of frame_range in
-    # moseq2_extract.helpers.extract.process_extract_batches
-    video = np.zeros((len(frames), frame_size[1], frame_size[0]), dtype='uint16')
-
-    # writing all the frames that exist
-    video[:nframes] = reshaped_raw[:nframes]
-
-    return video
+    return video.astype('uint16')
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          fps=30, pixel_format='rgb24',
