@@ -93,14 +93,15 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
     return plane_im
 
-def get_frame_range_indices(config_data, nframes):
+def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     '''
     Computes the total number of frames to be extracted, given the total number of frames
     and an initial frame index starting point.
 
     Parameters
     ----------
-    config_data (dict): dictionary holding all extraction parameters
+    trim_beginning (int): number of frames to remove from beginning of recording
+    trim_ending (int): number of frames to remove from ending of recording
     nframes (int): total number of requested frames to extract
 
     Returns
@@ -109,20 +110,19 @@ def get_frame_range_indices(config_data, nframes):
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
     '''
+    assert all((trim_ending > 0, trim_beginning > 0)) , "frame_trim arguments must be greater than 0!"
 
-    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
-        first_frame_idx = config_data['frame_trim'][0]
-    else:
-        first_frame_idx = 0
+    first_frame_idx = 0
+    if trim_beginning > 0 and trim_beginning < nframes:
+        first_frame_idx = trim_beginning
 
-    if nframes - config_data['frame_trim'][1] > first_frame_idx:
-        last_frame_idx = nframes - config_data['frame_trim'][1]
-    else:
-        last_frame_idx = nframes
+    last_frame_idx = nframes
+    if first_frame_idx < (nframes - trim_ending) and trim_ending > 0:
+        last_frame_idx = nframes - trim_ending
 
-    nframes = last_frame_idx - first_frame_idx
+    total_frames = last_frame_idx - first_frame_idx
 
-    return nframes, first_frame_idx, last_frame_idx
+    return total_frames, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -141,8 +141,10 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
 
     seq = range(offset, nframes)
-    for i in range(offset, len(seq) - overlap, chunk_size - overlap):
-        yield seq[i:i + chunk_size]
+    out = []
+    for i in range(0, len(seq) - overlap, chunk_size - overlap):
+        out.append(seq[i:i + chunk_size])
+    return out
 
 
 def load_timestamps(timestamp_file, col=0, alternate=False):

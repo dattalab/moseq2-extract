@@ -73,9 +73,8 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     config_data['tracking_init_cov'] = None
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
-        chunk_frames = [f + first_frame_idx for f in frame_range]
         raw_chunk = load_movie_data(input_file,
-                                    chunk_frames,
+                                    list(frame_range),
                                     frame_size=bground_im.shape[::-1],
                                     **config_data)
 
@@ -87,10 +86,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
                                 bground=bground_im
                                 )
 
-        if i > 0:
-            offset = config_data['chunk_overlap']
-        else:
-            offset = 0
+        offset = config_data['chunk_overlap'] if i > 0 else 0
 
         if config_data['use_tracking_model']:
             # Thresholding and clipping EM-tracked frame mask data
@@ -120,7 +116,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         # Writing frame batch to mp4 file
         video_pipe = write_frames_preview(output_mov_path, output_movie,
             pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
-            frame_range=[f + first_frame_idx for f in frame_range],
+            frame_range=list(frame_range),
             depth_max=config_data['max_height'], depth_min=config_data['min_height'],
             progress_bar=config_data.get('progress_bar', False))
 

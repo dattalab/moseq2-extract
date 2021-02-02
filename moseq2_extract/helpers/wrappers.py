@@ -269,7 +269,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     status_dict['metadata'] = acquisition_metadata # update status dict
 
     # Compute total number of frames to include from an initial starting point.
-    nframes, first_frame_idx, last_frame_idx = get_frame_range_indices(config_data, nframes)
+    total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)
 
     # Get specified timestamp range
     if timestamps is not None:
@@ -279,7 +279,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     scalars = list(scalars_attrs)
 
     # Get frame chunks to extract
-    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap'], offset=first_frame_idx))
+    frame_batches = gen_batch_sequence(last_frame_idx, config_data['chunk_size'],
+                                       config_data['chunk_overlap'], offset=first_frame_idx)
 
     # set up the output directory
     if output_dir is None:
@@ -331,7 +332,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'roi': roi,
         'first_frame': first_frame,
         'first_frame_idx': first_frame_idx,
-        'nframes': nframes,
+        'nframes': total_frames,
         'frame_batches': frame_batches
     }
 
@@ -460,7 +461,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         output_file = join(dirname(input_file), f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
-    frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
+    frame_batches = gen_batch_sequence(vid_info['nframes'], chunk_size, 0)
     video_pipe = None
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
@@ -519,7 +520,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     nframes = copy_slice[1] - copy_slice[0]
     offset = copy_slice[0]
 
-    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    frame_batches = gen_batch_sequence(nframes, chunk_size, 0, offset)
     video_pipe = None
 
     if exists(output_file):
