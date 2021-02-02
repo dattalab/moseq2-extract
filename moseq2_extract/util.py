@@ -110,7 +110,7 @@ def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
     '''
-    assert all((trim_ending > 0, trim_beginning > 0)) , "frame_trim arguments must be greater than 0!"
+    assert all((trim_ending >= 0, trim_beginning >= 0)) , "frame_trim arguments must be greater than or equal to 0!"
 
     first_frame_idx = 0
     if trim_beginning > 0 and trim_beginning < nframes:
