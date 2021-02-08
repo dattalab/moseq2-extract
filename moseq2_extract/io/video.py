@@ -128,8 +128,10 @@ def get_video_info(filename):
 
     command = ['ffprobe',
                '-v', 'fatal',
+               '-count_frames',
+               '-select_streams', 'v:0',
                '-show_entries',
-               'stream=width,height,r_frame_rate,nb_frames',
+               'stream=width,height,r_frame_rate,nb_read_frames',
                '-of',
                'default=noprint_wrappers=1:nokey=1',
                filename,
@@ -260,10 +262,15 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     if not frame_size:
         frame_size = finfo['dims']
 
+    # Compute starting time point to retrieve frames from
+    start_time = str(datetime.timedelta(seconds=frames[0] / fps))
+    if kwargs.get('ts_idx') is not None:
+        start_time = kwargs.get('ts_idx')[frames[0]]
+
     command = [
         'ffmpeg',
         '-loglevel', 'fatal',
-        '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
+        '-ss', start_time,
         '-i', filename,
         '-vframes', str(len(frames)),
         '-f', 'image2pipe',
@@ -419,7 +426,9 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
                                          frame_size=frame_size,
                                          bit_depth=bit_depth, **kwargs)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            frame_data = read_frames(filename, frames, frame_size=frame_size, **kwargs)
+            frame_data = read_frames(filename, frames,
+                                     frame_size=frame_size,
+                                     **kwargs)
 
     except AttributeError as e:
         print('Error:', e)
@@ -448,9 +457,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith(('.dat', '.mkv')):
+        if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
+        elif filename.lower().endswith(('.avi', '.mkv')):
             metadata = get_video_info(filename)
             if metadata == {}:
                 metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)

@@ -11,6 +11,7 @@ import h5py
 import shutil
 import warnings
 import numpy as np
+import pandas as pd
 import urllib.request
 from copy import deepcopy
 import ruamel.yaml as yaml
@@ -249,14 +250,14 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    video_metadata = get_movie_info(input_file)
+    config_data['finfo'] = get_movie_info(input_file)
 
     # Getting number of frames to extract
     if num_frames is None:
-        nframes = int(video_metadata['nframes'])
-    elif num_frames > video_metadata['nframes']:
+        nframes = int(config_data['finfo']['nframes'])
+    elif num_frames > config_data['finfo']['nframes']:
         warnings.warn('Requested more frames than video includes, extracting whole recording...')
-        nframes = int(video_metadata['nframes'])
+        nframes = int(config_data['finfo']['nframes'])
     elif isinstance(num_frames, int):
         nframes = num_frames
 
@@ -271,9 +272,12 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # Compute total number of frames to include from an initial starting point.
     total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)
 
+    ts_idx = None
     # Get specified timestamp range
     if timestamps is not None:
         timestamps = timestamps[first_frame_idx:last_frame_idx]
+        if config_data['camera_type'] == 'azure':
+            ts_idx = [str(x).split(' days ')[1] for x in pd.to_timedelta(timestamps, unit='S')]
 
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs)
@@ -353,7 +357,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                                 config_data=config_data,
                                 scalars=scalars,
                                 str_els=str_els,
-                                output_mov_path=movie_filename)
+                                output_mov_path=movie_filename,
+                                ts_idx=ts_idx)
 
     print()
 
