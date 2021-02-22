@@ -457,9 +457,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.lower().endswith(('.dat', '.avi')):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
-        elif filename.lower().endswith(('.avi', '.mkv')):
+        elif filename.lower().endswith('.mkv'):
             metadata = get_video_info(filename)
             if metadata == {}:
                 metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)

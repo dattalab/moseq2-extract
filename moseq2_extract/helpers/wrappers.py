@@ -11,12 +11,12 @@ import h5py
 import shutil
 import warnings
 import numpy as np
-import pandas as pd
 import urllib.request
 from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
+from datetime import datetime
 from moseq2_extract.io.image import write_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
@@ -277,7 +277,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     if timestamps is not None:
         timestamps = timestamps[first_frame_idx:last_frame_idx]
         if config_data['camera_type'] == 'azure':
-            ts_idx = [str(x).split(' days ')[1] for x in pd.to_timedelta(timestamps, unit='S')]
+            ts_idx = ['00'+datetime.fromtimestamp(t).__str__().split(' ')[1][2:] for t in timestamps]
 
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs)
