@@ -15,6 +15,7 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import keymap
 from pkg_resources import get_distribution
+from moseq2_extract.io.video import load_mkv_timestamps
 from os.path import exists, join, dirname, basename, splitext
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read_yaml, \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
@@ -273,6 +274,7 @@ def handle_extract_metadata(input_file, dirname):
     tar = None
     tar_members = None
     alternate_correct = False
+    from_depth_file = False
 
     # Handle TAR files
     if input_file.endswith(('.tar.gz', '.tgz')):
@@ -301,9 +303,14 @@ def handle_extract_metadata(input_file, dirname):
         if not exists(timestamp_path) and exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
+        elif not (exists(timestamp_path) and exists(alternate_timestamp_path)) and input_file.endswith('.mkv'):
+            from_depth_file = True
 
     acquisition_metadata = load_metadata(metadata_path)
-    timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
+    if not from_depth_file:
+        timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
+    else:
+        timestamps = load_mkv_timestamps(input_file)
 
     return acquisition_metadata, timestamps, tar
 

@@ -468,3 +468,38 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
         metadata = get_raw_info(filename)
 
     return metadata
+
+def load_mkv_timestamps(input_file):
+    '''
+    Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
+    output data to a csv file.
+    Parameters
+    ----------
+    filename (str): path to input file to extract timestamps from.
+    output_file (str): path to output file where the respective timestamps are saved.
+    Returns
+    -------
+    '''
+
+    command = [
+        'ffprobe',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'frame=pkt_pts_time',
+        '-v', 'quiet',
+        input_file,
+        '-of',
+        'csv=p=0'
+    ]
+
+    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffprobe.communicate()
+
+    if err:
+        print('Error:', err)
+        return None
+
+    timestamps = [float(t) for t in out.split()]
+
+    return timestamps
