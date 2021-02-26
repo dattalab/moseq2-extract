@@ -317,7 +317,7 @@ def handle_extract_metadata(input_file, dirname):
 
 # extract h5 helper function
 def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, scalars_attrs,
-                      nframes, roi, bground_im, first_frame, timestamps, **kwargs):
+                      nframes, roi, bground_im, first_frame, first_frame_idx, **kwargs):
     '''
     This is a helper function for extract_wrapper(); handles writing the following metadata
     to an open results_00.h5 file:
@@ -350,14 +350,16 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
         h5_file[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
     # Timestamps
-    if timestamps is not None:
-        h5_file.create_dataset('timestamps', compression='gzip', data=timestamps)
+    if config_data.get('timestamps') is not None:
+        h5_file.create_dataset('timestamps', compression='gzip',
+                               data=config_data['timestamps'][config_data['first_frame_idx']:config_data['last_frame_idx']])
         h5_file['timestamps'].attrs['description'] = "Depth video timestamps"
 
     # Cropped Frames
     h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
                      config_data['frame_dtype'], compression='gzip')
-    h5_file['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
+    h5_file['frames'].attrs['description'] = ('3D Numpy array of depth frames (nframes x w x h).' +
+                                              ' Depth values are in mm for Kinect v2 and Azure depth cameras.')
 
     # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:
@@ -385,6 +387,10 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     # First Frame
     h5_file.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
     h5_file['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
+
+    # First Frame index
+    h5_file.create_dataset('metadata/extraction/first_frame_idx', data=first_frame_idx, compression='gzip')
+    h5_file['metadata/extraction/first_frame_idx'].attrs['description'] = 'First frame index of this dataset'
 
     # Background
     h5_file.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
