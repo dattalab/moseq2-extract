@@ -265,7 +265,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
+    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
@@ -336,6 +336,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'roi': roi,
         'first_frame': first_frame,
         'first_frame_idx': first_frame_idx,
+        'last_frame_idx': last_frame_idx,
         'nframes': total_frames,
         'frame_batches': frame_batches
     }
@@ -348,8 +349,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                           acquisition_metadata=acquisition_metadata,
                           config_data=config_data,
                           status_dict=status_dict,
-                          scalars_attrs=scalars_attrs,
-                          timestamps=timestamps)
+                          scalars_attrs=scalars_attrs)
 
         # Write crop-rotated results to h5 file and write video preview mp4 file
         process_extract_batches(**extraction_data, h5_file=f,
@@ -357,8 +357,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                                 config_data=config_data,
                                 scalars=scalars,
                                 str_els=str_els,
-                                output_mov_path=movie_filename,
-                                ts_idx=ts_idx)
+                                output_mov_path=movie_filename)
 
     print()
 

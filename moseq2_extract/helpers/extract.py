@@ -41,8 +41,8 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
         h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
 def process_extract_batches(input_file, config_data, bground_im, roi,
-                            frame_batches, first_frame_idx, str_els,
-                            output_mov_path, scalars=None, h5_file=None, **kwargs):
+                            frame_batches, str_els, output_mov_path,
+                            scalars=None, h5_file=None, **kwargs):
     '''
     Compute extracted frames and save them to h5 files and avi files.
     Given an open h5 file, which is used to store extraction results, and some pre-computed input session data points
@@ -76,7 +76,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         raw_chunk = load_movie_data(input_file,
                                     list(frame_range),
                                     frame_size=bground_im.shape[::-1],
-                                    ts_idx=kwargs.get('ts_idx'),
                                     **config_data)
 
         # Get crop-rotated frame batch
