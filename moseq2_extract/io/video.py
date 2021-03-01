@@ -128,8 +128,10 @@ def get_video_info(filename):
 
     command = ['ffprobe',
                '-v', 'fatal',
+               '-count_frames',
+               '-select_streams', 'v:0',
                '-show_entries',
-               'stream=width,height,r_frame_rate,nb_frames',
+               'stream=width,height,r_frame_rate,nb_read_frames',
                '-of',
                'default=noprint_wrappers=1:nokey=1',
                filename,
@@ -222,7 +224,7 @@ def write_frames(filename, frames, threads=6, fps=30,
         return pipe
 
 
-def read_frames(filename, frames=range(0,), threads=6, fps=30,
+def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
                 slices=24, slicecrc=1, mapping=0, get_cmd=False, finfo=None, **kwargs):
     '''
@@ -260,10 +262,16 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     if not frame_size:
         frame_size = finfo['dims']
 
+    # Compute starting time point to retrieve frames from
+    if frames_is_timestamp:
+        start_time = str(datetime.timedelta(seconds=frames[0]))
+    else:
+        start_time = str(datetime.timedelta(seconds=frames[0] / fps))
+
     command = [
         'ffmpeg',
         '-loglevel', 'fatal',
-        '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
+        '-ss', start_time,
         '-i', filename,
         '-vframes', str(len(frames)),
         '-f', 'image2pipe',
@@ -294,6 +302,42 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0]))
 
     return video.astype('uint16')
+
+
+def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='uint16',
+             frames_is_timestamp=True, timestamps=None, **kwargs):
+    '''
+    Reads in frames from a .mkv file using a pipe from ffmpeg.
+
+    Parameters
+    ----------
+    filename (str): filename to get frames from
+    frames (list or 1d numpy array): list of frame indices to read
+    threads (int): number of threads to use for decode
+    fps (int): frame rate of camera in Hz
+    pixel_format (str): ffmpeg pixel format of data
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
+    frame_size (str): wxh frame size in pixels
+    frame_dtype (str): indicates the data type to use when reading the videos 
+    slices (int): number of slices to use for decode
+    slicecrc (int): check integrity of slices
+    mapping (int): ffmpeg channel mapping; "o:mapping"
+    get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
+    timestamps (list): array of timestamps to slice into using the frame indices
+
+    Returns
+    -------
+    video (3d numpy array):  frames x h x w
+    '''
+    assert timestamps is not None, "Timestamps must be present in order to read an mkv file"
+    if len(frames) == 1:
+        frames = [timestamps[frames[0]]]
+    else:
+        frames = timestamps[frames[0]:(frames[-1]+1)]
+
+    return read_frames(filename, frames, pixel_format=pixel_format, movie_dtype=movie_dtype,
+                       frames_is_timestamp=frames_is_timestamp, **kwargs)
+
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          fps=30, pixel_format='rgb24',
@@ -418,8 +462,12 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
                                          frames=frames,
                                          frame_size=frame_size,
                                          bit_depth=bit_depth, **kwargs)
-        elif filename.lower().endswith(('.avi', '.mkv')):
-            frame_data = read_frames(filename, frames, frame_size=frame_size, **kwargs)
+        elif filename.lower().endswith('.mkv'):
+            frame_data = read_mkv(filename, frames, frame_size=frame_size, **kwargs)
+        elif filename.lower().endswith('.avi'):
+            frame_data = read_frames(filename, frames,
+                                     frame_size=frame_size,
+                                     **kwargs)
 
     except AttributeError as e:
         print('Error:', e)
@@ -448,9 +496,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith(('.dat', '.mkv')):
+        if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
+        elif filename.lower().endswith(('.mkv', '.avi')):
             metadata = get_video_info(filename)
             if metadata == {}:
                 metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
@@ -459,3 +507,38 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
         metadata = get_raw_info(filename)
 
     return metadata
+
+def load_mkv_timestamps(input_file):
+    '''
+    Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
+    output data to a csv file.
+    Parameters
+    ----------
+    filename (str): path to input file to extract timestamps from.
+    output_file (str): path to output file where the respective timestamps are saved.
+    Returns
+    -------
+    '''
+
+    command = [
+        'ffprobe',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'frame=pkt_pts_time',
+        '-v', 'quiet',
+        input_file,
+        '-of',
+        'csv=p=0'
+    ]
+
+    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffprobe.communicate()
+
+    if err:
+        print('Error:', err)
+        return None
+
+    timestamps = [float(t) for t in out.split()]
+
+    return timestamps

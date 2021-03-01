@@ -11,6 +11,7 @@ import scipy.signal
 import skimage.measure
 import scipy.interpolate
 import skimage.morphology
+from copy import deepcopy
 from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
@@ -107,13 +108,18 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
 
     bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
+    kwargs = deepcopy(kwargs)
+    finfo = kwargs.pop('finfo', None)
+
     # Compute background image if it doesn't exist. Otherwise, load from file
     if not exists(bground_path) or kwargs.get('recompute_bg', False):
-        finfo = moseq2_extract.io.video.get_movie_info(frames_file)
+        if finfo is None:
+            finfo = moseq2_extract.io.video.get_movie_info(frames_file)
+
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = []
         for i, frame in enumerate(frame_idx):
-            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], finfo=finfo, **kwargs).squeeze()
+            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], **kwargs).squeeze()
             frame_store.append(cv2.medianBlur(frs, med_scale))
 
         bground = np.nanmedian(frame_store, axis=0)
