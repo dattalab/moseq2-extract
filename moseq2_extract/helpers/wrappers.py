@@ -272,6 +272,13 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # Compute total number of frames to include from an initial starting point.
     total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)
 
+    ts_idx = None
+    # Get specified timestamp range
+    if timestamps is not None:
+        timestamps = timestamps[first_frame_idx:last_frame_idx]
+        if input_file.endswith('.mkv'):
+            ts_idx = ['00'+datetime.fromtimestamp(t).__str__().split(' ')[1][2:] for t in timestamps]
+
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs)
 
