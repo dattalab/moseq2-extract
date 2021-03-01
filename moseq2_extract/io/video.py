@@ -330,7 +330,11 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     video (3d numpy array):  frames x h x w
     '''
     assert timestamps is not None, "Timestamps must be present in order to read an mkv file"
-    frames = timestamps[frames[0]:frames[-1]]
+    if len(frames) == 1:
+        frames = [timestamps[frames[0]]]
+    else:
+        frames = timestamps[frames[0]:(frames[-1]+1)]
+
     return read_frames(filename, frames, pixel_format=pixel_format, movie_dtype=movie_dtype,
                        frames_is_timestamp=frames_is_timestamp, **kwargs)
 

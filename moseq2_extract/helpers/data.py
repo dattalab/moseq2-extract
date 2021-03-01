@@ -317,7 +317,7 @@ def handle_extract_metadata(input_file, dirname):
 
 # extract h5 helper function
 def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, scalars_attrs,
-                      nframes, roi, bground_im, first_frame, first_frame_idx, **kwargs):
+                      nframes, roi, bground_im, first_frame, first_frame_idx, last_frame_idx, **kwargs):
     '''
     This is a helper function for extract_wrapper(); handles writing the following metadata
     to an open results_00.h5 file:
@@ -351,8 +351,7 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
 
     # Timestamps
     if config_data.get('timestamps') is not None:
-        h5_file.create_dataset('timestamps', compression='gzip',
-                               data=config_data['timestamps'][config_data['first_frame_idx']:config_data['last_frame_idx']])
+        h5_file.create_dataset('timestamps', compression='gzip', data=config_data['timestamps'])
         h5_file['timestamps'].attrs['description'] = "Depth video timestamps"
 
     # Cropped Frames
@@ -389,8 +388,12 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     h5_file['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
 
     # First Frame index
-    h5_file.create_dataset('metadata/extraction/first_frame_idx', data=first_frame_idx, compression='gzip')
+    h5_file.create_dataset('metadata/extraction/first_frame_idx', data=[first_frame_idx], compression='gzip')
     h5_file['metadata/extraction/first_frame_idx'].attrs['description'] = 'First frame index of this dataset'
+
+    # Last Frame index
+    h5_file.create_dataset('metadata/extraction/last_frame_idx', data=[last_frame_idx], compression='gzip')
+    h5_file['metadata/extraction/last_frame_idx'].attrs['description'] = 'Last frame index of this dataset'
 
     # Background
     h5_file.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
