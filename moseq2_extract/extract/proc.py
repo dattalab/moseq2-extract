@@ -109,7 +109,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
     kwargs = deepcopy(kwargs)
-    finfo = kwargs.pop('finfo')
+    finfo = kwargs.pop('finfo', None)
 
     # Compute background image if it doesn't exist. Otherwise, load from file
     if not exists(bground_path) or kwargs.get('recompute_bg', False):
