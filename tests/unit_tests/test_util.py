@@ -272,6 +272,7 @@ class TestExtractUtils(TestCase):
         proc_dirs = recursive_find_unextracted_dirs(root_dir, skip_checks=True)
         print(proc_dirs)
         assert len(proc_dirs) == 1
+        os.remove(data_path)
 
 
     def test_click_param_annot(self):

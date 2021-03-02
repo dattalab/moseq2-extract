@@ -1,5 +1,6 @@
 import os
 import sys
+import h5py
 import shutil
 import ruamel.yaml as yaml
 from unittest import TestCase
@@ -107,7 +108,7 @@ class GUITests(TestCase):
 
         generate_config_command(config_path)
 
-        out = find_roi_command('data/', config_path, select_session=True)
+        out = find_roi_command('data/', config_path, select_session=True, exts=['dat', 'avi'])
         assert (out is None), "roi function did not find any rois to extract"
 
         # writing a file to test following pipeline
@@ -128,7 +129,7 @@ class GUITests(TestCase):
 
         sys.stdin = open(stdin)
 
-        images, filenames = find_roi_command(input_dir, config_path, select_session=True)
+        images, filenames = find_roi_command(input_dir, config_path, select_session=True, exts=['dat', 'avi'])
         assert (len(filenames) == 3), "incorrect number of rois were computed"
         assert (len(images) == 3), "incorrect number of rois images were computed"
 
@@ -182,10 +183,40 @@ class GUITests(TestCase):
         assert(os.path.isdir(out_dir)), "proc directory was not created"
         assert ('completed' in ret), "GUI command failed"
 
-        shutil.rmtree('data/flip/')
         shutil.rmtree(data_path)
-        os.remove(configfile)
         os.remove(stdin)
+
+        with open(configfile, 'r') as f:
+            config_data = yaml.safe_load(f)
+
+        config_data['camera_type'] = 'azure'
+        config_data['flip_classifier'] = flip_file
+        config_data['use_plane_bground'] = False
+        config_data['bg_roi_depth_range'] = [500, 700]
+
+        with open(configfile, 'w') as f:
+            yaml.safe_dump(config_data, f)
+
+        mkv_path = 'data/azure_test/nfov_test.mkv'
+        ret = extract_command(mkv_path, None, configfile, skip=False, num_frames=60)
+
+        out_dir = 'data/azure_test/proc/'
+        h5file = os.path.join(out_dir, 'results_00.h5')
+
+        # ensure extraction is completed
+        assert (os.path.isdir(out_dir)), "proc directory was not created"
+        assert ('completed' in ret), "GUI command failed"
+        assert os.path.exists(h5file)
+
+        # check extraction contents
+        h5_test = h5py.File(h5file)
+        assert 'timestamps' in h5_test.keys()
+        assert len(h5_test['frames'][()]) == len(h5_test['timestamps'][()]) == 60
+
+        shutil.rmtree('data/flip/')
+        shutil.rmtree(out_dir)
+        os.remove(configfile)
+
 
     def test_aggregate_results_command(self):
 

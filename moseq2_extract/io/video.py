@@ -113,7 +113,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename):
+def get_video_info(filename, threads=4):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -134,6 +134,7 @@ def get_video_info(filename):
                'stream=width,height,r_frame_rate,nb_read_frames',
                '-of',
                'default=noprint_wrappers=1:nokey=1',
+               '-threads', str(threads),
                filename,
                '-sexagesimal']
 
@@ -329,7 +330,13 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     -------
     video (3d numpy array):  frames x h x w
     '''
+
+    if timestamps is None:
+        try: timestamps = load_mkv_timestamps(filename)
+        except: pass
+
     assert timestamps is not None, "Timestamps must be present in order to read an mkv file"
+
     if len(frames) == 1:
         frames = [timestamps[frames[0]]]
     else:
@@ -496,9 +503,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith('.dat'):
+        if filename.lower().endswith(('.dat', '.avi')):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
-        elif filename.lower().endswith(('.mkv', '.avi')):
+        elif filename.lower().endswith('.mkv'):
             metadata = get_video_info(filename)
             if metadata == {}:
                 metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
@@ -512,12 +519,14 @@ def load_mkv_timestamps(input_file):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
+
     Parameters
     ----------
     filename (str): path to input file to extract timestamps from.
-    output_file (str): path to output file where the respective timestamps are saved.
+
     Returns
     -------
+    timestamps (list): list of float values representing timestamps for each frame.
     '''
 
     command = [
