@@ -97,7 +97,7 @@ class TestVideoIO(TestCase):
 
         read_data_vid = load_movie_data(avi_path)
         read_data_raw = load_movie_data(dat_path)
-        read_data_mkv = load_movie_data(mkv_path, frames=list(range(60)), frame_size=(640, 576))
+        read_data_mkv = load_movie_data(mkv_path, frames=range(60), frame_size=(640, 576))
 
         npt.assert_array_equal(read_data_vid, read_data_raw)
         assert len(read_data_raw) == len(read_data_mkv)
@@ -124,6 +124,7 @@ class TestVideoIO(TestCase):
 
         assert len(test_out) == 1
 
-        test_full = read_mkv(mkv_path, frames=range(60), frames_is_timestamp=True)
+        test_full = read_mkv(mkv_path, frames=range(65), frames_is_timestamp=True)
 
-        assert len(test_full) == 60
+        assert len(test_full) == 65
+        assert len(test_full) != 66

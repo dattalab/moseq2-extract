@@ -9,6 +9,7 @@ import datetime
 import subprocess
 import numpy as np
 from tqdm.auto import tqdm
+from os.path import exists
 import matplotlib.pyplot as plt
 
 
@@ -331,16 +332,14 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     video (3d numpy array):  frames x h x w
     '''
 
-    if timestamps is None:
-        try: timestamps = load_mkv_timestamps(filename)
-        except: pass
+    if timestamps is None and exists(filename):
+        timestamps = load_mkv_timestamps(filename)
 
-    assert timestamps is not None, "Timestamps must be present in order to read an mkv file"
-
-    if len(frames) == 1:
-        frames = [timestamps[frames[0]]]
-    else:
-        frames = timestamps[frames[0]:(frames[-1]+1)]
+    if timestamps is not None:
+        if isinstance(frames, range):
+            frames = timestamps[slice(frames.start, frames.stop, frames.step)]
+        else:
+            frames = [timestamps[frames[0]]]
 
     return read_frames(filename, frames, pixel_format=pixel_format, movie_dtype=movie_dtype,
                        frames_is_timestamp=frames_is_timestamp, **kwargs)
@@ -503,9 +502,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith(('.dat', '.avi')):
+        if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
-        elif filename.lower().endswith('.mkv'):
+        elif filename.lower().endswith(('.avi', '.mkv')):
             metadata = get_video_info(filename)
             if metadata == {}:
                 metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
@@ -549,5 +548,8 @@ def load_mkv_timestamps(input_file):
         return None
 
     timestamps = [float(t) for t in out.split()]
+
+    if len(timestamps) == 0:
+        return None
 
     return timestamps
