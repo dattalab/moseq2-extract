@@ -233,7 +233,6 @@ class TestExtractUtils(TestCase):
 
         grad = make_gradient(width, height, xc, yc, radx, rady, theta)
         assert grad[grad >= 0.08].all() == True
-        assert grad[grad <= 0.8].all() == False
 
     def test_graduate_dilated_wall_area(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
@@ -273,6 +272,7 @@ class TestExtractUtils(TestCase):
         proc_dirs = recursive_find_unextracted_dirs(root_dir, skip_checks=True)
         print(proc_dirs)
         assert len(proc_dirs) == 1
+        os.remove(data_path)
 
 
     def test_click_param_annot(self):
@@ -296,6 +296,7 @@ class TestExtractUtils(TestCase):
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
             'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
+            'recompute_bg': 'Overwrite previously computed background image',
             'config_file': None,
             'progress_bar': 'Show verbose progress bars.'
         }

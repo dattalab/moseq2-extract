@@ -214,7 +214,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     for idx in bg_roi_index:
         roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(join(output_dir, roi_filename), rois[idx], scale=True, dtype='uint8')
+        write_image(join(output_dir, roi_filename), rois[idx], scale=True)
 
     return roi, bground_im, first_frame
 
@@ -235,7 +235,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     -------
     output_dir (str): path to directory containing extraction (only if gui==True)
     '''
-
     print('Processing:', input_file)
     # get the basic metadata
 
@@ -250,14 +249,14 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    video_metadata = get_movie_info(input_file)
+    config_data['finfo'] = get_movie_info(input_file)
 
     # Getting number of frames to extract
     if num_frames is None:
-        nframes = int(video_metadata['nframes'])
-    elif num_frames > video_metadata['nframes']:
+        nframes = int(config_data['finfo']['nframes'])
+    elif num_frames > config_data['finfo']['nframes']:
         warnings.warn('Requested more frames than video includes, extracting whole recording...')
-        nframes = int(video_metadata['nframes'])
+        nframes = int(config_data['finfo']['nframes'])
     elif isinstance(num_frames, int):
         nframes = num_frames
 
@@ -265,22 +264,19 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
-    acquisition_metadata, timestamps, config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
+    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
 
     status_dict['metadata'] = acquisition_metadata # update status dict
 
     # Compute total number of frames to include from an initial starting point.
-    nframes, first_frame_idx, last_frame_idx = get_frame_range_indices(config_data, nframes)
-
-    # Get specified timestamp range
-    if timestamps is not None:
-        timestamps = timestamps[first_frame_idx:last_frame_idx]
+    total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)
 
     scalars_attrs = scalar_attributes()
     scalars = list(scalars_attrs)
 
     # Get frame chunks to extract
-    frame_batches = list(gen_batch_sequence(nframes, config_data['chunk_size'], config_data['chunk_overlap'], offset=first_frame_idx))
+    frame_batches = gen_batch_sequence(last_frame_idx, config_data['chunk_size'],
+                                       config_data['chunk_overlap'], offset=first_frame_idx)
 
     # set up the output directory
     if output_dir is None:
@@ -332,7 +328,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'roi': roi,
         'first_frame': first_frame,
         'first_frame_idx': first_frame_idx,
-        'nframes': nframes,
+        'last_frame_idx': last_frame_idx,
+        'nframes': total_frames,
         'frame_batches': frame_batches
     }
 
@@ -344,8 +341,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
                           acquisition_metadata=acquisition_metadata,
                           config_data=config_data,
                           status_dict=status_dict,
-                          scalars_attrs=scalars_attrs,
-                          timestamps=timestamps)
+                          scalars_attrs=scalars_attrs)
 
         # Write crop-rotated results to h5 file and write video preview mp4 file
         process_extract_batches(**extraction_data, h5_file=f,
@@ -461,7 +457,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         output_file = join(dirname(input_file), f'{base_filename}.avi')
 
     vid_info = get_movie_info(input_file)
-    frame_batches = list(gen_batch_sequence(vid_info['nframes'], chunk_size, 0))
+    frame_batches = gen_batch_sequence(vid_info['nframes'], chunk_size, 0)
     video_pipe = None
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
@@ -520,7 +516,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     nframes = copy_slice[1] - copy_slice[0]
     offset = copy_slice[0]
 
-    frame_batches = list(gen_batch_sequence(nframes, chunk_size, 0, offset))
+    frame_batches = gen_batch_sequence(nframes, chunk_size, 0, offset)
     video_pipe = None
 
     if exists(output_file):

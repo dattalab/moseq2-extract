@@ -1,14 +1,10 @@
 import os
-import math
-import tarfile
 import numpy as np
-from os.path import join
 import numpy.testing as npt
 from unittest import TestCase
-from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
-    get_movie_info, load_movie_data
+    get_movie_info, load_movie_data, load_mkv_timestamps, read_mkv
 
 class TestVideoIO(TestCase):
     def test_read_frames_raw(self):
@@ -92,15 +88,43 @@ class TestVideoIO(TestCase):
     def test_load_movie_data(self):
         avi_path = 'data/fake_movie_data.avi'
         dat_path = 'data/fake_movie_data.dat'
+        mkv_path = 'data/azure_test/nfov_test.mkv'
 
-        test_data = np.random.randint(0, 256, size=(300, 424, 512), dtype='int16')
+        test_data = np.random.randint(0, 256, size=(60, 424, 512), dtype='int16')
 
         write_frames(avi_path, test_data, fps=30)
         test_data.tofile(dat_path)
 
         read_data_vid = load_movie_data(avi_path)
         read_data_raw = load_movie_data(dat_path)
+        read_data_mkv = load_movie_data(mkv_path, frames=range(60), frame_size=(640, 576))
 
         npt.assert_array_equal(read_data_vid, read_data_raw)
+        assert len(read_data_raw) == len(read_data_mkv)
         os.remove(avi_path)
         os.remove(dat_path)
+
+    def test_load_mkv_timestamps(self):
+
+        mkv_path = 'data/azure_test/nfov_test.mkv'
+
+        test_timestamps = load_mkv_timestamps(mkv_path)
+
+        # length assertion
+        assert len(test_timestamps) == 66
+
+        avi_test = 'data/test-out.avi'
+        avi_ts = load_mkv_timestamps(avi_test)
+        assert len(avi_ts) == 100
+
+    def test_read_mkv(self):
+
+        mkv_path = 'data/azure_test/nfov_test.mkv'
+        test_out = read_mkv(mkv_path, frames=[0])
+
+        assert len(test_out) == 1
+
+        test_full = read_mkv(mkv_path, frames=range(65), frames_is_timestamp=True)
+
+        assert len(test_full) == 65
+        assert len(test_full) != 66

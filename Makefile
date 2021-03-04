@@ -3,7 +3,8 @@
 data: data/tiffs/bground_bearbox.tiff data/tiffs/bground_bucket.tiff data/tiffs/bground_chamber_gradient.tiff \
 data/tiffs/bground_cross.tiff data/tiffs/bground_odorbox.tiff data/tiffs/roi_bearbox_01.tiff data/tiffs/roi_bucket_01.tiff \
 data/tiffs/roi_chamber_01.tiff data/tiffs/roi_cross_01.tiff data/tiffs/roi_odorbox_01.tiff data/proc/results_00.h5 \
-data/proc/results_00.yaml data/proc/roi_00.tiff data/metadata.json data/config.yaml data/depth_ts.txt data/test-out.avi
+data/proc/results_00.yaml data/proc/roi_00.tiff data/metadata.json data/config.yaml data/depth_ts.txt data/test-out.avi \
+data/azure_test/nfov_test.mkv
 
 data/metadata.json:
 	aws s3 cp s3://moseq2-testdata/extract/metadata.json data/ --request-payer=requester
@@ -22,3 +23,6 @@ data/tiffs/bground_bearbox.tiff:
 
 data/proc/results_00.h5:
 	aws s3 cp s3://moseq2-testdata/pca/proc/ data/proc/ --request-payer=requester --recursive
+
+data/azure_test/nfov_test.mkv:
+	aws s3 cp s3://moseq2-testdata/extract/nfov_test.mkv data/azure_test/ --request-payer=requester

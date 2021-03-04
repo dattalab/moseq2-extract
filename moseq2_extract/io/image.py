@@ -38,7 +38,7 @@ def read_tiff_files(input_dir):
 
     return images, filenames
 
-def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', compress=0):
+def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uint16', compress=0):
     '''
     Save image data, possibly with scale factor for easy display.
 
@@ -61,8 +61,7 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
     metadata = {}
 
     if scale:
-        max_int = np.iinfo(dtype).max
-        image = image.astype(dtype)
+        max_int = np.iinfo(frame_dtype).max
 
         if not scale_factor:
             # scale image to `dtype`'s full range
@@ -79,7 +78,7 @@ def write_image(filename, image, scale=True, scale_factor=None, dtype='uint16', 
     if not exists(directory):
         os.makedirs(directory)
 
-    tifffile.imsave(file, image.astype(dtype), compress=compress, metadata=metadata)
+    tifffile.imsave(file, image.astype(frame_dtype), compress=compress, metadata=metadata)
 
 
 def read_image(filename, scale=True, scale_key='scale_factor'):

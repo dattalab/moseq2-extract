@@ -82,6 +82,8 @@ def common_roi_options(function):
     function = click.option('--output-dir', default='proc', help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
+    function = click.option('--recompute-bg', default=False, help='Overwrite previously computed background image')(
+        function)
     function = click.option("--config-file", type=click.Path())(function)
     function = click.option('--progress-bar', '-p', is_flag=True, help='Show verbose progress bars.')(function)
     return function
@@ -137,6 +139,8 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')(function)
     function = click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')(function)
     function = click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')(function)
+    function = click.option('--movie-dtype', default='<i2', help='Data type for raw frames read in for extraction')(function)
+    function = click.option('--pixel-format', default='gray16le', type=str, help='Pixel format for reading in .avi and .mkv videos')(function)
     function = click.option('--centroid-hampel-span', default=0, type=int, help='Hampel filter span')(function)
     function = click.option('--centroid-hampel-sig', default=3, type=float, help='Hampel filter sig')(function)
     function = click.option('--angle-hampel-span', default=0, type=int, help='Angle filter span')(function)
@@ -160,7 +164,7 @@ def find_roi(input_file, output_dir, **config_data):
 @cli.command(name="extract", cls=command_with_config('config_file'),
              help="Processes raw input depth recordings to output a cropped and oriented"
              "video of the mouse and saves the output+metadata to h5 files in the given output directory.")
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_roi_options
 @common_avi_options
 @extract_options
@@ -171,7 +175,7 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 
 @cli.command(name='batch-extract', cls=command_with_config('config_file'), help='Batch processes '
              'all the raw depth recordings located in the input folder.')
-@click.argument('input-folder', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-folder', type=click.Path(exists=True, resolve_path=False))
 @common_roi_options
 @common_avi_options
 @extract_options
@@ -193,7 +197,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
     
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
-@click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
+@click.argument('config-file', type=click.Path(exists=True, resolve_path=False), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
               default=os.path.expanduser('~/moseq2'), help="Temp storage")
 def download_flip_file(config_file, output_dir):
@@ -233,14 +237,14 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
     aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
 
     convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads)
 
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice indices used for copy')
 def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):

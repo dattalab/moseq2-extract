@@ -11,6 +11,7 @@ import scipy.signal
 import skimage.measure
 import scipy.interpolate
 import skimage.morphology
+from copy import deepcopy
 from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
@@ -88,24 +89,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im(frames):
-    '''
-    Returns median 2D frame; AKA background.
-
-    Parameters
-    ----------
-    frames (3d numpy array): frames x r x c, uncropped mouse
-
-    Returns
-    -------
-    bground (2d numpy array):  r x c, background image
-    '''
-
-    bground = np.median(frames, 0)
-    return bground
-
-
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype='uint16', rescale_depth=False, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -115,7 +99,6 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype=
     frames_file (str): path to data with frames
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
-    frame_dtype (str): indicates the data type to use when reading the videos.
     kwargs (dict): extra keyword arguments
 
     Returns
@@ -125,49 +108,25 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, frame_dtype=
 
     bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
 
+    kwargs = deepcopy(kwargs)
+    finfo = kwargs.pop('finfo', None)
+
     # Compute background image if it doesn't exist. Otherwise, load from file
-    if not exists(bground_path):
-        try:
-            if frames_file.endswith(('dat', 'mkv')):
-                finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-            elif frames_file.endswith('avi'):
-                finfo = moseq2_extract.io.video.get_video_info(frames_file)
-        except AttributeError as e:
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+    if not exists(bground_path) or kwargs.get('recompute_bg', False):
+        if finfo is None:
+            finfo = moseq2_extract.io.video.get_movie_info(frames_file)
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-        frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
+        frame_store = []
         for i, frame in enumerate(frame_idx):
-            try:
-                if frames_file.endswith(('dat')):
-                    frs = moseq2_extract.io.video.read_frames_raw(frames_file,
-                                                                  int(frame),
-                                                                  dtype=frame_dtype,
-                                                                  frame_dims=finfo['dims']).squeeze()
-                elif frames_file.endswith(('avi', 'mkv')):
-                    frs = moseq2_extract.io.video.read_frames(frames_file,
-                                                              [int(frame)], 
-                                                              frame_dtype=frame_dtype,
-                                                              pixel_format=kwargs.get('pixel_format', 'gray16le'),
-                                                              frame_size=finfo['dims']).squeeze()
-                    
-            except AttributeError as e:
-                print('Error reading frames:', e)
-                print('Attempting raw file read...')
-                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
-            
-            if rescale_depth:
-                frs = frs.astype('uint8')
+            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], **kwargs).squeeze()
+            frame_store.append(cv2.medianBlur(frs, med_scale))
 
-            frame_store[i] = cv2.medianBlur(frs, med_scale)
+        bground = np.nanmedian(frame_store, axis=0)
 
-        bground = get_bground_im(frame_store).astype(frame_dtype)
         write_image(bground_path, bground, scale=True)
     else:
-        bground = read_image(bground_path, scale=True).astype(frame_dtype)
-    
-    if rescale_depth:
-        bground = bground.astype('uint8')
+        bground = read_image(bground_path, scale=True)
         
     return bground
 
