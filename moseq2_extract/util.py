@@ -16,6 +16,7 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
+from moseq2_extract.io.video import get_movie_info
 from os.path import join, exists, splitext, basename, abspath
 
 
@@ -188,7 +189,48 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
 
     return ts
 
-def set_bg_roi_weights(config_data):
+def detect_avi_file(finfo):
+    '''
+    Detects the camera type by comparing the read video resolution with known
+     outputted dimensions of different camera types.
+
+    Parameters
+    ----------
+    finfo (dict): dictionary containing the file metadata,
+     outputted by moseq2_extract.io.video.get_movie_info().
+
+    Returns
+    -------
+    detected (str): name of the detected camera type.
+    '''
+
+    detected = 'azure'
+    potential_camera_dims = {
+        'kinect': [[512, 424]],
+        'realsense': [[640, 480]],
+        'azure': [[640, 576],
+                  [320, 288],
+                  [512, 512],
+                  [1024, 1024]]
+    }
+
+    # Check dimensions
+    if finfo is not None:
+        if list(finfo['dims']) in potential_camera_dims['azure']:
+            # Default Azure dimensions
+            detected = 'azure'
+        elif list(finfo['dims']) in potential_camera_dims['realsense']:
+            # Realsense SR305 output dimensions
+            detected = 'realsense'
+        elif list(finfo['dims']) in potential_camera_dims['kinect']:
+            # Kinect output dimensions
+            detected = 'kinect'
+        else:
+            warnings.warn('Could not infer camera type, using default Azure parameters.')
+
+    return detected
+
+def detect_and_set_camera_parameters(config_data, input_file=None):
     '''
     Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
     If no camera_type is inputted, program will assume a kinect camera is being used.
@@ -204,15 +246,48 @@ def set_bg_roi_weights(config_data):
 
     # Auto-setting background weights
     camera_type = config_data.get('camera_type')
-    if camera_type == 'kinect':
-        config_data['bg_roi_weights'] = (1, .1, 1)
-    elif camera_type == 'azure':
-        config_data['bg_roi_weights'] = (10, 0.1, 1)
-    elif camera_type == 'realsense':
-        config_data['bg_roi_weights'] = (10, 1, 4)
+    finfo = config_data.get('finfo')
+
+    default_parameters = {
+        'kinect': {
+            'bg_roi_weights': (1, .1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2'
+        },
+        'azure': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16be',
+            'movie_dtype': '>u2'
+        },
+        'realsense': {
+            'bg_roi_weights': (10, 1, 4),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2',
+            'frame_dtype': 'uint16'
+        },
+    }
+
+    if camera_type == 'auto' and input_file is not None:
+        if input_file.endswith('.dat'):
+            detected = 'kinect'
+        elif input_file.endswith('.mkv'):
+            detected = 'azure'
+        elif input_file.endswith('.avi'):
+            if finfo is None:
+                finfo = get_movie_info(input_file)
+            detected = detect_avi_file(finfo)
+        else:
+            warnings.warn('Extension not recognized, trying default Kinect v2 parameters.')
+            detected = 'kinect'
+
+        # set the params
+        config_data.update(**default_parameters[detected])
+    elif camera_type in default_parameters:
+        # update the config with the corresponding param set
+        config_data.update(**default_parameters[camera_type])
     else:
-        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
-        config_data['bg_roi_weights'] = (1, .1, 1)
+        warnings.warn('Warning, make sure the following parameters are set to best handle your camera type: '
+                      '"bg_roi_weights", "pixel_format", "movie_dtype", "frame_dtype"')
 
     return config_data
 

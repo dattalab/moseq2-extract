@@ -26,7 +26,7 @@ from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_
                                         load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
                         set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels
+                        h5_to_dict, detect_and_set_camera_parameters, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -175,8 +175,11 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     os.makedirs(output_dir, exist_ok=True)
 
+    if config_data.get('finfo') is None:
+        config_data['finfo'] = get_movie_info(input_file)
+
     # checks camera type to set appropriate bg_roi_weights
-    config_data = set_bg_roi_weights(config_data)
+    config_data = detect_and_set_camera_parameters(config_data, input_file)
 
     print('Getting background...')
     bground_im = get_bground_im_file(input_file, **config_data)
