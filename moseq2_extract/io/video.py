@@ -114,7 +114,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, threads=4):
+def get_video_info(filename, threads=6):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -514,7 +514,7 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
 
     return metadata
 
-def load_mkv_timestamps(input_file):
+def load_mkv_timestamps(input_file, threads=6):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
@@ -535,6 +535,7 @@ def load_mkv_timestamps(input_file):
         '-show_entries',
         'frame=pkt_pts_time',
         '-v', 'quiet',
+        '-threads', str(threads),
         input_file,
         '-of',
         'csv=p=0'
