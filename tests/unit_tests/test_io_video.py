@@ -33,14 +33,6 @@ class TestVideoIO(TestCase):
         npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
         os.remove(data_path)
 
-        avi_path = 'data/test-out.avi'
-        vid_info = get_raw_info(avi_path)
-
-        npt.assert_equal(vid_info['bytes'], 15824724)
-        npt.assert_equal(vid_info['nframes'], test_data.shape[0])
-        npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
-        npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
-
     def test_ffv1(self):
 
         data_path = 'data/fake_ffv1_depth.avi'

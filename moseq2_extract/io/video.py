@@ -37,24 +37,6 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
             'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith(('.mkv', '.avi')):
-            try:
-                vid = cv2.VideoCapture(filename)
-                h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
-                                vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
-                                vid.get(cv2.CAP_PROP_FRAME_COUNT)
-
-                bytes_per_frame = (int(w) * int(h) * bit_depth) / 8
-
-                file_info = {
-                    'bytes': os.stat(filename).st_size,
-                    'nframes': int(nframes),
-                    'dims': (int(w), int(h)),
-                    'bytes_per_frame': int(bytes_per_frame)
-                }
-            except AttributeError as e:
-                print(e)
-                pass
     else:
         file_info = {
             'bytes': filename.size,
@@ -151,12 +133,8 @@ def get_video_info(filename, threads=4):
             'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
             'nframes': int(out[3])}
     except:
-        try:
-            finfo = get_raw_info(filename)
-        except:
-            print('Could not process this video extension:', filename)
-            finfo = {}
-        return finfo
+        print('Could not process this video extension:', filename)
+        return {}
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -253,10 +231,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     '''
 
     if finfo is None:
-        try:
-            finfo = get_video_info(filename)
-        except AttributeError as e:
-            finfo = get_raw_info(filename)
+        finfo = get_video_info(filename)
 
     if frames is None or len(frames) == 0:
         frames = np.arange(finfo['nframes'], dtype='int64')
@@ -506,11 +481,9 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
             metadata = get_video_info(filename)
-            if metadata == {}:
-                metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
     except AttributeError as e:
         print('Error:', e)
-        metadata = get_raw_info(filename)
+        metadata = {}
 
     return metadata
 
