@@ -25,7 +25,7 @@ from moseq2_extract.util import mouse_threshold_filter, filter_warnings, read_ya
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
                                         load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
-                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
+                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, get_bucket_center, \
                         h5_to_dict, detect_and_set_camera_parameters, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
@@ -184,6 +184,12 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     print('Getting background...')
     bground_im = get_bground_im_file(input_file, **config_data)
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
+
+    # readjust depth range
+    if config_data['bg_roi_depth_range'] == 'auto':
+        cX, cY = get_bucket_center(bground_im, 1000, threshold=250)
+        adjusted_bg_depth_range = bground_im[cY][cX]
+        config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
 
     first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,

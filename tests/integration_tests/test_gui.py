@@ -4,6 +4,7 @@ import h5py
 import shutil
 from copy import deepcopy
 import ruamel.yaml as yaml
+from os.path import exists
 from unittest import TestCase
 from .test_cli import write_fake_movie
 from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
@@ -13,6 +14,11 @@ from moseq2_extract.gui import generate_config_command, generate_index_command, 
 
 
 class GUITests(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        if exists('data/data/'):
+            shutil.rmtree('data/data/')
 
     def test_get_selected_sessions(self):
 
