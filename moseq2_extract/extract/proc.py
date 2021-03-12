@@ -89,7 +89,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=None, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -106,7 +106,10 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground (2d numpy array):  r x c, background image
     '''
 
-    bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    if output_dir is None:
+        bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    else:
+        bground_path = join(output_dir, 'bground.tiff')
 
     kwargs = deepcopy(kwargs)
     finfo = kwargs.pop('finfo', None)

@@ -354,11 +354,16 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
         h5_file.create_dataset('timestamps', compression='gzip', data=config_data['timestamps'][first_frame_idx:last_frame_idx])
         h5_file['timestamps'].attrs['description'] = "Depth video timestamps"
 
-    # Cropped Frames
-    h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
-                     config_data['frame_dtype'], compression='gzip')
-    h5_file['frames'].attrs['description'] = ('3D Numpy array of depth frames (nframes x w x h).' +
-                                              ' Depth values are in mm for Kinect v2 and Azure depth cameras.')
+    if config_data.get('mapping', 'DEPTH') == 'DEPTH':
+        # Cropped Frames
+        h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
+                         config_data['frame_dtype'], compression='gzip')
+        h5_file['frames'].attrs['description'] = ('3D Numpy array of depth frames (nframes x w x h).' +
+                                                  ' Depth values are in mm for Kinect v2 and Azure depth cameras.')
+    else:
+        h5_file.create_dataset('alt_frames', (nframes, bground_im.shape[0], bground_im.shape[1]),
+                               config_data['frame_dtype'], compression='gzip')
+        h5_file['alt_frames'].attrs['description'] = ('Alternative captured video stream (nframes x w x h).')
 
     # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:

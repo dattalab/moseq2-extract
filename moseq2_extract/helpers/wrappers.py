@@ -170,10 +170,13 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     if output_dir is None:
         output_dir = join(dirname(input_file), 'proc')
+    elif exists(output_dir):
+        pass
     elif dirname(output_dir) == '' or dirname(output_dir) not in input_file:
         output_dir = join(dirname(input_file), output_dir)
 
     os.makedirs(output_dir, exist_ok=True)
+    config_data['output_dir'] = output_dir
 
     if config_data.get('finfo') is None:
         config_data['finfo'] = get_movie_info(input_file, mapping=config_data.get('mapping', 0))
