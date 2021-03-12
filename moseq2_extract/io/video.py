@@ -96,7 +96,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, threads=4):
+def get_video_info(filename, mapping=0, threads=4, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -109,10 +109,14 @@ def get_video_info(filename, threads=4):
     (dict): dictionary containing video file metadata
     '''
 
+    mapping_dict = get_stream_names(filename)
+    if isinstance(mapping, str):
+        mapping = mapping_dict.get(mapping, 0)
+
     command = ['ffprobe',
                '-v', 'fatal',
                '-count_frames',
-               '-select_streams', 'v:0',
+               '-select_streams', f'v:{mapping}',
                '-show_entries',
                'stream=width,height,r_frame_rate,nb_read_frames',
                '-of',
@@ -203,6 +207,44 @@ def write_frames(filename, frames, threads=6, fps=30,
     else:
         return pipe
 
+def get_stream_names(filename, stream_tag="title"):
+    '''
+    Runs an FFProbe command to determine whether an input video file contains multiple streams, and
+     returns a stream_name to paired int values to extract the desired stream.
+    If no streams are detected, then the 0th (default) stream will be returned and used.
+
+    Parameters
+    ----------
+    filename (str): path to video file to get streams from.
+    stream_tag (str): value of the stream tags for ffprobe command to return
+
+    Returns
+    -------
+    out (dict): Dictionary of string to int pairs for the included streams in the mkv file.
+     Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
+    '''
+
+    command = [
+        "ffprobe",
+        "-v",
+        "fatal",
+        "-show_entries",
+        "stream_tags={}".format(stream_tag),
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        filename,
+    ]
+
+    ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffmpeg.communicate()
+
+    if err or len(out) == 0:
+        print(err)
+        return {'DEPTH': 0}
+
+    out = out.decode("utf-8").rstrip("\n").split("\n")
+
+    return {o: i for i, o in enumerate(out)}
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
@@ -259,6 +301,10 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
         '-slicecrc', str(slicecrc),
         '-vcodec', 'rawvideo',
     ]
+
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(filename)
+        mapping = mapping_dict.get(mapping, 0)
 
     if filename.endswith(('.mkv', '.avi')):
         command += ['-map', f'0:{mapping}']
@@ -461,7 +507,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping=0):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -480,7 +526,7 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
         if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            metadata = get_video_info(filename)
+            metadata = get_video_info(filename, mapping=mapping)
     except AttributeError as e:
         print('Error:', e)
         metadata = {}

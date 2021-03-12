@@ -176,7 +176,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     os.makedirs(output_dir, exist_ok=True)
 
     if config_data.get('finfo') is None:
-        config_data['finfo'] = get_movie_info(input_file)
+        config_data['finfo'] = get_movie_info(input_file, mapping=config_data.get('mapping', 0))
 
     # checks camera type to set appropriate bg_roi_weights
     config_data = detect_and_set_camera_parameters(config_data, input_file)
@@ -258,7 +258,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    config_data['finfo'] = get_movie_info(input_file)
+    config_data['finfo'] = get_movie_info(input_file, mapping=config_data.get('mapping', 0))
 
     # Getting number of frames to extract
     if num_frames is None:
@@ -443,7 +443,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
         print('Could not update configuration file flip classifier path')
         print('Unexpected error:', e)
 
-def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads):
+def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping):
     '''
     Wrapper function used to convert/compress a raw depth file into
      an avi file (with depth values) that is 8x smaller.
@@ -456,6 +456,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
     fps (int): Frames per second.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
+    mapping (str or int): Indicate which video stream to from the inputted file
 
     Returns
     -------
@@ -465,12 +466,12 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         base_filename = splitext(basename(input_file))[0]
         output_file = join(dirname(input_file), f'{base_filename}.avi')
 
-    vid_info = get_movie_info(input_file)
+    vid_info = get_movie_info(input_file, mapping=mapping)
     frame_batches = gen_batch_sequence(vid_info['nframes'], chunk_size, 0)
     video_pipe = None
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
+        frames = load_movie_data(input_file, batch, mapping=mapping)
         video_pipe = write_frames(output_file, frames, pipe=video_pipe,
                                   close_pipe=False, threads=threads, fps=fps)
 
@@ -479,8 +480,8 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         video_pipe.wait()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
@@ -491,7 +492,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         print('Deleting', input_file)
         os.remove(input_file)
 
-def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
     '''
     Wrapper function to copy a segment of an input depth recording into a new video file.
 
@@ -504,6 +505,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     fps (int): Frames per second.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
+    mapping (str or int): Indicate which video stream to from the inputted file
 
     Returns
     -------
@@ -534,7 +536,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
             sys.exit(0)
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
+        frames = load_movie_data(input_file, batch, mapping=mapping)
         if avi_encode:
             video_pipe = write_frames(output_file,
                                       frames,
@@ -551,8 +553,8 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
         video_pipe.wait()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
