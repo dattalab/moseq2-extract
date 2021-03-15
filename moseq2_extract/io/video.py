@@ -562,6 +562,7 @@ def load_mkv_timestamps(input_file, threads=8, mapping='DEPTH'):
         '-show_entries',
         'frame=pkt_pts_time',
         '-v', 'quiet',
+        '-threads', str(threads),
         input_file,
         '-of',
         'csv=p=0'
