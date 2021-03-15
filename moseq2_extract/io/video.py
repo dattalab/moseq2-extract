@@ -355,7 +355,7 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     '''
 
     if timestamps is None and exists(filename):
-        timestamps = load_mkv_timestamps(filename)
+        timestamps = load_mkv_timestamps(filename, mapping=kwargs.get('mapping', 'DEPTH'))
 
     if timestamps is not None:
         if isinstance(frames, range):
@@ -534,7 +534,7 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
 
     return metadata
 
-def load_mkv_timestamps(input_file, threads=8):
+def load_mkv_timestamps(input_file, threads=8, mapping='DEPTH'):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
@@ -550,10 +550,14 @@ def load_mkv_timestamps(input_file, threads=8):
 
     print('Loading mkv timestamps')
 
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(input_file)
+        mapping = mapping_dict.get(mapping, 0)
+
     command = [
         'ffprobe',
         '-select_streams',
-        'v:0',
+        f'v:{mapping}',
         '-threads', str(threads),
         '-show_entries',
         'frame=pkt_pts_time',
