@@ -274,7 +274,10 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
             detected = 'azure'
         elif input_file.endswith('.avi'):
             if finfo is None:
-                finfo = get_movie_info(input_file)
+                finfo = get_movie_info(input_file,
+                                       mapping=config_data.get('mapping', 0),
+                                       threads=config_data.get('threads')
+                                       )
             detected = detect_avi_file(finfo)
         else:
             warnings.warn('Extension not recognized, trying default Kinect v2 parameters.')

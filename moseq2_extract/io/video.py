@@ -96,7 +96,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, mapping=0, threads=4, **kwargs):
+def get_video_info(filename, mapping=0, threads=8, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -273,7 +273,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     '''
 
     if finfo is None:
-        finfo = get_video_info(filename)
+        finfo = get_video_info(filename, threads=threads)
 
     if frames is None or len(frames) == 0:
         frames = np.arange(finfo['nframes'], dtype='int64')
@@ -507,7 +507,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping=0):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping=0, threads=8):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -526,14 +526,14 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping=0):
         if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            metadata = get_video_info(filename, mapping=mapping)
+            metadata = get_video_info(filename, mapping=mapping, threads=threads)
     except AttributeError as e:
         print('Error:', e)
         metadata = {}
 
     return metadata
 
-def load_mkv_timestamps(input_file):
+def load_mkv_timestamps(input_file, threads=8):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
@@ -547,10 +547,13 @@ def load_mkv_timestamps(input_file):
     timestamps (list): list of float values representing timestamps for each frame.
     '''
 
+    print('Loading mkv timestamps')
+
     command = [
         'ffprobe',
         '-select_streams',
         'v:0',
+        '-threads', str(threads),
         '-show_entries',
         'frame=pkt_pts_time',
         '-v', 'quiet',

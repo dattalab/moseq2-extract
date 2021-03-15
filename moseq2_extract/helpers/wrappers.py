@@ -179,7 +179,9 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     config_data['output_dir'] = output_dir
 
     if config_data.get('finfo') is None:
-        config_data['finfo'] = get_movie_info(input_file, mapping=config_data.get('mapping', 0))
+        config_data['finfo'] = get_movie_info(input_file,
+                                              mapping=config_data.get('mapping', 0),
+                                              threads=config_data.get('threads', 8))
 
     # checks camera type to set appropriate bg_roi_weights
     config_data = detect_and_set_camera_parameters(config_data, input_file)
@@ -261,7 +263,10 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    config_data['finfo'] = get_movie_info(input_file, mapping=config_data.get('mapping', 0))
+    config_data['finfo'] = get_movie_info(input_file,
+                                          mapping=config_data.get('mapping', 0),
+                                          threads=config_data.get('threads', 8)
+                                          )
 
     # Getting number of frames to extract
     if num_frames is None:
