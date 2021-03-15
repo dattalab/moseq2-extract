@@ -276,7 +276,7 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
             if finfo is None:
                 finfo = get_movie_info(input_file,
                                        mapping=config_data.get('mapping', 0),
-                                       threads=config_data.get('threads')
+                                       threads=config_data.get('threads', 8)
                                        )
             detected = detect_avi_file(finfo)
         else:
