@@ -9,8 +9,8 @@ import datetime
 import subprocess
 import numpy as np
 from tqdm.auto import tqdm
-from os.path import exists
 import matplotlib.pyplot as plt
+from os.path import exists, join, dirname
 
 
 def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
@@ -96,7 +96,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, mapping=0, threads=8, **kwargs):
+def get_video_info(filename, mapping='DEPTH', threads=8, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -108,6 +108,8 @@ def get_video_info(filename, mapping=0, threads=8, **kwargs):
     -------
     (dict): dictionary containing video file metadata
     '''
+
+    print('Reading movie info')
 
     mapping_dict = get_stream_names(filename)
     if isinstance(mapping, str):
@@ -248,7 +250,7 @@ def get_stream_names(filename, stream_tag="title"):
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
-                slices=24, slicecrc=1, mapping=0, get_cmd=False, finfo=None, **kwargs):
+                slices=24, slicecrc=1, mapping='DEPTH', get_cmd=False, finfo=None, **kwargs):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
@@ -305,7 +307,6 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     if isinstance(mapping, str):
         mapping_dict = get_stream_names(filename)
         mapping = mapping_dict.get(mapping, 0)
-
     if filename.endswith(('.mkv', '.avi')):
         command += ['-map', f'0:{mapping}']
         command += ['-vsync', '0']
@@ -507,7 +508,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping=0, threads=8):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 

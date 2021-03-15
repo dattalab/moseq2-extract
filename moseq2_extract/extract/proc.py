@@ -122,7 +122,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = []
         for i, frame in enumerate(frame_idx):
-            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], **kwargs).squeeze()
+            frs = moseq2_extract.io.video.load_movie_data(frames_file, [int(frame)], frame_size=finfo['dims'], finfo=finfo, **kwargs).squeeze()
             frame_store.append(cv2.medianBlur(frs, med_scale))
 
         bground = np.nanmedian(frame_store, axis=0)
