@@ -179,9 +179,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     config_data['output_dir'] = output_dir
 
     if config_data.get('finfo') is None:
-        config_data['finfo'] = get_movie_info(input_file,
-                                              mapping=config_data.get('mapping', 'DEPTH'),
-                                              threads=config_data.get('threads', 8))
+        config_data['finfo'] = get_movie_info(input_file, **config_data)
 
     # checks camera type to set appropriate bg_roi_weights
     config_data = detect_and_set_camera_parameters(config_data, input_file)
@@ -263,10 +261,17 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    config_data['finfo'] = get_movie_info(input_file,
-                                          mapping=config_data.get('mapping', 'DEPTH'),
-                                          threads=config_data.get('threads', 8)
-                                          )
+    config_data['finfo'] = get_movie_info(input_file, **config_data)
+
+    # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
+    # Also gets loads respective metadata dictionary and timestamp array.
+    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file,
+                                                                                                  in_dirname)
+
+    status_dict['metadata'] = acquisition_metadata  # update status dict
+
+    if config_data['finfo']['nframes'] is None:
+        config_data['finfo']['nframes'] = len(config_data['timestamps'])
 
     # Getting number of frames to extract
     if num_frames is None:
@@ -278,12 +283,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         nframes = num_frames
 
     config_data = check_filter_sizes(config_data)
-
-    # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
-    # Also gets loads respective metadata dictionary and timestamp array.
-    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
-
-    status_dict['metadata'] = acquisition_metadata # update status dict
 
     # Compute total number of frames to include from an initial starting point.
     total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)

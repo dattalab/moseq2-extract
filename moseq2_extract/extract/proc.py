@@ -117,7 +117,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
     # Compute background image if it doesn't exist. Otherwise, load from file
     if not exists(bground_path) or kwargs.get('recompute_bg', False):
         if finfo is None:
-            finfo = moseq2_extract.io.video.get_movie_info(frames_file)
+            finfo = moseq2_extract.io.video.get_movie_info(frames_file, **kwargs)
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = []

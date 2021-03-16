@@ -260,10 +260,9 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
             'movie_dtype': '>u2'
         },
         'realsense': {
-            'bg_roi_weights': (10, 1, 4),
+            'bg_roi_weights': (10, 0.1, 1),
             'pixel_format': 'gray16le',
             'movie_dtype': '<u2',
-            'frame_dtype': 'uint16'
         },
     }
 
@@ -290,7 +289,7 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
         config_data.update(**default_parameters[camera_type])
     else:
         warnings.warn('Warning, make sure the following parameters are set to best handle your camera type: '
-                      '"bg_roi_weights", "pixel_format", "movie_dtype", "frame_dtype"')
+                      '"bg_roi_weights", "pixel_format", "movie_dtype"')
 
     return config_data
 

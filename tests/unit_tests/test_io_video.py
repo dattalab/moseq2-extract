@@ -4,7 +4,7 @@ import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
-    get_movie_info, load_movie_data, load_mkv_timestamps, read_mkv
+    get_movie_info, load_movie_data, load_timestamps_from_movie, read_mkv
 
 class TestVideoIO(TestCase):
     def test_read_frames_raw(self):
@@ -100,13 +100,13 @@ class TestVideoIO(TestCase):
 
         mkv_path = 'data/azure_test/nfov_test.mkv'
 
-        test_timestamps = load_mkv_timestamps(mkv_path)
+        test_timestamps = load_timestamps_from_movie(mkv_path)
 
         # length assertion
         assert len(test_timestamps) == 66
 
         avi_test = 'data/test-out.avi'
-        avi_ts = load_mkv_timestamps(avi_test)
+        avi_ts = load_timestamps_from_movie(avi_test)
         assert len(avi_ts) == 100
 
     def test_read_mkv(self):

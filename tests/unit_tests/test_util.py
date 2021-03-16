@@ -39,12 +39,12 @@ class TestExtractUtils(TestCase):
         test_config_data['camera_type'] = 'realsense'
         new_config_data = detect_and_set_camera_parameters(test_config_data)
 
-        assert new_config_data['bg_roi_weights'] == (10, 1, 4)
+        assert new_config_data['bg_roi_weights'] == (10, 0.1, 1)
 
         test_config_data['camera_type'] = None
         new_config_data = detect_and_set_camera_parameters(test_config_data)
 
-        assert new_config_data['bg_roi_weights'] == (10, 1, 4)
+        assert new_config_data['bg_roi_weights'] == (10, 0.1, 1)
 
         test_config_data['camera_type'] = 'auto'
         new_config_data = detect_and_set_camera_parameters(test_config_data, 'data/test-out.avi')

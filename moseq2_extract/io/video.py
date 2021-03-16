@@ -8,9 +8,9 @@ import tarfile
 import datetime
 import subprocess
 import numpy as np
+from os.path import exists
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
-from os.path import exists, join, dirname
 
 
 def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
@@ -96,7 +96,7 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, mapping='DEPTH', threads=8, **kwargs):
+def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
@@ -115,32 +115,44 @@ def get_video_info(filename, mapping='DEPTH', threads=8, **kwargs):
     if isinstance(mapping, str):
         mapping = mapping_dict.get(mapping, 0)
 
+    stream_str = 'stream=width,height,r_frame_rate,'
+    if count_frames:
+        stream_str += 'nb_read_frames'
+    else:
+        stream_str += 'nb_frames'
+
     command = ['ffprobe',
                '-v', 'fatal',
-               '-count_frames',
                '-select_streams', f'v:{mapping}',
                '-show_entries',
-               'stream=width,height,r_frame_rate,nb_read_frames',
+               stream_str,
                '-of',
                'default=noprint_wrappers=1:nokey=1',
                '-threads', str(threads),
                filename,
                '-sexagesimal']
 
+    if count_frames:
+        command += ['-count_frames']
+
     ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = ffmpeg.communicate()
 
     if(err):
         print(err)
+
     out = out.decode().split('\n')
+    out_dict = {'file': filename,
+                'dims': (int(float(out[0])), int(float(out[1]))),
+                'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
+                }
+
     try:
-        return {'file': filename,
-            'dims': (int(float(out[0])), int(float(out[1]))),
-            'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'nframes': int(out[3])}
-    except:
-        print('Could not process this video extension:', filename)
-        return {}
+        out_dict['nframes'] = int(out[3])
+    except ValueError:
+        out_dict['nframes'] = None
+
+    return out_dict
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -275,7 +287,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     '''
 
     if finfo is None:
-        finfo = get_video_info(filename, threads=threads)
+        finfo = get_video_info(filename, threads=threads, **kwargs)
 
     if frames is None or len(frames) == 0:
         frames = np.arange(finfo['nframes'], dtype='int64')
@@ -307,6 +319,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     if isinstance(mapping, str):
         mapping_dict = get_stream_names(filename)
         mapping = mapping_dict.get(mapping, 0)
+
     if filename.endswith(('.mkv', '.avi')):
         command += ['-map', f'0:{mapping}']
         command += ['-vsync', '0']
@@ -355,7 +368,7 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     '''
 
     if timestamps is None and exists(filename):
-        timestamps = load_mkv_timestamps(filename, mapping=kwargs.get('mapping', 'DEPTH'))
+        timestamps = load_timestamps_from_movie(filename, mapping=kwargs.get('mapping', 'DEPTH'))
 
     if timestamps is not None:
         if isinstance(frames, range):
@@ -508,7 +521,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -527,14 +540,14 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
         if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            metadata = get_video_info(filename, mapping=mapping, threads=threads)
+            metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
         print('Error:', e)
         metadata = {}
 
     return metadata
 
-def load_mkv_timestamps(input_file, threads=8, mapping='DEPTH'):
+def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
