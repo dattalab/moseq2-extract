@@ -109,8 +109,6 @@ def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **k
     (dict): dictionary containing video file metadata
     '''
 
-    print('Reading movie info')
-
     mapping_dict = get_stream_names(filename)
     if isinstance(mapping, str):
         mapping = mapping_dict.get(mapping, 0)
@@ -253,7 +251,6 @@ def get_stream_names(filename, stream_tag="title"):
     out, err = ffmpeg.communicate()
 
     if err or len(out) == 0:
-        print(err)
         return {'DEPTH': 0}
 
     out = out.decode("utf-8").rstrip("\n").split("\n")
@@ -561,7 +558,7 @@ def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     timestamps (list): list of float values representing timestamps for each frame.
     '''
 
-    print('Loading mkv timestamps')
+    print('Loading movie timestamps')
 
     if isinstance(mapping, str):
         mapping_dict = get_stream_names(input_file)

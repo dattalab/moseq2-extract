@@ -303,7 +303,7 @@ def handle_extract_metadata(input_file, dirname):
         if not exists(timestamp_path) and exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
-        elif not (exists(timestamp_path) and exists(alternate_timestamp_path)) and input_file.endswith(('.avi', '.mkv')):
+        elif (not exists(timestamp_path) and (not exists(alternate_timestamp_path))) and input_file.endswith(('.avi', '.mkv')):
             from_depth_file = True
 
     acquisition_metadata = load_metadata(metadata_path)
