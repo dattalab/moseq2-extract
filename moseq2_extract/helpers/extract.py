@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
 
-def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset, depth_mapping=True):
+def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
     '''
 
     Write extracted frames, frame masks, and scalars to an open h5 file.
@@ -28,21 +28,17 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
     -------
     '''
 
-    if depth_mapping:
-        # Writing computed scalars to h5 file
-        for scalar in scalars:
-            h5_file[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
+    # Writing computed scalars to h5 file
+    for scalar in scalars:
+        h5_file[f'scalars/{scalar}'][frame_range] = results['scalars'][scalar][offset:]
 
-        # Writing frames and mask to h5
-        h5_file['frames'][frame_range] = results['depth_frames'][offset:]
-        h5_file['frames_mask'][frame_range] = results['mask_frames'][offset:]
+    # Writing frames and mask to h5
+    h5_file['frames'][frame_range] = results['depth_frames'][offset:]
+    h5_file['frames_mask'][frame_range] = results['mask_frames'][offset:]
 
-        # Writing flip classifier results to h5
-        if config_data['flip_classifier']:
-            h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
-    else:
-        # Writing alternative mapping frames to h5
-        h5_file['alt_frames'][frame_range] = results['alt_frames'][offset:]
+    # Writing flip classifier results to h5
+    if config_data['flip_classifier']:
+        h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
 def set_tracking_model_parameters(results, config_data):
     '''
@@ -129,8 +125,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     config_data['tracking_init_mean'] = None
     config_data['tracking_init_cov'] = None
 
-    extractable = (config_data.get('mapping', 'DEPTH') == 'DEPTH') or (config_data.get('mapping', 0) == 0)
-
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_chunk = load_movie_data(input_file,
                                     frame_range,
@@ -139,38 +133,33 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
 
         offset = config_data['chunk_overlap'] if i > 0 else 0
 
-        if extractable:
-            # Get crop-rotated frame batch
-            results = extract_chunk(**config_data,
-                                    **str_els,
-                                    chunk=raw_chunk,
-                                    roi=roi,
-                                    bground=bground_im
-                                    )
+        # Get crop-rotated frame batch
+        results = extract_chunk(**config_data,
+                                **str_els,
+                                chunk=raw_chunk,
+                                roi=roi,
+                                bground=bground_im
+                                )
 
-            if config_data['use_tracking_model']:
-                # threshold and clip mask frames from EM tracking results
-                results, config_data = set_tracking_model_parameters(results, config_data)
-        else:
-            # mapping is a color or IR image
-            results = {'alt_frames': raw_chunk}
+        if config_data['use_tracking_model']:
+            # threshold and clip mask frames from EM tracking results
+            results, config_data = set_tracking_model_parameters(results, config_data)
 
         # Offsetting frame chunk by CLI parameter defined option: chunk_overlap
         frame_range = frame_range[offset:]
 
         if h5_file is not None:
-            write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset, extractable)
+            write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset)
 
-        if extractable:
-            # Create array for output movie with filtered video and cropped mouse on the top left
-            output_movie = make_output_movie(results, config_data, offset)
+        # Create array for output movie with filtered video and cropped mouse on the top left
+        output_movie = make_output_movie(results, config_data, offset)
 
-            # Writing frame batch to mp4 file
-            video_pipe = write_frames_preview(output_mov_path, output_movie,
-                pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
-                frame_range=list(frame_range),
-                depth_max=config_data['max_height'], depth_min=config_data['min_height'],
-                progress_bar=config_data.get('progress_bar', False))
+        # Writing frame batch to mp4 file
+        video_pipe = write_frames_preview(output_mov_path, output_movie,
+            pipe=video_pipe, close_pipe=False, fps=config_data['fps'],
+            frame_range=list(frame_range),
+            depth_max=config_data['max_height'], depth_min=config_data['min_height'],
+            progress_bar=config_data.get('progress_bar', False))
 
     # Check if video is done writing. If not, wait.
     if video_pipe is not None:

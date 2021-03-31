@@ -17,7 +17,7 @@ from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
 from moseq2_extract.io.video import get_movie_info
-from os.path import join, exists, splitext, basename, abspath
+from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
@@ -146,7 +146,6 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     for i in range(0, len(seq) - overlap, chunk_size - overlap):
         out.append(seq[i:i + chunk_size])
     return out
-
 
 def load_timestamps(timestamp_file, col=0, alternate=False):
     '''
@@ -318,6 +317,28 @@ def check_filter_sizes(config_data):
 
     return config_data
 
+def generate_missing_metadata(sess_dir, sess_name):
+    '''
+    Generates default metadata.json file for session that does not already include one.
+
+    Parameters
+    ----------
+    sess_dir (str): Path to directory to create metadata.json file in.
+    sess_name (str): Name of the directory to set the metadata SessionName.
+
+    Returns
+    -------
+
+    '''
+
+    # generate sample metadata json for each session that is missing one
+    sample_meta = {'SubjectName': f'{basename(sess_dir)}', f'SessionName': f'{sess_name}',
+                   'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
+                   'ColorDataType': "Byte[]", "StartTime": ""}
+
+    with open(join(sess_dir, 'metadata.json'), 'w') as fp:
+        json.dump(sample_meta, fp)
+
 def load_metadata(metadata_file):
     '''
     Loads metadata from session metadata.json file.
@@ -331,12 +352,12 @@ def load_metadata(metadata_file):
     metadata (dict): key-value pairs of JSON contents
     '''
 
-    metadata = {}
-
     try:
-        if exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
+        if not exists(metadata_file):
+            generate_missing_metadata(dirname(metadata_file), basename(dirname(metadata_file)))
+
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
     except TypeError:
         # try loading directly
         metadata = json.load(metadata_file)

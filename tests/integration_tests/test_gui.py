@@ -225,6 +225,7 @@ class GUITests(TestCase):
         assert (os.path.isdir(out_dir)), "proc directory was not created"
         assert ('completed' in ret), "GUI command failed"
         assert os.path.exists(h5file)
+        assert os.path.exists('data/azure_test/metadata.json')
 
         # check extraction contents
         h5_test = h5py.File(h5file)
@@ -235,6 +236,7 @@ class GUITests(TestCase):
         shutil.rmtree(out_dir)
         os.remove(configfile)
         os.remove(config_data['session_config_path'])
+        os.remove('data/azure_test/metadata.json')
 
 
     def test_aggregate_results_command(self):
