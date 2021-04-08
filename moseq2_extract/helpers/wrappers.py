@@ -189,7 +189,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     # readjust depth range
-    if config_data['bg_roi_depth_range'] == 'auto':
+    if config_data['autoset_depth_range']:
         cX, cY = get_bucket_center(bground_im, 1000, threshold=250)
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
