@@ -252,7 +252,7 @@ def get_roi(depth_image,
     dists = np.zeros_like(extents)
 
     # get the max distance from the center, area and extent
-    center = np.array(depth_image.shape)/2
+    center = np.array(depth_image.shape) / 2
 
     for i, props in enumerate(region_properties):
         areas[i] = props.area

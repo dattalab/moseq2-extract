@@ -16,7 +16,7 @@ from copy import deepcopy
 import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import partial
-from moseq2_extract.io.image import write_image
+from moseq2_extract.io.image import write_image, read_image
 from moseq2_extract.helpers.extract import process_extract_batches
 from moseq2_extract.extract.proc import get_roi, get_bground_im_file
 from os.path import join, exists, dirname, basename, abspath, splitext
@@ -194,39 +194,53 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
 
-    first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
-    write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
-                scale_factor=config_data['bg_roi_depth_range'])
+    # write the first frame if it doesn't exist, or if we re-compute the background
+    first_frame_path = join(output_dir, 'first_frame.tiff')
+    if config_data.get('recompute_bg', False) or not exists(first_frame_path):
+        first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
+        write_image(first_frame_path, first_frame, scale=True,
+                    scale_factor=config_data['bg_roi_depth_range'])
+    else:
+        first_frame = read_image(first_frame_path, scale=True)
 
-    print('Getting roi...')
-    strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
-    strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
+    # load ROI if it's already saved to file
+    assert isinstance(config_data['bg_roi_index'], int), "background ROI index must be an int"
+    roi_filename = join(output_dir, f'roi_{config_data["bg_roi_index"]:02d}.tiff')
+    if exists(roi_filename) and not config_data.get('recompute_bg', False):
+        print('Loading ROI...')
+        roi = read_image(roi_filename, scale=True)
+    else:
+        print('Computing ROI...')
+        strel_dilate = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate']))
+        strel_erode = select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_erode']))
 
-    rois, plane = get_roi(bground_im,
-                          **config_data,
-                          strel_dilate=strel_dilate,
-                          strel_erode=strel_erode,
-                          get_all_data=False
-                          )
+        rois, plane = get_roi(bground_im,
+                              **config_data,
+                              strel_dilate=strel_dilate,
+                              strel_erode=strel_erode,
+                              get_all_data=False
+                              )
 
-    if config_data['use_plane_bground']:
-        print('Using plane fit for background...')
-        bground_im = set_bground_to_plane_fit(bground_im, plane, output_dir)
+        if config_data['use_plane_bground']:
+            print('Using plane fit for background...')
+            bground_im = set_bground_to_plane_fit(bground_im, plane, output_dir)
 
-    # Sort ROIs by largest mean area to later select largest one (bg_roi_index)
-    if config_data['bg_sort_roi_by_position']:
-        rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
-        rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
+        # # Sort ROIs by largest mean area to later select largest one (bg_roi_index)
+        # if config_data['bg_sort_roi_by_position']:
+        #     # rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
+        #     rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
 
-    if type(config_data['bg_roi_index']) == int:
-        config_data['bg_roi_index'] = [config_data['bg_roi_index']]
+        # if type(config_data['bg_roi_index']) == int:
+        #     config_data['bg_roi_index'] = [config_data['bg_roi_index']]
 
-    bg_roi_index = [idx for idx in config_data['bg_roi_index'] if idx in range(len(rois))]
-    roi = rois[bg_roi_index[0]]
+        # bg_roi_index = [idx for idx in config_data['bg_roi_index'] if idx in range(len(rois))]
+        # roi = rois[bg_roi_index[0]]
 
-    for idx in bg_roi_index:
-        roi_filename = f'roi_{idx:02d}.tiff'
-        write_image(join(output_dir, roi_filename), rois[idx], scale=True)
+        # for idx in bg_roi_index:
+        #     roi_filename = f'roi_{idx:02d}.tiff'
+        #     write_image(join(output_dir, roi_filename), rois[idx], scale=True)
+        roi = rois[config_data['bg_roi_index']]
+        write_image(roi_filename, roi, scale=True)
 
     return roi, bground_im, first_frame
 
