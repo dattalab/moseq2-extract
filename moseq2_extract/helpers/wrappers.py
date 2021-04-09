@@ -185,7 +185,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     config_data = detect_and_set_camera_parameters(config_data, input_file)
 
     print('Getting background...')
-    bground_im = get_bground_im_file(input_file, **config_data, output_dir=output_dir)
+    bground_im = get_bground_im_file(input_file, **config_data)
 
     # readjust depth range
     if config_data['autoset_depth_range']:
