@@ -399,13 +399,12 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                 filtered_frames[i] = cv2.medianBlur(filtered_frames[i], prefilter_space[j])
         # Tail Filter
         if iters_tail is not None and iters_tail > 0:
-            filtered_frames[i] = cv2.morphologyEx(
-                filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+            filtered_frames[i] = cv2.morphologyEx(filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+
     # Temporal Median Filter
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
         for j in range(len(prefilter_time)):
-            filtered_frames = scipy.signal.medfilt(
-                filtered_frames, [prefilter_time[j], 1, 1])
+            filtered_frames = scipy.signal.medfilt(filtered_frames, [prefilter_time[j], 1, 1])
 
     return filtered_frames
 
@@ -462,9 +461,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
             mask[i] = frame_mask
 
         # Get contours in frame
-        cnts, hierarchy = cv2.findContours(
-            frame_mask.astype('uint8'),
-            cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnts, hierarchy = cv2.findContours(frame_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
 
         if tmp.size == 0:

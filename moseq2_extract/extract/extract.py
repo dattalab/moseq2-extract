@@ -175,11 +175,14 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     # Orient mouse to face east
     if flip_classifier:
+        # get frame indices of incorrectly orientation
         flips = get_flips(cropped_frames, flip_classifier, flip_classifier_smoothing)
-        for flip in np.where(flips)[0]:
-            cropped_frames[flip] = np.rot90(cropped_frames[flip], k=2)
-            cropped_filtered_frames[flip] = np.rot90(cropped_filtered_frames[flip], k=2)
-            mask[flip] = np.rot90(mask[flip], k=2)
+        flip_indices = np.where(flips)
+
+        # apply flips
+        cropped_frames[flip_indices] = np.rot90(cropped_frames[flip_indices], k=2, axes=(1, 2))
+        cropped_filtered_frames[flip_indices] = np.rot90(cropped_filtered_frames[flip_indices], k=2, axes=(1, 2))
+        mask[flip_indices] = np.rot90(mask[flip_indices], k=2, axes=(1, 2))
         features['orientation'][flips] += np.pi
 
     else:
