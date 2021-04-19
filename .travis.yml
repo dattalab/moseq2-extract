@@ -1,6 +1,6 @@
 #specs for travis ci
 language: python
-dist: trusty
+dist: xenial
 os: linux
 cache: false
 
@@ -18,7 +18,8 @@ jobs:
         - pip install -U pip
         - pip install pipenv codecov
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
-        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
@@ -38,6 +39,7 @@ jobs:
         - pip install pipenv codecov
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pipenv install --dev --ignore-pipfile --deploy
@@ -59,7 +61,8 @@ jobs:
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
-        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pip install -e .
@@ -82,6 +85,7 @@ jobs:
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
         - pip install -e .
