@@ -86,8 +86,13 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     Returns
     -------
-    results: (3d np.ndarray) - (nframes, crop_height, crop_width)
-    extracted cropped, oriented and centered RGB video chunk to be written to file.
+    results: (dict) - dict object containing the following keys:
+        chunk - 3d array (nframes, height, width): bg subtracted and applied ROI version of original video chunk
+        depth_frames - 3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
+        mask_frames -  3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
+        scalars - dict of computed scalars (str) mapped to 1d numpy arrays of length=nframes.
+        flips - (1d array): list of frame indices where the mouse orientation was flipped.
+        parameters - (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.
     '''
 
     if bground is not None:

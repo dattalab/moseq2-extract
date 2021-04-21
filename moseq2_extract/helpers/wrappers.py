@@ -190,7 +190,8 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     # readjust depth range
     if config_data['bg_roi_depth_range'] == 'auto':
-        cX, cY = get_bucket_center(bground_im, 1000, threshold=250)
+        # search for depth values between 250 and 1200mm from the camera.
+        cX, cY = get_bucket_center(bground_im, bground_im.max(), threshold=int(np.median(bground_im)/2))
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
 

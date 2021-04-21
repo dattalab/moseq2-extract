@@ -103,6 +103,9 @@ def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **k
     Parameters
     ----------
     filename (string): name of file
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    threads (int): number of threads to simultanoues run the ffprobe command
+    count_frames (bool): indicates whether to count the frames individually.
 
     Returns
     -------
@@ -275,7 +278,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (int): ffmpeg channel mapping; "o:mapping"
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format).
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
     Returns
@@ -355,7 +358,8 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (int): ffmpeg channel mapping; "o:mapping"
+    mapping (int): ffmpeg channel mapping; "o:mapping"; chooses the stream to read from mkv files.
+     (Will default to if video is not an mkv format)
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
     timestamps (list): array of timestamps to slice into using the frame indices
 
@@ -552,6 +556,8 @@ def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     Parameters
     ----------
     filename (str): path to input file to extract timestamps from.
+    threads (int): number of threads to simultaneously read timestamps
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
 
     Returns
     -------

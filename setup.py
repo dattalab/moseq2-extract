@@ -44,6 +44,6 @@ setup(
                       'joblib==0.15.1', 'cytoolz==0.10.1', 'matplotlib==3.1.2', 'statsmodels==0.10.2',
                       'scikit-image==0.16.2', 'scikit-learn==0.20.3', 'opencv-python==4.1.2.30',
                       'ruamel.yaml==0.16.5'],
-    python_requires='<3.8',
+    python_requires='>=3.6,<3.8',
     entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']}
 )

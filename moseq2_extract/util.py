@@ -332,7 +332,7 @@ def generate_missing_metadata(sess_dir, sess_name):
     '''
 
     # generate sample metadata json for each session that is missing one
-    sample_meta = {'SubjectName': f'{basename(sess_dir)}', f'SessionName': f'{sess_name}',
+    sample_meta = {'SubjectName': '', f'SessionName': f'{sess_name}',
                    'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
                    'ColorDataType': "Byte[]", "StartTime": ""}
 
