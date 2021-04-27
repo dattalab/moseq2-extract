@@ -219,7 +219,7 @@ def detect_avi_file(finfo):
             # Default Azure dimensions
             detected = 'azure'
         elif list(finfo['dims']) in potential_camera_dims['realsense']:
-            # Realsense SR305 output dimensions
+            # Realsense D415 output dimensions
             detected = 'realsense'
         elif list(finfo['dims']) in potential_camera_dims['kinect']:
             # Kinect output dimensions
