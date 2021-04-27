@@ -2,7 +2,9 @@ import os
 import sys
 import h5py
 import shutil
+from copy import deepcopy
 import ruamel.yaml as yaml
+from os.path import exists
 from unittest import TestCase
 from .test_cli import write_fake_movie
 from moseq2_extract.helpers.wrappers import copy_h5_metadata_to_yaml_wrapper
@@ -12,6 +14,11 @@ from moseq2_extract.gui import generate_config_command, generate_index_command, 
 
 
 class GUITests(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        if exists('data/data/'):
+            shutil.rmtree('data/data/')
 
     def test_get_selected_sessions(self):
 
@@ -164,8 +171,12 @@ class GUITests(TestCase):
         with open(configfile, 'r') as f:
             config_data = yaml.safe_load(f)
 
+        config_data['compress'] = True
+        config_data['camera_type'] = 'auto'
         config_data['flip_classifier'] = flip_file
         config_data['use_plane_bground'] = True
+        config_data['bg_roi_index'] = 0
+        config_data['bg_sort_roi_by_position'] = True
 
         with open(configfile, 'w') as f:
             yaml.safe_dump(config_data, f)
@@ -176,7 +187,7 @@ class GUITests(TestCase):
 
         sys.stdin = open(stdin)
 
-        ret = extract_command(data_filepath, None, configfile, skip=True)
+        ret = extract_command(data_filepath, None, configfile, skip=False)
 
         out_dir = 'data/test_extract/proc/'
 
@@ -189,13 +200,20 @@ class GUITests(TestCase):
         with open(configfile, 'r') as f:
             config_data = yaml.safe_load(f)
 
-        config_data['camera_type'] = 'azure'
+        config_data['camera_type'] = 'auto'
+        config_data["bg_roi_index"] = [0]
         config_data['flip_classifier'] = flip_file
         config_data['use_plane_bground'] = False
         config_data['bg_roi_depth_range'] = [500, 700]
+        config_data['session_config_path'] = 'data/session_config.yaml'
 
         with open(configfile, 'w') as f:
             yaml.safe_dump(config_data, f)
+
+        session_config = {'azure_test': deepcopy(config_data)}
+
+        with open(config_data['session_config_path'], 'w') as f:
+            yaml.safe_dump(session_config, f)
 
         mkv_path = 'data/azure_test/nfov_test.mkv'
         ret = extract_command(mkv_path, None, configfile, skip=False, num_frames=60)
@@ -207,6 +225,7 @@ class GUITests(TestCase):
         assert (os.path.isdir(out_dir)), "proc directory was not created"
         assert ('completed' in ret), "GUI command failed"
         assert os.path.exists(h5file)
+        assert os.path.exists('data/azure_test/metadata.json')
 
         # check extraction contents
         h5_test = h5py.File(h5file)
@@ -216,6 +235,8 @@ class GUITests(TestCase):
         shutil.rmtree('data/flip/')
         shutil.rmtree(out_dir)
         os.remove(configfile)
+        os.remove(config_data['session_config_path'])
+        os.remove('data/azure_test/metadata.json')
 
 
     def test_aggregate_results_command(self):

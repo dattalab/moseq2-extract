@@ -8,8 +8,8 @@ import tarfile
 import datetime
 import subprocess
 import numpy as np
-from tqdm.auto import tqdm
 from os.path import exists
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 
@@ -37,24 +37,6 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
             'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith(('.mkv', '.avi')):
-            try:
-                vid = cv2.VideoCapture(filename)
-                h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
-                                vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
-                                vid.get(cv2.CAP_PROP_FRAME_COUNT)
-
-                bytes_per_frame = (int(w) * int(h) * bit_depth) / 8
-
-                file_info = {
-                    'bytes': os.stat(filename).st_size,
-                    'nframes': int(nframes),
-                    'dims': (int(w), int(h)),
-                    'bytes_per_frame': int(bytes_per_frame)
-                }
-            except AttributeError as e:
-                print(e)
-                pass
     else:
         file_info = {
             'bytes': filename.size,
@@ -114,49 +96,64 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename, threads=6):
+def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
     Parameters
     ----------
     filename (string): name of file
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    threads (int): number of threads to simultanoues run the ffprobe command
+    count_frames (bool): indicates whether to count the frames individually.
 
     Returns
     -------
     (dict): dictionary containing video file metadata
     '''
 
+    mapping_dict = get_stream_names(filename)
+    if isinstance(mapping, str):
+        mapping = mapping_dict.get(mapping, 0)
+
+    stream_str = 'stream=width,height,r_frame_rate,'
+    if count_frames:
+        stream_str += 'nb_read_frames'
+    else:
+        stream_str += 'nb_frames'
+
     command = ['ffprobe',
                '-v', 'fatal',
-               '-count_frames',
-               '-select_streams', 'v:0',
+               '-select_streams', f'v:{mapping}',
                '-show_entries',
-               'stream=width,height,r_frame_rate,nb_read_frames',
+               stream_str,
                '-of',
                'default=noprint_wrappers=1:nokey=1',
                '-threads', str(threads),
                filename,
                '-sexagesimal']
 
+    if count_frames:
+        command += ['-count_frames']
+
     ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = ffmpeg.communicate()
 
     if(err):
         print(err)
+
     out = out.decode().split('\n')
+    out_dict = {'file': filename,
+                'dims': (int(float(out[0])), int(float(out[1]))),
+                'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
+                }
+
     try:
-        return {'file': filename,
-            'dims': (int(float(out[0])), int(float(out[1]))),
-            'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'nframes': int(out[3])}
-    except:
-        try:
-            finfo = get_raw_info(filename)
-        except:
-            print('Could not process this video extension:', filename)
-            finfo = {}
-        return finfo
+        out_dict['nframes'] = int(out[3])
+    except ValueError:
+        out_dict['nframes'] = None
+
+    return out_dict
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -225,10 +222,47 @@ def write_frames(filename, frames, threads=6, fps=30,
     else:
         return pipe
 
+def get_stream_names(filename, stream_tag="title"):
+    '''
+    Runs an FFProbe command to determine whether an input video file contains multiple streams, and
+     returns a stream_name to paired int values to extract the desired stream.
+    If no streams are detected, then the 0th (default) stream will be returned and used.
+
+    Parameters
+    ----------
+    filename (str): path to video file to get streams from.
+    stream_tag (str): value of the stream tags for ffprobe command to return
+
+    Returns
+    -------
+    out (dict): Dictionary of string to int pairs for the included streams in the mkv file.
+     Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
+    '''
+
+    command = [
+        "ffprobe",
+        "-v",
+        "fatal",
+        "-show_entries",
+        "stream_tags={}".format(stream_tag),
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        filename,
+    ]
+
+    ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffmpeg.communicate()
+
+    if err or len(out) == 0:
+        return {'DEPTH': 0}
+
+    out = out.decode("utf-8").rstrip("\n").split("\n")
+
+    return {o: i for i, o in enumerate(out)}
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
-                slices=24, slicecrc=1, mapping=0, get_cmd=False, finfo=None, **kwargs):
+                slices=24, slicecrc=1, mapping='DEPTH', get_cmd=False, finfo=None, **kwargs):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
@@ -244,7 +278,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (int): ffmpeg channel mapping; "o:mapping"
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format).
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
     Returns
@@ -253,10 +287,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     '''
 
     if finfo is None:
-        try:
-            finfo = get_video_info(filename)
-        except AttributeError as e:
-            finfo = get_raw_info(filename)
+        finfo = get_video_info(filename, threads=threads, **kwargs)
 
     if frames is None or len(frames) == 0:
         frames = np.arange(finfo['nframes'], dtype='int64')
@@ -284,6 +315,10 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
         '-slicecrc', str(slicecrc),
         '-vcodec', 'rawvideo',
     ]
+
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(filename)
+        mapping = mapping_dict.get(mapping, 0)
 
     if filename.endswith(('.mkv', '.avi')):
         command += ['-map', f'0:{mapping}']
@@ -323,7 +358,8 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (int): ffmpeg channel mapping; "o:mapping"
+    mapping (int): ffmpeg channel mapping; "o:mapping"; chooses the stream to read from mkv files.
+     (Will default to if video is not an mkv format)
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
     timestamps (list): array of timestamps to slice into using the frame indices
 
@@ -333,7 +369,7 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     '''
 
     if timestamps is None and exists(filename):
-        timestamps = load_mkv_timestamps(filename)
+        timestamps = load_timestamps_from_movie(filename, mapping=kwargs.get('mapping', 'DEPTH'))
 
     if timestamps is not None:
         if isinstance(frames, range):
@@ -486,7 +522,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -505,16 +541,14 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16):
         if filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
-            metadata = get_video_info(filename)
-            if metadata == {}:
-                metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
+            metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
         print('Error:', e)
-        metadata = get_raw_info(filename)
+        metadata = {}
 
     return metadata
 
-def load_mkv_timestamps(input_file, threads=6):
+def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     '''
     Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
@@ -522,20 +556,28 @@ def load_mkv_timestamps(input_file, threads=6):
     Parameters
     ----------
     filename (str): path to input file to extract timestamps from.
+    threads (int): number of threads to simultaneously read timestamps
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
 
     Returns
     -------
     timestamps (list): list of float values representing timestamps for each frame.
     '''
 
+    print('Loading movie timestamps')
+
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(input_file)
+        mapping = mapping_dict.get(mapping, 0)
+
     command = [
         'ffprobe',
         '-select_streams',
-        'v:0',
+        f'v:{mapping}',
+        '-threads', str(threads),
         '-show_entries',
         'frame=pkt_pts_time',
         '-v', 'quiet',
-        '-threads', str(threads),
         input_file,
         '-of',
         'csv=p=0'

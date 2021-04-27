@@ -55,10 +55,10 @@ def common_roi_options(function):
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
-    function = click.option('--camera-type', default='kinect', type=click.Choice(["kinect", "azure", "realsense"]),
+    function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense"]),
                             help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
                              Possible types: ["kinect", "azure", "realsense"]')(function)
-    function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
+    function = click.option('--bg-roi-depth-range', default='auto',
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
                             help='Exclude walls with gradient filtering')(function)
@@ -106,7 +106,9 @@ def common_avi_options(function):
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
     function = click.option('--delete', is_flag=True, help='Delete raw file if encoding is sucessful')(function)
-    function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
+    function = click.option('-t', '--threads', type=int, default=8, help='Number of threads for encoding')(function)
+    function = click.option('-m', '--mapping', type=str, default='DEPTH', help='Ffprobe stream selection variable. Default: DEPTH')(function)
+
     return function
 
 def extract_options(function):
@@ -239,17 +241,17 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, mapping):
 
-    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads)
+    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping)
 
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice indices used for copy')
-def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
 
-    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads)
+    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping)
 
 if __name__ == '__main__':
     cli()

@@ -15,7 +15,7 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import keymap
 from pkg_resources import get_distribution
-from moseq2_extract.io.video import load_mkv_timestamps
+from moseq2_extract.io.video import load_timestamps_from_movie
 from os.path import exists, join, dirname, basename, splitext
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read_yaml, \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
@@ -303,14 +303,14 @@ def handle_extract_metadata(input_file, dirname):
         if not exists(timestamp_path) and exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
-        elif not (exists(timestamp_path) and exists(alternate_timestamp_path)) and input_file.endswith('.mkv'):
+        elif not (exists(timestamp_path) or exists(alternate_timestamp_path)) and input_file.endswith('.mkv'):
             from_depth_file = True
 
     acquisition_metadata = load_metadata(metadata_path)
     if not from_depth_file:
         timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
     else:
-        timestamps = load_mkv_timestamps(input_file)
+        timestamps = load_timestamps_from_movie(input_file)
 
     return acquisition_metadata, timestamps, tar
 
@@ -358,8 +358,7 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
                      config_data['frame_dtype'], compression='gzip')
     h5_file['frames'].attrs['description'] = ('3D Numpy array of depth frames (nframes x w x h).' +
-                                              ' Depth values are in mm for Kinect v2 and Azure depth cameras.')
-
+                                              ' Depth values are in mm.')
     # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:
         h5_file.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'float32',

@@ -16,7 +16,8 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
-from os.path import join, exists, splitext, basename, abspath
+from moseq2_extract.io.video import get_movie_info
+from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
@@ -146,7 +147,6 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
         out.append(seq[i:i + chunk_size])
     return out
 
-
 def load_timestamps(timestamp_file, col=0, alternate=False):
     '''
     Read timestamps from space delimited text file.
@@ -188,7 +188,48 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
 
     return ts
 
-def set_bg_roi_weights(config_data):
+def detect_avi_file(finfo):
+    '''
+    Detects the camera type by comparing the read video resolution with known
+     outputted dimensions of different camera types.
+
+    Parameters
+    ----------
+    finfo (dict): dictionary containing the file metadata,
+     outputted by moseq2_extract.io.video.get_movie_info().
+
+    Returns
+    -------
+    detected (str): name of the detected camera type.
+    '''
+
+    detected = 'azure'
+    potential_camera_dims = {
+        'kinect': [[512, 424]],
+        'realsense': [[640, 480]],
+        'azure': [[640, 576],
+                  [320, 288],
+                  [512, 512],
+                  [1024, 1024]]
+    }
+
+    # Check dimensions
+    if finfo is not None:
+        if list(finfo['dims']) in potential_camera_dims['azure']:
+            # Default Azure dimensions
+            detected = 'azure'
+        elif list(finfo['dims']) in potential_camera_dims['realsense']:
+            # Realsense D415 output dimensions
+            detected = 'realsense'
+        elif list(finfo['dims']) in potential_camera_dims['kinect']:
+            # Kinect output dimensions
+            detected = 'kinect'
+        else:
+            warnings.warn('Could not infer camera type, using default Azure parameters.')
+
+    return detected
+
+def detect_and_set_camera_parameters(config_data, input_file=None):
     '''
     Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
     If no camera_type is inputted, program will assume a kinect camera is being used.
@@ -204,15 +245,50 @@ def set_bg_roi_weights(config_data):
 
     # Auto-setting background weights
     camera_type = config_data.get('camera_type')
-    if camera_type == 'kinect':
-        config_data['bg_roi_weights'] = (1, .1, 1)
-    elif camera_type == 'azure':
-        config_data['bg_roi_weights'] = (10, 0.1, 1)
-    elif camera_type == 'realsense':
-        config_data['bg_roi_weights'] = (10, 1, 4)
+    finfo = config_data.get('finfo')
+
+    default_parameters = {
+        'kinect': {
+            'bg_roi_weights': (1, .1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2'
+        },
+        'azure': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16be',
+            'movie_dtype': '>u2'
+        },
+        'realsense': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2',
+        },
+    }
+
+    if camera_type == 'auto' and input_file is not None:
+        if input_file.endswith('.dat'):
+            detected = 'kinect'
+        elif input_file.endswith('.mkv'):
+            detected = 'azure'
+        elif input_file.endswith('.avi'):
+            if finfo is None:
+                finfo = get_movie_info(input_file,
+                                       mapping=config_data.get('mapping', 0),
+                                       threads=config_data.get('threads', 8)
+                                       )
+            detected = detect_avi_file(finfo)
+        else:
+            warnings.warn('Extension not recognized, trying default Kinect v2 parameters.')
+            detected = 'kinect'
+
+        # set the params
+        config_data.update(**default_parameters[detected])
+    elif camera_type in default_parameters:
+        # update the config with the corresponding param set
+        config_data.update(**default_parameters[camera_type])
     else:
-        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
-        config_data['bg_roi_weights'] = (1, .1, 1)
+        warnings.warn('Warning, make sure the following parameters are set to best handle your camera type: '
+                      '"bg_roi_weights", "pixel_format", "movie_dtype"')
 
     return config_data
 
@@ -241,6 +317,28 @@ def check_filter_sizes(config_data):
 
     return config_data
 
+def generate_missing_metadata(sess_dir, sess_name):
+    '''
+    Generates default metadata.json file for session that does not already include one.
+
+    Parameters
+    ----------
+    sess_dir (str): Path to directory to create metadata.json file in.
+    sess_name (str): Name of the directory to set the metadata SessionName.
+
+    Returns
+    -------
+
+    '''
+
+    # generate sample metadata json for each session that is missing one
+    sample_meta = {'SubjectName': '', f'SessionName': f'{sess_name}',
+                   'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
+                   'ColorDataType': "Byte[]", "StartTime": ""}
+
+    with open(join(sess_dir, 'metadata.json'), 'w') as fp:
+        json.dump(sample_meta, fp)
+
 def load_metadata(metadata_file):
     '''
     Loads metadata from session metadata.json file.
@@ -254,12 +352,12 @@ def load_metadata(metadata_file):
     metadata (dict): key-value pairs of JSON contents
     '''
 
-    metadata = {}
-
     try:
-        if exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
+        if not exists(metadata_file):
+            generate_missing_metadata(dirname(metadata_file), basename(dirname(metadata_file)))
+
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
     except TypeError:
         # try loading directly
         metadata = json.load(metadata_file)

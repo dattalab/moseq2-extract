@@ -25,8 +25,8 @@ from moseq2_extract.util import mouse_threshold_filter, filter_warnings, read_ya
 from moseq2_extract.helpers.data import handle_extract_metadata, create_extract_h5, build_index_dict, \
                                         load_extraction_meta_from_h5s, build_manifest, copy_manifest_results, check_completion_status
 from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attributes, convert_raw_to_avi_function, \
-                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, \
-                        h5_to_dict, set_bg_roi_weights, get_frame_range_indices, check_filter_sizes, get_strels
+                        set_bground_to_plane_fit, recursive_find_h5s, clean_dict, graduate_dilated_wall_area, get_bucket_center, \
+                        h5_to_dict, detect_and_set_camera_parameters, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     '''
@@ -170,17 +170,30 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     if output_dir is None:
         output_dir = join(dirname(input_file), 'proc')
+    elif exists(output_dir):
+        pass
     elif dirname(output_dir) == '' or dirname(output_dir) not in input_file:
         output_dir = join(dirname(input_file), output_dir)
 
     os.makedirs(output_dir, exist_ok=True)
+    config_data['output_dir'] = output_dir
+
+    if config_data.get('finfo') is None:
+        config_data['finfo'] = get_movie_info(input_file, **config_data)
 
     # checks camera type to set appropriate bg_roi_weights
-    config_data = set_bg_roi_weights(config_data)
+    config_data = detect_and_set_camera_parameters(config_data, input_file)
 
     print('Getting background...')
     bground_im = get_bground_im_file(input_file, **config_data)
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
+
+    # readjust depth range
+    if config_data['bg_roi_depth_range'] == 'auto':
+        # search for depth values between 250 and 1200mm from the camera.
+        cX, cY = get_bucket_center(bground_im, bground_im.max(), threshold=int(np.median(bground_im)/2))
+        adjusted_bg_depth_range = bground_im[cY][cX]
+        config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
 
     first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -249,7 +262,17 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     # handle tarball stuff
     in_dirname = dirname(input_file)
 
-    config_data['finfo'] = get_movie_info(input_file)
+    config_data['finfo'] = get_movie_info(input_file, **config_data)
+
+    # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
+    # Also gets loads respective metadata dictionary and timestamp array.
+    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file,
+                                                                                                  in_dirname)
+
+    status_dict['metadata'] = acquisition_metadata  # update status dict
+
+    if config_data['finfo']['nframes'] is None:
+        config_data['finfo']['nframes'] = len(config_data['timestamps'])
 
     # Getting number of frames to extract
     if num_frames is None:
@@ -261,12 +284,6 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         nframes = num_frames
 
     config_data = check_filter_sizes(config_data)
-
-    # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
-    # Also gets loads respective metadata dictionary and timestamp array.
-    acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file, in_dirname)
-
-    status_dict['metadata'] = acquisition_metadata # update status dict
 
     # Compute total number of frames to include from an initial starting point.
     total_frames, first_frame_idx, last_frame_idx = get_frame_range_indices(*config_data['frame_trim'], nframes)
@@ -434,7 +451,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
         print('Could not update configuration file flip classifier path')
         print('Unexpected error:', e)
 
-def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads):
+def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping):
     '''
     Wrapper function used to convert/compress a raw depth file into
      an avi file (with depth values) that is 8x smaller.
@@ -447,6 +464,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
     fps (int): Frames per second.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
+    mapping (str or int): Indicate which video stream to from the inputted file
 
     Returns
     -------
@@ -456,12 +474,12 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         base_filename = splitext(basename(input_file))[0]
         output_file = join(dirname(input_file), f'{base_filename}.avi')
 
-    vid_info = get_movie_info(input_file)
+    vid_info = get_movie_info(input_file, mapping=mapping)
     frame_batches = gen_batch_sequence(vid_info['nframes'], chunk_size, 0)
     video_pipe = None
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
+        frames = load_movie_data(input_file, batch, mapping=mapping)
         video_pipe = write_frames(output_file, frames, pipe=video_pipe,
                                   close_pipe=False, threads=threads, fps=fps)
 
@@ -470,8 +488,8 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         video_pipe.wait()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
@@ -482,7 +500,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         print('Deleting', input_file)
         os.remove(input_file)
 
-def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
     '''
     Wrapper function to copy a segment of an input depth recording into a new video file.
 
@@ -495,6 +513,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     fps (int): Frames per second.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
+    mapping (str or int): Indicate which video stream to from the inputted file
 
     Returns
     -------
@@ -525,7 +544,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
             sys.exit(0)
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch)
+        frames = load_movie_data(input_file, batch, mapping=mapping)
         if avi_encode:
             video_pipe = write_frames(output_file,
                                       frames,
@@ -542,8 +561,8 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
         video_pipe.wait()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch)
-        encoded_frames = load_movie_data(output_file, batch)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')

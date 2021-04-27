@@ -5,6 +5,7 @@ import click
 import shutil
 import numpy as np
 import ruamel.yaml as yaml
+from os.path import exists
 import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
@@ -103,10 +104,11 @@ class CLITests(TestCase):
         result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
                                          '--config-file', config_file,
                                          '--use-tracking-model', True,
-                                         '--bg-roi-depth-range', 0, 1000],
+                                         '--bg-roi-depth-range', 'auto'],
                                catch_exceptions=False)
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
+        assert exists('data/test_out/')
         shutil.rmtree('data/test_out/')
         os.remove(data_path)
 
@@ -121,7 +123,7 @@ class CLITests(TestCase):
 
         runner = CliRunner()
         result = runner.invoke(find_roi, [data_path, '--output-dir', out_path,
-                                          '--bg-roi-depth-range', 0, 1000])
+                                          '--bg-roi-depth-range', 'auto'])
 
         assert(result.exit_code == 0), "CLI command did not successfully complete"
         assert len(glob.glob(output_dir+'*.tiff')) == 3, \

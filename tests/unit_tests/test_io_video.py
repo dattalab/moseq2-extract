@@ -4,7 +4,7 @@ import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.io.video import read_frames_raw, get_raw_info,\
     read_frames, write_frames, get_video_info, write_frames_preview,\
-    get_movie_info, load_movie_data, load_mkv_timestamps, read_mkv
+    get_movie_info, load_movie_data, load_timestamps_from_movie, read_mkv
 
 class TestVideoIO(TestCase):
     def test_read_frames_raw(self):
@@ -32,14 +32,6 @@ class TestVideoIO(TestCase):
         npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
         npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
         os.remove(data_path)
-
-        avi_path = 'data/test-out.avi'
-        vid_info = get_raw_info(avi_path)
-
-        npt.assert_equal(vid_info['bytes'], 15824724)
-        npt.assert_equal(vid_info['nframes'], test_data.shape[0])
-        npt.assert_equal(vid_info['dims'], (test_data.shape[2], test_data.shape[1]))
-        npt.assert_equal(vid_info['bytes_per_frame'], test_data.nbytes / test_data.shape[0])
 
     def test_ffv1(self):
 
@@ -108,13 +100,13 @@ class TestVideoIO(TestCase):
 
         mkv_path = 'data/azure_test/nfov_test.mkv'
 
-        test_timestamps = load_mkv_timestamps(mkv_path)
+        test_timestamps = load_timestamps_from_movie(mkv_path)
 
         # length assertion
         assert len(test_timestamps) == 66
 
         avi_test = 'data/test-out.avi'
-        avi_ts = load_mkv_timestamps(avi_test)
+        avi_ts = load_timestamps_from_movie(avi_test)
         assert len(avi_ts) == 100
 
     def test_read_mkv(self):

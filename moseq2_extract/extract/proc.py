@@ -89,7 +89,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=None, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -106,7 +106,10 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground (2d numpy array):  r x c, background image
     '''
 
-    bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    if output_dir is None:
+        bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    else:
+        bground_path = join(output_dir, 'bground.tiff')
 
     kwargs = deepcopy(kwargs)
     finfo = kwargs.pop('finfo', None)
@@ -114,15 +117,15 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     # Compute background image if it doesn't exist. Otherwise, load from file
     if not exists(bground_path) or kwargs.get('recompute_bg', False):
         if finfo is None:
-            finfo = moseq2_extract.io.video.get_movie_info(frames_file)
+            finfo = moseq2_extract.io.video.get_movie_info(frames_file, **kwargs)
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
         frame_store = []
-        for i, frame in tqdm(enumerate(frame_idx), total=len(frame_idx)):
+        for i, frame in enumerate(frame_idx):
             frs = moseq2_extract.io.video.load_movie_data(frames_file,
-                                                          [int(frame)],
-                                                          frame_size=finfo['dims'],
-                                                          finfo=finfo,
+                                                          [int(frame)], 
+                                                          frame_size=finfo['dims'], 
+                                                          finfo=finfo, 
                                                           **kwargs).squeeze()
             frame_store.append(cv2.medianBlur(frs, med_scale))
 
@@ -396,13 +399,12 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                 filtered_frames[i] = cv2.medianBlur(filtered_frames[i], prefilter_space[j])
         # Tail Filter
         if iters_tail is not None and iters_tail > 0:
-            filtered_frames[i] = cv2.morphologyEx(
-                filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+            filtered_frames[i] = cv2.morphologyEx(filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+
     # Temporal Median Filter
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
         for j in range(len(prefilter_time)):
-            filtered_frames = scipy.signal.medfilt(
-                filtered_frames, [prefilter_time[j], 1, 1])
+            filtered_frames = scipy.signal.medfilt(filtered_frames, [prefilter_time[j], 1, 1])
 
     return filtered_frames
 
@@ -459,9 +461,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
             mask[i] = frame_mask
 
         # Get contours in frame
-        cnts, hierarchy = cv2.findContours(
-            frame_mask.astype('uint8'),
-            cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnts, hierarchy = cv2.findContours(frame_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
 
         if tmp.size == 0:
@@ -528,7 +528,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
         rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
                                           -np.rad2deg(features['orientation'][i]), 1)
         cropped_frames[i] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
-                                                 rot_mat, (crop_size[0], crop_size[1]))
+                                           rot_mat, (crop_size[0], crop_size[1]))
 
     return cropped_frames
 
