@@ -97,8 +97,7 @@ def make_output_movie(results, config_data, offset=0):
 
 def process_extract_batches(input_file, config_data, bground_im, roi,
                             frame_batches, str_els, output_mov_path,
-                            scalars=None, h5_file=None, video_pipe=None,
-                            tracking_init_mean=None, tracking_init_cov=None,  **kwargs):
+                            scalars=None, h5_file=None, video_pipe=None, **kwargs):
     '''
     Compute extracted frames and save them to h5 files and avi files.
     Given an open h5 file, which is used to store extraction results, and some pre-computed input session data points
@@ -122,6 +121,9 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     -------
     config_data (dict): dictionary containing updated extraction validation parameter values
     '''
+
+    tracking_init_mean = config_data.pop('tracking_init_mean', None)
+    tracking_init_cov = config_data.pop('tracking_init_cov', None)
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_chunk = load_movie_data(input_file,
