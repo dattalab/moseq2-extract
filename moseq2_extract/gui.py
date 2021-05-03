@@ -217,7 +217,8 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     indexpath (str): path to newly generated index file.
     '''
 
-    output_dir = join(input_dir, output_dir)
+    if not os.path.isabs(output_dir):
+        output_dir = join(input_dir, output_dir)
 
     if not exists(output_dir):
         os.makedirs(output_dir)

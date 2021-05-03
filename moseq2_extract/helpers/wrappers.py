@@ -92,10 +92,10 @@ def generate_index_wrapper(input_dir, output_file):
             warnings.warn(f'Metadata for session {file[0]} not found. \
             File may be listed with minimal/defaulted metadata in index file.')
 
-    print(f'Number of sessions included in index file: {len(file_with_uuids)}')
-
     # Create index file in dict form
     output_dict = build_index_dict(file_with_uuids)
+
+    print(f'Number of sessions included in index file: {len(output_dict["files"])}')
 
     # write out index yaml
     with open(output_file, 'w') as f:

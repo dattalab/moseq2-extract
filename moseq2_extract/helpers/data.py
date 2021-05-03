@@ -82,6 +82,10 @@ def build_index_dict(files_to_use):
             index_uuids.append(file_tup[2]['uuid'])
             # appending file with default information
             output_dict['files'].append(tmp)
+        else:
+            print('\nWarning, session has duplicate UUID. This will cause issues down the analysis pipeline.')
+            print(f'Before continuing, you must re-extract the sessions with the uuid: {file_tup[2]["uuid"]}.')
+            print(f'For now, ignoring duplicate session files: \n{(file_tup[0], file_tup[1])}\n')
 
     return output_dict
 
