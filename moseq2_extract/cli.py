@@ -55,9 +55,9 @@ def common_roi_options(function):
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
-    function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense"]),
+    function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense", "manual"]),
                             help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
-                             Possible types: ["kinect", "azure", "realsense"]')(function)
+                             Possible types: ["auto", "kinect", "azure", "realsense", "manual"]')(function)
     function = click.option('--bg-roi-depth-range', default='auto',
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
