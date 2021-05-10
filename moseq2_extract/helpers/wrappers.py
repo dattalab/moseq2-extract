@@ -224,20 +224,6 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
             print('Using plane fit for background...')
             bground_im = set_bground_to_plane_fit(bground_im, plane, output_dir)
 
-        # # Sort ROIs by largest mean area to later select largest one (bg_roi_index)
-        # if config_data['bg_sort_roi_by_position']:
-        #     # rois = rois[:config_data['bg_sort_roi_by_position_max_rois']]
-        #     rois = [rois[i] for i in np.argsort([np.nonzero(roi)[0].mean() for roi in rois])]
-
-        # if type(config_data['bg_roi_index']) == int:
-        #     config_data['bg_roi_index'] = [config_data['bg_roi_index']]
-
-        # bg_roi_index = [idx for idx in config_data['bg_roi_index'] if idx in range(len(rois))]
-        # roi = rois[bg_roi_index[0]]
-
-        # for idx in bg_roi_index:
-        #     roi_filename = f'roi_{idx:02d}.tiff'
-        #     write_image(join(output_dir, roi_filename), rois[idx], scale=True)
         roi = rois[config_data['bg_roi_index']]
         write_image(roi_filename, roi, scale=True)
 

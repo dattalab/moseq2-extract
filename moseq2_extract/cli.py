@@ -68,10 +68,6 @@ def common_roi_options(function):
     function = click.option('--bg-roi-gradient-kernel', default=7, type=int,
                             help='Kernel size for Sobel gradient filtering')(function)
     function = click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')(function)
-    function = click.option('--bg-sort-roi-by-position', default=False, type=bool,
-                             help='Sort ROIs by position')(function)
-    function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
-                            help='Max original ROIs to sort by position')(function)
     function = click.option('--dilate-iterations', default=1, type=int,
                             help='Number of dilation iterations to increase bucket floor size.')(function)
     function = click.option('--bg-roi-erode', default=(1, 1), type=(int, int),
