@@ -60,6 +60,7 @@ def common_roi_options(function):
                              Possible types: ["auto", "kinect", "azure", "realsense", "manual"]')(function)
     function = click.option('--bg-roi-depth-range', default='auto',
                             help='Range to search for floor of arena (in mm)')(function)
+    function = click.option('--autoset-depth-range', is_flag=True, help='Flag to automatically compute depth range')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
                             help='Exclude walls with gradient filtering')(function)
     function = click.option('--bg-roi-gradient-threshold', default=3000, type=float,
@@ -68,7 +69,7 @@ def common_roi_options(function):
                             help='Kernel size for Sobel gradient filtering')(function)
     function = click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')(function)
     function = click.option('--bg-sort-roi-by-position', default=False, type=bool,
-                            help='Sort ROIs by position')(function)
+                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
                             help='Max original ROIs to sort by position')(function)
     function = click.option('--dilate-iterations', default=1, type=int,
