@@ -292,8 +292,9 @@ class TestExtractUtils(TestCase):
             'bg_roi_index': 'Index of which background mask(s) to use',
             'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
             'camera_type': 'Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
-                             Possible types: ["kinect", "azure", "realsense"]',
+                             Possible types: ["auto", "kinect", "azure", "realsense", "manual"]',
             'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
+            'autoset_depth_range': 'Flag to automatically compute depth range',
             'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
             'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
             'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
