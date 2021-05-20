@@ -14,7 +14,7 @@ from ..integration_tests.test_cli import write_fake_movie
 from moseq2_extract.util import gen_batch_sequence, load_metadata, load_timestamps, recursive_find_unextracted_dirs, \
     select_strel, scalar_attributes, dict_to_h5, click_param_annot, strided_app, get_strels, \
     get_bucket_center, make_gradient, graduate_dilated_wall_area, convert_raw_to_avi_function, command_with_config, \
-    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, set_bg_roi_weights
+    recursive_find_h5s, clean_file_str, load_textdata, time_str_for_filename, build_path, read_yaml, detect_and_set_camera_parameters
 
 
 class TestExtractUtils(TestCase):
@@ -23,28 +23,38 @@ class TestExtractUtils(TestCase):
         out = build_path({'test1': 'value', 'test2': 'value2'}, '{test1}_{test2}')
         assert out == 'value_value2'
 
-    def test_set_bg_roi_weights(self):
+    def test_detect_and_set_camera_parameters(self):
         test_config_data = {'camera_type': 'kinect',
                             'bg_roi_weights': (1, .1, 1)}
 
-        new_config_data = set_bg_roi_weights(test_config_data)
+        new_config_data = detect_and_set_camera_parameters(test_config_data)
 
         assert new_config_data['bg_roi_weights'] == (1, .1, 1)
 
         test_config_data['camera_type'] = 'azure'
-        new_config_data = set_bg_roi_weights(test_config_data)
+        new_config_data = detect_and_set_camera_parameters(test_config_data)
 
         assert new_config_data['bg_roi_weights'] == (10, .1, 1)
 
         test_config_data['camera_type'] = 'realsense'
-        new_config_data = set_bg_roi_weights(test_config_data)
+        new_config_data = detect_and_set_camera_parameters(test_config_data)
 
-        assert new_config_data['bg_roi_weights'] == (10, 1, 4)
+        assert new_config_data['bg_roi_weights'] == (10, 0.1, 1)
 
         test_config_data['camera_type'] = None
-        new_config_data = set_bg_roi_weights(test_config_data)
+        new_config_data = detect_and_set_camera_parameters(test_config_data)
+
+        assert new_config_data['bg_roi_weights'] == (10, 0.1, 1)
+
+        test_config_data['camera_type'] = 'auto'
+        new_config_data = detect_and_set_camera_parameters(test_config_data, 'data/test-out.avi')
 
         assert new_config_data['bg_roi_weights'] == (1, .1, 1)
+
+        test_config_data['camera_type'] = 'auto'
+        new_config_data = detect_and_set_camera_parameters(test_config_data, 'data/azure_test/nfov_test.mkv')
+
+        assert new_config_data['bg_roi_weights'] == (10, .1, 1)
 
     def test_get_strels(self):
 
@@ -233,7 +243,6 @@ class TestExtractUtils(TestCase):
 
         grad = make_gradient(width, height, xc, yc, radx, rady, theta)
         assert grad[grad >= 0.08].all() == True
-        assert grad[grad <= 0.8].all() == False
 
     def test_graduate_dilated_wall_area(self):
         img = read_image('data/tiffs/bground_bucket.tiff')
@@ -273,6 +282,7 @@ class TestExtractUtils(TestCase):
         proc_dirs = recursive_find_unextracted_dirs(root_dir, skip_checks=True)
         print(proc_dirs)
         assert len(proc_dirs) == 1
+        os.remove(data_path)
 
 
     def test_click_param_annot(self):
@@ -296,6 +306,7 @@ class TestExtractUtils(TestCase):
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
             'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
+            'recompute_bg': 'Overwrite previously computed background image',
             'config_file': None,
             'progress_bar': 'Show verbose progress bars.'
         }

@@ -86,8 +86,13 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     Returns
     -------
-    results: (3d np.ndarray) - (nframes, crop_height, crop_width)
-    extracted cropped, oriented and centered RGB video chunk to be written to file.
+    results: (dict) - dict object containing the following keys:
+        chunk - 3d array (nframes, height, width): bg subtracted and applied ROI version of original video chunk
+        depth_frames - 3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
+        mask_frames -  3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
+        scalars - dict of computed scalars (str) mapped to 1d numpy arrays of length=nframes.
+        flips - (1d array): list of frame indices where the mouse orientation was flipped.
+        parameters - (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.
     '''
 
     if bground is not None:
@@ -175,11 +180,14 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     # Orient mouse to face east
     if flip_classifier:
+        # get frame indices of incorrectly orientation
         flips = get_flips(cropped_frames, flip_classifier, flip_classifier_smoothing)
-        for flip in np.where(flips)[0]:
-            cropped_frames[flip] = np.rot90(cropped_frames[flip], k=2)
-            cropped_filtered_frames[flip] = np.rot90(cropped_filtered_frames[flip], k=2)
-            mask[flip] = np.rot90(mask[flip], k=2)
+        flip_indices = np.where(flips)
+
+        # apply flips
+        cropped_frames[flip_indices] = np.rot90(cropped_frames[flip_indices], k=2, axes=(1, 2))
+        cropped_filtered_frames[flip_indices] = np.rot90(cropped_filtered_frames[flip_indices], k=2, axes=(1, 2))
+        mask[flip_indices] = np.rot90(mask[flip_indices], k=2, axes=(1, 2))
         features['orientation'][flips] += np.pi
 
     else:

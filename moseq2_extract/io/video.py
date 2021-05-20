@@ -8,11 +8,12 @@ import tarfile
 import datetime
 import subprocess
 import numpy as np
+from os.path import exists
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 
-def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
+def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     '''
     Gets info from a raw data file with specified frame dimensions and bit depth.
 
@@ -27,44 +28,26 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     file_info (dict): dictionary containing depth file metadata
     '''
 
-    bytes_per_frame = (frame_dims[0] * frame_dims[1] * bit_depth) / 8
+    bytes_per_frame = (frame_size[0] * frame_size[1] * bit_depth) / 8
 
     if type(filename) is not tarfile.TarInfo:
         file_info = {
             'bytes': os.stat(filename).st_size,
             'nframes': int(os.stat(filename).st_size / bytes_per_frame),
-            'dims': frame_dims,
+            'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
-        if filename.endswith(('.mkv', '.avi')):
-            try:
-                vid = cv2.VideoCapture(filename)
-                h, w, nframes = vid.get(cv2.CAP_PROP_FRAME_HEIGHT), \
-                                vid.get(cv2.CAP_PROP_FRAME_WIDTH), \
-                                vid.get(cv2.CAP_PROP_FRAME_COUNT)
-
-                bytes_per_frame = (int(w) * int(h) * bit_depth) / 8
-
-                file_info = {
-                    'bytes': os.stat(filename).st_size,
-                    'nframes': int(nframes),
-                    'dims': (int(w), int(h)),
-                    'bytes_per_frame': int(bytes_per_frame)
-                }
-            except AttributeError as e:
-                print(e)
-                pass
     else:
         file_info = {
             'bytes': filename.size,
             'nframes': int(filename.size / bytes_per_frame),
-            'dims': frame_dims,
+            'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None, **kwargs):
+def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<i2", tar_object=None, **kwargs):
     '''
     Reads in data from raw binary file.
 
@@ -74,6 +57,7 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     frames (list or range): frames to extract
     frame_dims (tuple): wxh of frames in pixels
     bit_depth (int): bits per pixel (default: 16)
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
 
     Returns
@@ -81,10 +65,10 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     chunk (numpy ndarray): nframes x h x w
     '''
 
-    vid_info = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+    vid_info = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
 
-    if vid_info['dims'] != frame_dims:
-        frame_dims = vid_info['dims']
+    if vid_info['dims'] != frame_size:
+        frame_size = vid_info['dims']
 
     if type(frames) is int:
         frames = [frames]
@@ -92,66 +76,84 @@ def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
         frames = range(0, vid_info['nframes'])
 
     seek_point = np.maximum(0, frames[0]*vid_info['bytes_per_frame'])
-    read_points = len(frames)*frame_dims[0]*frame_dims[1]
+    read_points = len(frames)*frame_size[0]*frame_size[1]
 
-    dims = (len(frames), frame_dims[1], frame_dims[0])
+    dims = (len(frames), frame_size[1], frame_size[0])
 
     if type(tar_object) is tarfile.TarFile:
         with tar_object.extractfile(filename) as f:
             f.seek(int(seek_point))
             chunk = f.read(int(len(frames) * vid_info['bytes_per_frame']))
-            chunk = np.frombuffer(chunk, dtype=np.dtype(dtype)).reshape(dims)
+            chunk = np.frombuffer(chunk, dtype=np.dtype(movie_dtype)).reshape(dims)
     else:
         with open(filename, "rb") as f:
             f.seek(int(seek_point))
             chunk = np.fromfile(file=f,
-                                dtype=np.dtype(dtype),
+                                dtype=np.dtype(movie_dtype),
                                 count=read_points).reshape(dims)
 
     return chunk
 
 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
-def get_video_info(filename):
+def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **kwargs):
     '''
     Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
 
     Parameters
     ----------
     filename (string): name of file
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    threads (int): number of threads to simultanoues run the ffprobe command
+    count_frames (bool): indicates whether to count the frames individually.
 
     Returns
     -------
     (dict): dictionary containing video file metadata
     '''
 
+    mapping_dict = get_stream_names(filename)
+    if isinstance(mapping, str):
+        mapping = mapping_dict.get(mapping, 0)
+
+    stream_str = 'stream=width,height,r_frame_rate,'
+    if count_frames:
+        stream_str += 'nb_read_frames'
+    else:
+        stream_str += 'nb_frames'
+
     command = ['ffprobe',
                '-v', 'fatal',
+               '-select_streams', f'v:{mapping}',
                '-show_entries',
-               'stream=width,height,r_frame_rate,nb_frames',
+               stream_str,
                '-of',
                'default=noprint_wrappers=1:nokey=1',
+               '-threads', str(threads),
                filename,
                '-sexagesimal']
+
+    if count_frames:
+        command += ['-count_frames']
 
     ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = ffmpeg.communicate()
 
     if(err):
         print(err)
+
     out = out.decode().split('\n')
+    out_dict = {'file': filename,
+                'dims': (int(float(out[0])), int(float(out[1]))),
+                'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
+                }
+
     try:
-        return {'file': filename,
-            'dims': (int(float(out[0])), int(float(out[1]))),
-            'fps': float(out[2].split('/')[0])/float(out[2].split('/')[1]),
-            'nframes': int(out[3])}
-    except:
-        try:
-            finfo = get_raw_info(filename)
-        except:
-            print('Could not process this video extension:', filename)
-            finfo = {}
-        return finfo
+        out_dict['nframes'] = int(out[3])
+    except ValueError:
+        out_dict['nframes'] = None
+
+    return out_dict
 
 # simple command to pipe frames to an ffv1 file
 def write_frames(filename, frames, threads=6, fps=30,
@@ -220,10 +222,47 @@ def write_frames(filename, frames, threads=6, fps=30,
     else:
         return pipe
 
+def get_stream_names(filename, stream_tag="title"):
+    '''
+    Runs an FFProbe command to determine whether an input video file contains multiple streams, and
+     returns a stream_name to paired int values to extract the desired stream.
+    If no streams are detected, then the 0th (default) stream will be returned and used.
 
-def read_frames(filename, frames=range(0,), threads=6, fps=30,
-                pixel_format='gray16le', frame_size=None, frame_dtype='uint16',
-                slices=24, slicecrc=1, mapping=0, get_cmd=False):
+    Parameters
+    ----------
+    filename (str): path to video file to get streams from.
+    stream_tag (str): value of the stream tags for ffprobe command to return
+
+    Returns
+    -------
+    out (dict): Dictionary of string to int pairs for the included streams in the mkv file.
+     Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
+    '''
+
+    command = [
+        "ffprobe",
+        "-v",
+        "fatal",
+        "-show_entries",
+        "stream_tags={}".format(stream_tag),
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        filename,
+    ]
+
+    ffmpeg = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffmpeg.communicate()
+
+    if err or len(out) == 0:
+        return {'DEPTH': 0}
+
+    out = out.decode("utf-8").rstrip("\n").split("\n")
+
+    return {o: i for i, o in enumerate(out)}
+
+def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
+                pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
+                slices=24, slicecrc=1, mapping='DEPTH', get_cmd=False, finfo=None, **kwargs):
     '''
     Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
@@ -234,11 +273,12 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     threads (int): number of threads to use for decode
     fps (int): frame rate of camera in Hz
     pixel_format (str): ffmpeg pixel format of data
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
     frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (int): ffmpeg channel mapping; "o:mapping"
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format).
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
     Returns
@@ -246,21 +286,25 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     video (3d numpy array):  frames x h x w
     '''
 
-    try:
-        finfo = get_video_info(filename)
-    except AttributeError as e:
-        finfo = get_raw_info(filename)
+    if finfo is None:
+        finfo = get_video_info(filename, threads=threads, **kwargs)
 
     if frames is None or len(frames) == 0:
-        frames = np.arange(finfo['nframes']).astype('int16')
+        frames = np.arange(finfo['nframes'], dtype='int64')
 
     if not frame_size:
         frame_size = finfo['dims']
 
+    # Compute starting time point to retrieve frames from
+    if frames_is_timestamp:
+        start_time = str(datetime.timedelta(seconds=frames[0]))
+    else:
+        start_time = str(datetime.timedelta(seconds=frames[0] / fps))
+
     command = [
         'ffmpeg',
         '-loglevel', 'fatal',
-        '-ss', str(datetime.timedelta(seconds=frames[0] / fps)),
+        '-ss', start_time,
         '-i', filename,
         '-vframes', str(len(frames)),
         '-f', 'image2pipe',
@@ -271,6 +315,10 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
         '-slicecrc', str(slicecrc),
         '-vcodec', 'rawvideo',
     ]
+
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(filename)
+        mapping = mapping_dict.get(mapping, 0)
 
     if filename.endswith(('.mkv', '.avi')):
         command += ['-map', f'0:{mapping}']
@@ -284,12 +332,54 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30,
     pipe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = pipe.communicate()
 
-    if(err):
+    if err:
         print('Error:', err)
         return None
 
-    video = np.frombuffer(out, dtype=frame_dtype).reshape((len(frames), frame_size[1], frame_size[0]))
-    return video
+    video = np.frombuffer(out, dtype=movie_dtype).reshape((len(frames), frame_size[1], frame_size[0]))
+
+    return video.astype('uint16')
+
+
+def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='uint16',
+             frames_is_timestamp=True, timestamps=None, **kwargs):
+    '''
+    Reads in frames from a .mkv file using a pipe from ffmpeg.
+
+    Parameters
+    ----------
+    filename (str): filename to get frames from
+    frames (list or 1d numpy array): list of frame indices to read
+    threads (int): number of threads to use for decode
+    fps (int): frame rate of camera in Hz
+    pixel_format (str): ffmpeg pixel format of data
+    movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
+    frame_size (str): wxh frame size in pixels
+    frame_dtype (str): indicates the data type to use when reading the videos 
+    slices (int): number of slices to use for decode
+    slicecrc (int): check integrity of slices
+    mapping (int): ffmpeg channel mapping; "o:mapping"; chooses the stream to read from mkv files.
+     (Will default to if video is not an mkv format)
+    get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
+    timestamps (list): array of timestamps to slice into using the frame indices
+
+    Returns
+    -------
+    video (3d numpy array):  frames x h x w
+    '''
+
+    if timestamps is None and exists(filename):
+        timestamps = load_timestamps_from_movie(filename, mapping=kwargs.get('mapping', 'DEPTH'))
+
+    if timestamps is not None:
+        if isinstance(frames, range):
+            frames = timestamps[slice(frames.start, frames.stop, frames.step)]
+        else:
+            frames = [timestamps[frames[0]]]
+
+    return read_frames(filename, frames, pixel_format=pixel_format, movie_dtype=movie_dtype,
+                       frames_is_timestamp=frames_is_timestamp, **kwargs)
+
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          fps=30, pixel_format='rgb24',
@@ -386,7 +476,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
-def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, rescale_depth=False, **kwargs):
+def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, **kwargs):
     '''
 
     Parses file extension to check whether to read the data using ffmpeg (read_frames)
@@ -397,7 +487,7 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
     ----------
     filename (str): Path to file to read video from.
     frames (int or list): Frame indices to read in to output array.
-    frame_dims (tuple): Video dimensions (nrows, ncols)
+    frame_size (tuple): Video dimensions (nrows, ncols)
     bit_depth (int): Number of bits per pixel, corresponds to image resolution.
     kwargs (dict): Any additional parameters that could be required in read_frames_raw().
 
@@ -412,31 +502,27 @@ def load_movie_data(filename, frames=None, frame_dims=(512, 424), bit_depth=16, 
         if filename.lower().endswith('.dat'):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
-                                         frame_dims=frame_dims,
-                                         bit_depth=bit_depth,
-                                         dtype=kwargs.get('frame_dtype', '<i2'))
-        elif filename.lower().endswith(('.avi', '.mkv')):
-            frame_data = read_frames(filename, 
-                                    frames, 
-                                    frame_size=frame_dims, 
-                                    pixel_format=kwargs.get('pixel_format', 'gray16le'),
-                                    frame_dtype=kwargs.get('frame_dtype', 'uint16'))
+                                         frame_size=frame_size,
+                                         bit_depth=bit_depth, **kwargs)
+        elif filename.lower().endswith('.mkv'):
+            frame_data = read_mkv(filename, frames, frame_size=frame_size, **kwargs)
+        elif filename.lower().endswith('.avi'):
+            frame_data = read_frames(filename, frames,
+                                     frame_size=frame_size,
+                                     **kwargs)
 
     except AttributeError as e:
         print('Error:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
-                                     frame_dims=frame_dims,
+                                     frame_size=frame_size,
                                      bit_depth=bit_depth,
-                                     dtype=kwargs.get('frame_dtype', '<i2'))
-    
-    if rescale_depth:
-        frame_data = frame_data.astype('uint8')
-
+                                     **kwargs)
+        
     return frame_data
 
 
-def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
+def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
     '''
     Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
 
@@ -452,14 +538,61 @@ def get_movie_info(filename, frame_dims=(512, 424), bit_depth=16):
     '''
 
     try:
-        if filename.lower().endswith(('.dat', '.mkv')):
-            metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
-        elif filename.lower().endswith('.avi'):
-            metadata = get_video_info(filename)
-            if metadata == {}:
-                metadata = get_raw_info(filename, frame_dims=frame_dims, bit_depth=bit_depth)
+        if filename.lower().endswith('.dat'):
+            metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
+        elif filename.lower().endswith(('.avi', '.mkv')):
+            metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
         print('Error:', e)
-        metadata = get_raw_info(filename)
+        metadata = {}
 
     return metadata
+
+def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
+    '''
+    Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
+    output data to a csv file.
+
+    Parameters
+    ----------
+    filename (str): path to input file to extract timestamps from.
+    threads (int): number of threads to simultaneously read timestamps
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+
+    Returns
+    -------
+    timestamps (list): list of float values representing timestamps for each frame.
+    '''
+
+    print('Loading movie timestamps')
+
+    if isinstance(mapping, str):
+        mapping_dict = get_stream_names(input_file)
+        mapping = mapping_dict.get(mapping, 0)
+
+    command = [
+        'ffprobe',
+        '-select_streams',
+        f'v:{mapping}',
+        '-threads', str(threads),
+        '-show_entries',
+        'frame=pkt_pts_time',
+        '-v', 'quiet',
+        input_file,
+        '-of',
+        'csv=p=0'
+    ]
+
+    ffprobe = subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = ffprobe.communicate()
+
+    if err:
+        print('Error:', err)
+        return None
+
+    timestamps = [float(t) for t in out.split()]
+
+    if len(timestamps) == 0:
+        return None
+
+    return timestamps

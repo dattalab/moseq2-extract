@@ -16,7 +16,8 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
-from os.path import join, exists, splitext, basename, abspath
+from moseq2_extract.io.video import get_movie_info
+from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
@@ -93,14 +94,15 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
     return plane_im
 
-def get_frame_range_indices(config_data, nframes):
+def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     '''
     Computes the total number of frames to be extracted, given the total number of frames
     and an initial frame index starting point.
 
     Parameters
     ----------
-    config_data (dict): dictionary holding all extraction parameters
+    trim_beginning (int): number of frames to remove from beginning of recording
+    trim_ending (int): number of frames to remove from ending of recording
     nframes (int): total number of requested frames to extract
 
     Returns
@@ -109,20 +111,19 @@ def get_frame_range_indices(config_data, nframes):
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
     '''
+    assert all((trim_ending >= 0, trim_beginning >= 0)) , "frame_trim arguments must be greater than or equal to 0!"
 
-    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
-        first_frame_idx = config_data['frame_trim'][0]
-    else:
-        first_frame_idx = 0
+    first_frame_idx = 0
+    if trim_beginning > 0 and trim_beginning < nframes:
+        first_frame_idx = trim_beginning
 
-    if nframes - config_data['frame_trim'][1] > first_frame_idx:
-        last_frame_idx = nframes - config_data['frame_trim'][1]
-    else:
-        last_frame_idx = nframes
+    last_frame_idx = nframes
+    if first_frame_idx < (nframes - trim_ending) and trim_ending > 0:
+        last_frame_idx = nframes - trim_ending
 
-    nframes = last_frame_idx - first_frame_idx
+    total_frames = last_frame_idx - first_frame_idx
 
-    return nframes, first_frame_idx, last_frame_idx
+    return total_frames, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -141,9 +142,10 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
 
     seq = range(offset, nframes)
-    for i in range(offset, len(seq) - overlap, chunk_size - overlap):
-        yield seq[i:i + chunk_size]
-
+    out = []
+    for i in range(0, len(seq) - overlap, chunk_size - overlap):
+        out.append(seq[i:i + chunk_size])
+    return out
 
 def load_timestamps(timestamp_file, col=0, alternate=False):
     '''
@@ -175,10 +177,10 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
         ts = np.array(ts)
     except FileNotFoundError as e:
         ts = None
-        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named \
-            "depth_ts.txt" or "timestamps.csv".')
-        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
-            imputing missing data.')
+        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named '
+            '"depth_ts.txt" or "timestamps.csv".')
+        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while '
+            'imputing missing data.')
 
     # if timestamps were saved in a csv file
     if alternate:
@@ -186,7 +188,48 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
 
     return ts
 
-def set_bg_roi_weights(config_data):
+def detect_avi_file(finfo):
+    '''
+    Detects the camera type by comparing the read video resolution with known
+     outputted dimensions of different camera types.
+
+    Parameters
+    ----------
+    finfo (dict): dictionary containing the file metadata,
+     outputted by moseq2_extract.io.video.get_movie_info().
+
+    Returns
+    -------
+    detected (str): name of the detected camera type.
+    '''
+
+    detected = 'azure'
+    potential_camera_dims = {
+        'kinect': [[512, 424]],
+        'realsense': [[640, 480]],
+        'azure': [[640, 576],
+                  [320, 288],
+                  [512, 512],
+                  [1024, 1024]]
+    }
+
+    # Check dimensions
+    if finfo is not None:
+        if list(finfo['dims']) in potential_camera_dims['azure']:
+            # Default Azure dimensions
+            detected = 'azure'
+        elif list(finfo['dims']) in potential_camera_dims['realsense']:
+            # Realsense D415 output dimensions
+            detected = 'realsense'
+        elif list(finfo['dims']) in potential_camera_dims['kinect']:
+            # Kinect output dimensions
+            detected = 'kinect'
+        else:
+            warnings.warn('Could not infer camera type, using default Azure parameters.')
+
+    return detected
+
+def detect_and_set_camera_parameters(config_data, input_file=None):
     '''
     Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
     If no camera_type is inputted, program will assume a kinect camera is being used.
@@ -202,15 +245,50 @@ def set_bg_roi_weights(config_data):
 
     # Auto-setting background weights
     camera_type = config_data.get('camera_type')
-    if camera_type == 'kinect':
-        config_data['bg_roi_weights'] = (1, .1, 1)
-    elif camera_type == 'azure':
-        config_data['bg_roi_weights'] = (10, 0.1, 1)
-    elif camera_type == 'realsense':
-        config_data['bg_roi_weights'] = (10, 1, 4)
+    finfo = config_data.get('finfo')
+
+    default_parameters = {
+        'kinect': {
+            'bg_roi_weights': (1, .1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2'
+        },
+        'azure': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16be',
+            'movie_dtype': '>u2'
+        },
+        'realsense': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2',
+        },
+    }
+
+    if camera_type == 'auto' and input_file is not None:
+        if input_file.endswith('.dat'):
+            detected = 'kinect'
+        elif input_file.endswith('.mkv'):
+            detected = 'azure'
+        elif input_file.endswith('.avi'):
+            if finfo is None:
+                finfo = get_movie_info(input_file,
+                                       mapping=config_data.get('mapping', 0),
+                                       threads=config_data.get('threads', 8)
+                                       )
+            detected = detect_avi_file(finfo)
+        else:
+            warnings.warn('Extension not recognized, trying default Kinect v2 parameters.')
+            detected = 'kinect'
+
+        # set the params
+        config_data.update(**default_parameters[detected])
+    elif camera_type in default_parameters:
+        # update the config with the corresponding param set
+        config_data.update(**default_parameters[camera_type])
     else:
-        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
-        config_data['bg_roi_weights'] = (1, .1, 1)
+        warnings.warn('Warning, make sure the following parameters are set to best handle your camera type: '
+                      '"bg_roi_weights", "pixel_format", "movie_dtype"')
 
     return config_data
 
@@ -239,6 +317,28 @@ def check_filter_sizes(config_data):
 
     return config_data
 
+def generate_missing_metadata(sess_dir, sess_name):
+    '''
+    Generates default metadata.json file for session that does not already include one.
+
+    Parameters
+    ----------
+    sess_dir (str): Path to directory to create metadata.json file in.
+    sess_name (str): Name of the directory to set the metadata SessionName.
+
+    Returns
+    -------
+
+    '''
+
+    # generate sample metadata json for each session that is missing one
+    sample_meta = {'SubjectName': '', f'SessionName': f'{sess_name}',
+                   'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
+                   'ColorDataType': "Byte[]", "StartTime": ""}
+
+    with open(join(sess_dir, 'metadata.json'), 'w') as fp:
+        json.dump(sample_meta, fp)
+
 def load_metadata(metadata_file):
     '''
     Loads metadata from session metadata.json file.
@@ -252,12 +352,12 @@ def load_metadata(metadata_file):
     metadata (dict): key-value pairs of JSON contents
     '''
 
-    metadata = {}
-
     try:
-        if exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
+        if not exists(metadata_file):
+            generate_missing_metadata(dirname(metadata_file), basename(dirname(metadata_file)))
+
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
     except TypeError:
         # try loading directly
         metadata = json.load(metadata_file)
