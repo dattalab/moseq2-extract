@@ -383,7 +383,7 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
 
 def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          fps=30, pixel_format='rgb24',
-                         codec='h264', slices=24, slicecrc=1,
+                         codec='mpeg4', slices=24, slicecrc=1,
                          frame_size=None, depth_min=0, depth_max=80,
                          get_cmd=False, cmap='jet',
                          pipe=None, close_pipe=True, frame_range=None,

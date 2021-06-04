@@ -38,7 +38,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
                   centroid_hampel_span=5, centroid_hampel_sig=3,
                   angle_hampel_span=5, angle_hampel_sig=3,
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
-                  compute_raw_scalars=False, plane_bground=None, **kwargs):
+                  compute_raw_scalars=False, **kwargs):
     '''
     This function looks for a mouse in background-subtracted frames from a chunk of depth video.
     It is called from the moseq2_extract.helpers.extract module.
@@ -96,10 +96,12 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
 
     if bground is not None:
         # Perform background subtraction
-        chunk = (bground - chunk)
-        if plane_bground is not None:
-            chunk = threshold_chunk(chunk, min_height, max_height)
-            chunk = (chunk - plane_bground)
+        if not kwargs.get('graduate_walls', False):
+            chunk = (bground - chunk)
+            if kwargs.get('use_plane_bground', False):
+                chunk = threshold_chunk(chunk, min_height, max_height)
+                plane_bground = np.nanmedian(chunk, axis=0)
+                chunk = (chunk - plane_bground)
 
         # Threshold chunk depth values at min and max heights
         chunk = threshold_chunk(chunk, min_height, max_height).astype(frame_dtype)

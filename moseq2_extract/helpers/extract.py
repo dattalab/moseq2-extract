@@ -125,23 +125,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
 
     tracking_init_mean = config_data.pop('tracking_init_mean', None)
     tracking_init_cov = config_data.pop('tracking_init_cov', None)
-    plane_bground = None
-
-    if config_data.get('use_plane_bground', False):
-        # get background image set
-        frame_idx = np.arange(0, config_data['finfo']['nframes'], 500)
-        frame_store = []
-        for i, frame in enumerate(frame_idx):
-            frs = load_movie_data(input_file,
-                                  [int(frame)],
-                                  frame_size=bground_im.shape[::-1],
-                                  **config_data).squeeze()
-            frame_store.append(frs)
-
-        frame_store = (bground_im - np.asarray(frame_store))
-        frame_store = threshold_chunk(frame_store, config_data['min_height'], config_data['max_height'])
-
-        plane_bground = np.nanmedian(frame_store, axis=0)
 
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_chunk = load_movie_data(input_file,
@@ -159,7 +142,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
                                 bground=bground_im,
                                 tracking_init_mean=tracking_init_mean,
                                 tracking_init_cov=tracking_init_cov,
-                                plane_bground=plane_bground
                                 )
 
         if config_data['use_tracking_model']:
