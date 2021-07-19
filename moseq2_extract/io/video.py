@@ -466,8 +466,11 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         if frame_range is not None:
             try:
                 cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-            except:
-                pass
+            except (IndexError, ValueError):
+                # len(frame_range) M < len(frames) or
+                # txt_pos is outside of the frame dimensions
+                print('Could not overlay frame number on preview on video.')
+
         pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:
