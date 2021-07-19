@@ -1,25 +1,97 @@
 #specs for travis ci
 language: python
-os: linux
 dist: trusty
-python: 
-  - 3.6
-# - 3.7 enable once supported by travis
-# get the dependencies
-install:
-  - pip install .
-# install what we need for testing
-# ffmpeg from https://gist.github.com/kevinGodell/bd52cd74c8c2d66fb69f108ef223c356
-# maybe os x support, seems super flaky though, https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-195620855
-before_install:
-  - pip install pytest codecov
-  - pip install "pytest-cov>=2.4.0,<2.6"
-  - export PYTHONPATH=$PYTHONPATH:$(pwd)
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
-# script for tests
-script:
-  - pytest --cov=./moseq2_extract
-after_success:
-  - codecov -t 120653e3-fb8e-4928-a751-bd4fdc880ff0
+os: linux
+cache: false
+
+stages:
+  - latest-installs
+  - name: latest-pythons
+    if: branch = master
+
+jobs:
+  include:
+    - env: ISOLATED=true
+      python: '3.6'
+      stage: latest-installs
+      before_install:
+        - pip install -U pip
+        - pip install pipenv codecov
+        - export PYTHONPATH=$PYTHONPATH:$(pwd)
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
+      install:
+        - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
+      before_script:
+        - make
+      script:
+        - pipenv run pytest --cov-report xml --cov-report term
+      after_success:
+        - codecov -t $CC_TEST_REPORTER_ID
+    - env: ISOLATED=true
+      dist: xenial
+      python: '3.7'
+      stage: latest-pythons
+      before_install:
+        - pip install -U pip
+        - pip install pipenv codecov
+        - export PYTHONPATH=$PYTHONPATH:$(pwd)
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
+      install:
+        - pipenv install --dev --ignore-pipfile --deploy
+        - pipenv install -e .
+      before_script:
+        - make
+      script:
+        - pipenv run pytest --cov-report xml --cov-report term
+      after_success:
+        - codecov -t $CC_TEST_REPORTER_ID
+
+    - env: ISOLATED=true
+      python: '3.6'
+      stage: latest-installs
+      # get the dependencies
+      before_install:
+        - pip install -U pip
+        - pip install awscli
+        - pip install pytest codecov
+        - pip install "pytest-cov>=2.4.0,<2.6"
+        - export PYTHONPATH=$PYTHONPATH:$(pwd)
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/trusty-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
+      install:
+        - pip install -e .
+      before_script:
+        - make
+      script:
+        - pytest --cov=./tests/
+      after_success:
+        - codecov -t $CC_TEST_REPORTER_ID
+
+    - env: ISOLATED=true
+      dist: xenial
+      python: '3.7'
+      stage: latest-pythons
+      # get the dependencies
+      before_install:
+        - pip install -U pip
+        - pip install awscli
+        - pip install pytest codecov
+        - pip install "pytest-cov>=2.4.0,<2.6"
+        - export PYTHONPATH=$PYTHONPATH:$(pwd)
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:mc3man/xerus-media; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
+        - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
+      install:
+        - pip install -e .
+      before_script:
+        - make
+      script:
+        - pytest --cov=./tests/
+      after_success:
+        - codecov -t $CC_TEST_REPORTER_ID

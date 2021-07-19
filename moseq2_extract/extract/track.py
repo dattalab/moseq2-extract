@@ -1,25 +1,37 @@
-from moseq2_extract.util import select_strel
+'''
+Expectation-Maximization mouse tracking utilities.
+'''
+
+import cv2
 import numpy as np
 import scipy.stats
+from tqdm.auto import tqdm
 import statsmodels.stats.correlation_tools as stats_tools
-import cv2
-import tqdm
 
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
-    """Single iteration of EM tracker
-    Args:
-        data (3d numpy array): nx3, x, y, z coordinates to use
-        mean (1d numpy array): dx1, current mean estimate
-        cov (2d numpy array): dxd, current covariance estimate
-        lambd (float): constant to add to diagonal of covariance matrix
-        epsilon (float): tolerance on change in likelihood to terminate iteration
-        max_iter (int):
+    '''
+    EM tracker iteration function. Function will iteratively update the mean
+    and covariance variables using Expectation Maximization up to the max inputted number
+    of iterations.
 
-    Returns:
-        mean (1d numpy array): updated mean
-        cov (2d numpy array): updated covariance
-    """
+    Note: the rate/probability at which the mean and cov are updated are dependent on the tolerance
+    variable epsilon.
+
+    Parameters
+    ----------
+    data (3d numpy array): nx3, x, y, z coordinates to use
+    mean (1d numpy array): dx1, current mean estimate
+    cov (2d numpy array): dxd, current covariance estimate
+    lambd (float): constant to add to diagonal of covariance matrix
+    epsilon (float): tolerance on change in likelihood to terminate iteration
+    max_iter (int): maximum number of EM iterations
+
+    Returns
+    -------
+    mean (1d numpy array): updated mean
+    cov (2d numpy array): updated covariance
+    '''
 
     prev_likelihood = 0
     ll = 0
@@ -38,8 +50,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
         ll = np.sum(np.log(pxtheta_raw+1e-300))
         delta_likelihood = (ll-prev_likelihood)
 
-        if (delta_likelihood >= 0 and
-                delta_likelihood < epsilon*abs(prev_likelihood)):
+        if delta_likelihood >= 0 and delta_likelihood < epsilon * abs(prev_likelihood):
             break
 
         prev_likelihood = ll
@@ -49,12 +60,30 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
 
 def em_init(depth_frame, depth_floor, depth_ceiling,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
+    '''
+    Initialize EM Mask.
+
+    Estimates depth frame contours using OpenCV, and selects the largest chosen contour to create a mask.
+
+    Parameters
+    ----------
+    depth_frame (2d numpy array): depth frame to initialize mask with.
+    depth_floor (float): distance from camera to bucket floor.
+    depth_ceiling (float): max depth value.
+    init_strel (cv2.structuringElement): structuring Element to compute mask.
+    strel_iters (int): number of morphological iterations.
+
+    Returns
+    -------
+    mouse_mask (2d numpy array): mask of depth frame.
+    '''
 
     mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
     mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
 
     cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     tmp = np.array([cv2.contourArea(x) for x in cnts])
+
     try:
         use_cnt = tmp.argmax()
         mouse_mask = np.zeros_like(mask)
@@ -70,33 +99,46 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 depth_floor=10, depth_ceiling=100, progress_bar=True,
                 init_mean=None, init_cov=None, init_frames=10, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
-    """The dead-simple tracker, use EM update rules to follow a 3D Gaussian
-       around the room!
-    Args:
-        frames (3d numpy array): nframes x r x c
-        segment (bool): use only the largest blob for em updates
-        ll_threshold (float): threshold on log likelihood for segmentation
-        rho_mean (float): smoothing parameter for the mean
-        rho_cov (float): smoothing parameter for the covariance
-        depth_floor (float): height in mm for separating mouse from floor
+    '''
+    Naive tracker, use EM update rules to follow a 3D Gaussian
+       around the room.
 
-    Returns:
-        model_parameters (dict): mean and covariance estimates for each frame
-    """
+    Parameters
+    ----------
+    frames (3d numpy array): filtered frames - nframes x r x c.
+    raw_frames (3d numpy array): chunk to track mouse in.
+    segment (bool): use only the largest blob for em updates
+    ll_threshold (float): threshold on log likelihood for segmentation
+    rho_mean (float): smoothing parameter for the mean
+    rho_cov (float): smoothing parameter for the covariance
+    depth_floor (float): height in mm for separating mouse from floor
+    depth_ceiling (float): max height in mm for mouse from floor.
+    progress_bar (bool): display progress bar.
+    init_mean (np.ndarray): array of inital frame pixel means.
+    init_cov (np.ndarray): array of inital frame pixel covariances.
+    init_frames (int): number of frames to include in the init calulation
+    init_method (str): mode in which to process inputs
+    init_strel (cv2.structuringElement): structuring Element to compute mask.
+
+    Returns
+    -------
+    model_parameters (dict): mean and covariance estimates for each frame
+    '''
+
     # initialize the mean and covariance
 
     nframes, r, c = frames.shape
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
-    xyz = np.vstack((coords, frames[0, ...].ravel()))
+    xyz = np.vstack((coords, frames[0].ravel()))
 
     if init_mean is None or init_cov is None:
         if init_method == 'min':
-            use_frame = np.min(frames[:init_frames, ...], axis=0)
+            use_frame = np.min(frames[:init_frames], axis=0)
         elif init_method == 'med':
-            use_frame = np.median(frames[:init_frames, ...], axis=0)
+            use_frame = np.median(frames[:init_frames], axis=0)
         elif init_method == 'raw':
-            use_frame = frames[0, ...]
+            use_frame = frames[0]
 
         mouse_mask = em_init(use_frame,
                              depth_floor=depth_floor,
@@ -131,15 +173,15 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         model_parameters[k][:] = np.nan
 
     frames = frames.reshape(frames.shape[0], frames.shape[1]*frames.shape[2])
-    pbar = tqdm.tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
+    pbar = tqdm(total=nframes, disable=not progress_bar, desc='Computing EM')
     i = 0
     repeat = False
     while i < nframes:
 
         if repeat:
-            xyz = np.vstack((coords, raw_frames[i, ...].ravel()))
+            xyz = np.vstack((coords, raw_frames[i].ravel()))
         else:
-            xyz = np.vstack((coords, frames[i, ...].ravel()))
+            xyz = np.vstack((coords, frames[i].ravel()))
 
         pxtheta_im = scipy.stats.multivariate_normal.logpdf(xyz.T, mean, cov).reshape((r, c))
 
@@ -167,36 +209,22 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
             # basically try each step in succession, first try to get contours
             # if that fails try re-initialization, if that fails try re-initialization
             # with raw data, if that fails give up and use all of the pixels
-            # try:
-            #     cnts, hierarchy = cv2.findContours((pxtheta_im > ll_threshold).astype('uint8'),
-            #                                        cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            #     tmp = np.array([cv2.contourArea(x) for x in cnts])
-            # except Exception:
-            #     tmp = np.array([])
-            #
-            # print(tmp.size())
-
-            mask = em_init(frames[i, ...],
+            mask = em_init(frames[i],
                            depth_floor=depth_floor,
                            depth_ceiling=depth_ceiling,
                            init_strel=init_strel)
             if np.all(mask == 0):
-                mask = em_init(raw_frames[i, ...],
+                mask = em_init(raw_frames[i],
                                depth_floor=depth_floor,
                                depth_ceiling=depth_ceiling,
                                init_strel=init_strel)
                 if np.all(mask == 0):
                     mask = np.ones(pxtheta_im.shape, dtype='bool')
-
-            # else:
-            #     use_cnt = tmp.argmax()
-            #     mask = np.zeros_like(pxtheta_im)
-            #     cv2.drawContours(mask, cnts, use_cnt, (255), cv2.FILLED)
         else:
             mask = pxtheta_im > ll_threshold
 
         tmp = mask.ravel() > 0
-        tmp[np.logical_or(xyz[2, :] <= depth_floor, xyz[2, :] >= depth_ceiling)] = 0
+        tmp[np.logical_or(xyz[2] <= depth_floor, xyz[2] >= depth_ceiling)] = 0
 
         try:
             mean_update, cov_update = em_iter(xyz[:, tmp.astype('bool')].T,
@@ -221,13 +249,11 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
         # exponential smoothers for mean and covariance if
         # you want (easier to do this offline)
         # leave these set to 0 for now
-        # print(mean)
-        # print(cov)
         mean = (1-rho_mean)*mean_update+rho_mean*mean
         cov = (1-rho_cov)*cov_update+rho_cov*cov
 
-        model_parameters['mean'][i, ...] = mean
-        model_parameters['cov'][i, ...] = cov
+        model_parameters['mean'][i] = mean
+        model_parameters['cov'][i] = cov
 
         # TODO: add the walk-back where we use the
         # raw frames in case our update craps out...
@@ -241,17 +267,21 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     return model_parameters
 
 
-def em_get_ll(frames, mean, cov, progress_bar=True):
-    """Returns likelihoods for each frame given tracker parameters
-    Args:
-        frames (3d numpy array): depth frames
-        mean (2d numpy array): frames x d, mean estimates
-        cov (3d numpy array): frames x d x d, covariance estimates
-        progress_bar (bool): use a progress bar
+def em_get_ll(frames, mean, cov, progress_bar=False):
+    '''
+    Returns mouse tracking log-likelihoods for each frame given tracking parameters.
 
-    Returns:
-        ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
-    """
+    Parameters
+    ----------
+    frames (3d numpy array): depth frames
+    mean (2d numpy array): frames x d, mean estimates
+    cov (3d numpy array): frames x d x d, covariance estimates
+    progress_bar (bool): use a progress bar
+
+    Returns
+    -------
+    ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
+    '''
 
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
@@ -260,8 +290,8 @@ def em_get_ll(frames, mean, cov, progress_bar=True):
 
     ll = np.zeros(frames.shape, dtype='float64')
 
-    for i in tqdm.tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
-        xyz = np.vstack((coords, frames[i, ...].ravel()))
-        ll[i, ...] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i, ...], cov[i, ...]).reshape((r, c))
+    for i in tqdm(range(nframes), disable=not progress_bar, desc='Computing EM likelihoods'):
+        xyz = np.vstack((coords, frames[i].ravel()))
+        ll[i] = scipy.stats.multivariate_normal.logpdf(xyz.T, mean[i], cov[i]).reshape((r, c))
 
     return ll
