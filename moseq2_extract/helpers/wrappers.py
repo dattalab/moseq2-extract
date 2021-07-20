@@ -189,11 +189,15 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     # readjust depth range
-    if config_data['bg_roi_depth_range'] == 'auto':
+    if config_data.get('autoset_depth_range', False) or (config_data['bg_roi_depth_range'] == 'auto'):
         # search for depth values between 250 and 1200mm from the camera.
         cX, cY = get_bucket_center(bground_im, bground_im.max(), threshold=int(np.median(bground_im)/2))
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
+    elif isinstance(config_data['bg_roi_depth_range'], str) and config_data['bg_roi_depth_range'] != 'auto':
+        raise TypeError(f'config_data["bg_roi_depth_range"] got a string that does not equal "auto".\n'
+                        f'Set --bg-roi-depth-range to a 2-tuple of int values in order to compute a ROI.')
+
 
     first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
