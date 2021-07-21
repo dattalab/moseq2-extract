@@ -194,7 +194,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
-    for session in tqdm(to_extract):
+    for session in tqdm(to_extract, desc='Extracting Sessions'):
         extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
                         skip=skip_completed)
 
