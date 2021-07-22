@@ -5,6 +5,7 @@ Video pre-processing utilities for detecting ROIs and extracting raw data.
 import cv2
 import math
 import joblib
+import tarfile
 import scipy.stats
 import numpy as np
 import scipy.signal
@@ -80,7 +81,7 @@ def get_largest_cc(frames, progress_bar=False):
 
     foreground_obj = np.zeros((frames.shape), 'bool')
 
-    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Computing largest Connected Component'):
         nb_components, output, stats, centroids =\
             cv2.connectedComponentsWithStats(frames[i], connectivity=4)
         szs = stats[:, -1]
@@ -111,7 +112,8 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
     else:
         bground_path = join(output_dir, 'bground.tiff')
 
-    kwargs = deepcopy(kwargs)
+    if type(frames_file) is not tarfile.TarFile:
+        kwargs = deepcopy(kwargs)
     finfo = kwargs.pop('finfo', None)
 
     # Compute background image if it doesn't exist. Otherwise, load from file

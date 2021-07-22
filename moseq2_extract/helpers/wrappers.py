@@ -189,11 +189,15 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     # readjust depth range
-    if config_data['bg_roi_depth_range'] == 'auto':
+    if config_data.get('autoset_depth_range', False) or (config_data['bg_roi_depth_range'] == 'auto'):
         # search for depth values between 250 and 1200mm from the camera.
         cX, cY = get_bucket_center(bground_im, bground_im.max(), threshold=int(np.median(bground_im)/2))
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
+    elif isinstance(config_data['bg_roi_depth_range'], str) and config_data['bg_roi_depth_range'] != 'auto':
+        raise TypeError(f'config_data["bg_roi_depth_range"] got a string that does not equal "auto".\n'
+                        f'Set --bg-roi-depth-range to a 2-tuple of int values in order to compute a ROI.')
+
 
     first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
@@ -259,20 +263,24 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'parameters': deepcopy(config_data)
     }
 
-    # handle tarball stuff
+    # save input directory path
     in_dirname = dirname(input_file)
-
-    config_data['finfo'] = get_movie_info(input_file, **config_data)
 
     # If input file is compressed (tarFile), returns decompressed file path and tar bool indicator.
     # Also gets loads respective metadata dictionary and timestamp array.
     acquisition_metadata, config_data['timestamps'], config_data['tar'] = handle_extract_metadata(input_file,
                                                                                                   in_dirname)
 
-    status_dict['metadata'] = acquisition_metadata  # update status dict
+    # updating input_file reference to open tar file object if input file ends with [.tar/.tar.gz]
+    if config_data['tar'] is not None:
+        input_file = config_data['tar']
+
+    config_data['finfo'] = get_movie_info(input_file, **config_data)
 
     if config_data['finfo']['nframes'] is None:
         config_data['finfo']['nframes'] = len(config_data['timestamps'])
+
+    status_dict['metadata'] = acquisition_metadata  # update status dict
 
     # Getting number of frames to extract
     if num_frames is None:
@@ -372,12 +380,13 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     # Compress the depth file to avi format; compresses original raw file by ~8x.
     try:
-        if input_file.endswith('dat') and config_data['compress']:
-            convert_raw_to_avi_function(input_file,
-                                        chunk_size=config_data['compress_chunk_size'],
-                                        fps=config_data['fps'],
-                                        delete=False, # to be changed when we're ready!
-                                        threads=config_data['compress_threads'])
+        if config_data['tar'] is None:
+            if input_file.endswith('dat') and config_data['compress']:
+                convert_raw_to_avi_function(input_file,
+                                            chunk_size=config_data['compress_chunk_size'],
+                                            fps=config_data['fps'],
+                                            delete=False, # to be changed when we're ready!
+                                            threads=config_data['compress_threads'])
     except AttributeError as e:
         print('Error converting raw video to avi format, continuing anyway...')
         print(e)

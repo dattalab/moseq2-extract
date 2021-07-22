@@ -30,7 +30,7 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
 
     bytes_per_frame = (frame_size[0] * frame_size[1] * bit_depth) / 8
 
-    if type(filename) is not tarfile.TarInfo:
+    if type(filename) is not tarfile.TarFile:
         file_info = {
             'bytes': os.stat(filename).st_size,
             'nframes': int(os.stat(filename).st_size / bytes_per_frame),
@@ -38,16 +38,19 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
             'bytes_per_frame': bytes_per_frame
         }
     else:
+        tar_members = filename.getmembers()
+        tar_names = [_.name for _ in tar_members]
+        input_file = tar_members[tar_names.index('depth.dat')]
         file_info = {
-            'bytes': filename.size,
-            'nframes': int(filename.size / bytes_per_frame),
+            'bytes': input_file.size,
+            'nframes': int(input_file.size / bytes_per_frame),
             'dims': frame_size,
             'bytes_per_frame': bytes_per_frame
         }
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<i2", tar_object=None, **kwargs):
+def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<i2", **kwargs):
     '''
     Reads in data from raw binary file.
 
@@ -58,7 +61,6 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     frame_dims (tuple): wxh of frames in pixels
     bit_depth (int): bits per pixel (default: 16)
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
-    tar_object (tarfile.TarFile): TarFile object, used for loading data directly from tgz
 
     Returns
     -------
@@ -80,8 +82,11 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
     dims = (len(frames), frame_size[1], frame_size[0])
 
-    if type(tar_object) is tarfile.TarFile:
-        with tar_object.extractfile(filename) as f:
+    if type(filename) is tarfile.TarFile:
+        tar_members = filename.getmembers()
+        tar_names = [_.name for _ in tar_members]
+        input_file = tar_members[tar_names.index('depth.dat')]
+        with filename.extractfile(input_file) as f:
             f.seek(int(seek_point))
             chunk = f.read(int(len(frames) * vid_info['bytes_per_frame']))
             chunk = np.frombuffer(chunk, dtype=np.dtype(movie_dtype)).reshape(dims)
@@ -213,7 +218,7 @@ def write_frames(filename, frames, threads=6, fps=30,
         pipe = subprocess.Popen(
             command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    for i in tqdm(range(frames.shape[0]), disable=True):
+    for i in tqdm(range(frames.shape[0]), disable=True, desc=f'Writing frames to {filename}'):
         pipe.stdin.write(frames[i].astype(frame_dtype).tostring())
 
     if close_pipe:
@@ -457,7 +462,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 
     # scale frames to appropriate depth ranges
     use_cmap = plt.get_cmap(cmap)
-    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc="Writing frames"):
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc=f"Writing frames to {filename}"):
         disp_img = frames[i, :].copy().astype('float32')
         disp_img = (disp_img-depth_min)/(depth_max-depth_min)
         disp_img[disp_img < 0] = 0
@@ -466,8 +471,11 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         if frame_range is not None:
             try:
                 cv2.putText(disp_img, str(frame_range[i]), txt_pos, font, 1, white, 2, cv2.LINE_AA)
-            except:
-                pass
+            except (IndexError, ValueError):
+                # len(frame_range) M < len(frames) or
+                # txt_pos is outside of the frame dimensions
+                print('Could not overlay frame number on preview on video.')
+
         pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:
@@ -499,11 +507,18 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     if type(frames) is int:
         frames = [frames]
     try:
-        if filename.lower().endswith('.dat'):
+        if type(filename) is tarfile.TarFile:
             frame_data = read_frames_raw(filename,
                                          frames=frames,
                                          frame_size=frame_size,
-                                         bit_depth=bit_depth, **kwargs)
+                                         bit_depth=bit_depth,
+                                         **kwargs)
+        elif filename.lower().endswith('.dat'):
+            frame_data = read_frames_raw(filename,
+                                         frames=frames,
+                                         frame_size=frame_size,
+                                         bit_depth=bit_depth,
+                                         **kwargs)
         elif filename.lower().endswith('.mkv'):
             frame_data = read_mkv(filename, frames, frame_size=frame_size, **kwargs)
         elif filename.lower().endswith('.avi'):
@@ -512,7 +527,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
                                      **kwargs)
 
     except AttributeError as e:
-        print('Error:', e)
+        print('Error reading movie:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
                                      frame_size=frame_size,
@@ -538,12 +553,14 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
     '''
 
     try:
-        if filename.lower().endswith('.dat'):
+        if type(filename) is tarfile.TarFile:
+            metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
+        elif filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
             metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
-        print('Error:', e)
+        print('Error reading movie metadata:', e)
         metadata = {}
 
     return metadata

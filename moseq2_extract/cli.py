@@ -58,7 +58,9 @@ def common_roi_options(function):
     function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense"]),
                             help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
                              Possible types: ["kinect", "azure", "realsense"]')(function)
-    function = click.option('--bg-roi-depth-range', default='auto',
+    function = click.option('--autoset-depth-range', is_flag=True,
+                            help='Flag to automatically compute depth range')(function)
+    function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
                             help='Exclude walls with gradient filtering')(function)
@@ -192,7 +194,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
-    for session in tqdm(to_extract):
+    for session in tqdm(to_extract, desc='Extracting Sessions'):
         extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
                         skip=skip_completed)
 
