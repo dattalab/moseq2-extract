@@ -192,7 +192,9 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     if config_data.get('manual_set_depth_range', False):
         # search for depth values between the max distance and the halfway point to the camera
         print('Automatically setting depth range. To manually set range values,'
-              ' set "manual_set_depth_range" to False.\n For CLI users: use the --manual-set-depth-range flag.')
+              ' set "manual_set_depth_range" to True.\n For CLI users: use the --manual-set-depth-range flag.')
+        print('To manually set a correct --bg-roi-depth-range value, '
+              'set the min and max range values to +/-50mm of the actual camera height.')
 
         cX, cY = get_bucket_center(bground_im, bground_im.max(), threshold=int(np.median(bground_im)/2))
         adjusted_bg_depth_range = bground_im[cY][cX]
