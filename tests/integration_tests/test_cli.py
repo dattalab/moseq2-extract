@@ -114,7 +114,7 @@ class CLITests(TestCase):
                                            '--output-dir', 'test_out/',
                                            '--config-file', config_file,
                                            '--bg-roi-depth-range', 650, 750,
-                                           '--autoset-depth-range',],
+                                           '--manual-set-depth-range',],
                                  catch_exceptions=False)
 
         assert (result_2.exit_code == 0), "CLI command did not successfully complete"
@@ -137,9 +137,10 @@ class CLITests(TestCase):
         assert len(glob.glob(output_dir+'*.tiff')) < 3, \
             "ROI files were not generated in the correct directory"
 
+        # using default cli bg-roi-depth-range values
         result = runner.invoke(find_roi, [data_path,
                                           '--output-dir', out_path,
-                                          '--autoset-depth-range'])
+                                          '--manual-set-depth-range'])
 
         assert (result.exit_code == 0), "CLI command did not successfully complete"
         assert len(glob.glob(output_dir + '*.tiff')) == 3, \
