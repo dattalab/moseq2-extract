@@ -494,8 +494,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
                                   close_pipe=False, threads=threads, fps=fps)
 
     if video_pipe:
-        video_pipe.stdin.close()
-        video_pipe.wait()
+        video_pipe.communicate()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch, mapping=mapping)
@@ -567,8 +566,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
                 f.write(frames.astype('uint16').tobytes())
 
     if avi_encode and video_pipe:
-        video_pipe.stdin.close()
-        video_pipe.wait()
+        video_pipe.communicate()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
         raw_frames = load_movie_data(input_file, batch, mapping=mapping)

@@ -165,8 +165,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
 
     # Check if video is done writing. If not, wait.
     if video_pipe is not None:
-        video_pipe.stdin.close()
-        video_pipe.wait()
+        video_pipe.communicate()
 
 def run_local_extract(to_extract, config_file, skip_extracted=False):
     '''
