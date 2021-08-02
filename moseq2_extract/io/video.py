@@ -222,7 +222,7 @@ def write_frames(filename, frames, threads=6, fps=30,
         pipe.stdin.write(frames[i].astype(frame_dtype).tostring())
 
     if close_pipe:
-        pipe.stdin.close()
+        pipe.communicate()
         return None
     else:
         return pipe
@@ -479,7 +479,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
         pipe.stdin.write(disp_img.astype('uint8').tostring())
 
     if close_pipe:
-        pipe.stdin.close()
+        pipe.communicate()
         return None
     else:
         return pipe
