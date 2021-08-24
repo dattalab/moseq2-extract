@@ -49,8 +49,8 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     chunk (3d np.ndarray): chunk to extract - (chunksize, height, width)
     use_tracking_model (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
         basis to the mouse's body and determine if pixels are mouse vs cable.
-    spatial_filter_size (tuple): spatial kernel size
-    temporal_filter_size (tuple): temporal kernel size
+    spatial_filter_size (tuple): spatial kernel size used in median filtering.
+    temporal_filter_size (tuple): temporal kernel size used in median filtering.
     tail_filter_iters (int): number of filtering iterations on mouse tail
     iters_min (int): minimum tail filtering filter kernel size
     strel_tail (cv2::StructuringElement - Ellipse): filtering kernel size to filter out mouse tail.
@@ -59,8 +59,8 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     max_height (int): maximum (mm) distance of mouse to floor.
     mask_threshold (int): Threshold on log-likelihood to include pixels for centroid and angle calculation
     use_cc (bool): boolean to use connected components in cv2 structuring elements
-    bground (np.ndarray): numpy array represented previously computed background
-    roi (np.ndarray): numpy array represented previously computed roi
+    bground (np.ndarray): 2D numpy array representing previously computed median background image of entire extracted recording.
+    roi (np.ndarray): 2D numpy array representing previously computed roi (area of bucket floor) to search for mouse within.
     rho_mean (int): smoothing parameter for the mean
     rho_cov (int): smoothing parameter for the covariance
     tracking_ll_threshold (float):  threshold for calling pixels a cable vs a mouse (usually between -16 to -12).
@@ -68,7 +68,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     tracking_model_segment (bool): boolean for whether to use only the largest blob for EM updates.
     tracking_init_mean (float): Initialized mean value for EM Tracking
     tracking_init_cov (float): Initialized covariance value for EM Tracking
-    tracking_init_strel (cv2::StructuringElement - Ellipse):
+    tracking_init_strel (cv2::StructuringElement - Ellipse): initial structuring element to use in EM tracking model.
     flip_classifier (str): path to pre-selected flip classifier.
     flip_classifier_smoothing (int): amount of smoothing to use for flip classifier.
     frame_dtype (str): Data type for processed frames

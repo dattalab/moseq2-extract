@@ -22,6 +22,19 @@ from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
+    '''
+    Applies warnings.simplefilter() to hide extraneous warnings when
+     running the main gui functionaity in a Jupyter Notebook.
+     The function will filter out: yaml.error.UnsafeLoaderWarning, FutureWarning and UserWarning.
+
+    Parameters
+    ----------
+    func (function): function to silence enclosed warnings.
+
+    Returns
+    -------
+    apply_warning_filters (func): Returns passed function after warnings filtering is completed.
+    '''
     def apply_warning_filters(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -34,6 +47,19 @@ def filter_warnings(func):
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
 def command_with_config(config_file_param_name):
+    '''
+    Function that is run in the CLI to override default CLI variables with the values contained within the
+     config_file being passed.
+
+    Parameters
+    ----------
+    config_file_param_name (str): name of the parameter to check and update.
+
+    Returns
+    -------
+    custom_command_class (function): decorator function to update click.Command parameters with the config_file
+     parameter values.
+    '''
 
     class custom_command_class(click.Command):
 
@@ -238,6 +264,7 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
     Parameters
     ----------
     config_data (dict): dictionary containing all input parameters to a CLI/GUI command.
+    input_file (str): path to raw depth avi file; used to run further check for camera-ambiguous file extension.
 
     Returns
     -------
@@ -331,7 +358,6 @@ def generate_missing_metadata(sess_dir, sess_name):
 
     Returns
     -------
-
     '''
 
     # generate sample metadata json for each session that is missing one
@@ -426,7 +452,7 @@ def select_strel(string='e', size=(10, 10)):
 
     Returns
     -------
-    strel (cv2.StructuringElement)
+    strel (cv2.StructuringElement): selected cv2 StructuringElement to use in video filtering or ROI dilation/erosion.
     '''
 
     if string[0].lower() == 'e':
@@ -817,7 +843,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 
     Returns
     -------
-    out (dict): a dict with h5 file contents with the same path structure
+    ans (dict): a dict with h5 file contents with the same path structure
     '''
 
     ans = {}
@@ -862,7 +888,7 @@ def clean_dict(dct):
 
     Returns
     -------
-    dct (dict): dict object with list value objects.
+    out (dict): dict object with list value objects.
     '''
 
     def clean_entry(e):

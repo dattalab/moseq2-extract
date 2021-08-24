@@ -251,7 +251,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     Returns
     -------
-    output_dir (str): path to directory containing extraction (only if gui==True)
+    output_dir (str): path to directory containing extraction
     '''
     print('Processing:', input_file)
     # get the basic metadata

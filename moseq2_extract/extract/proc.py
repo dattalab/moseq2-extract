@@ -488,7 +488,6 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
     features (dict): dict of extracted features, found in result_00.h5 files.
     crop_size (tuple): size of cropped image.
     progress_bar (bool): Display progress bar.
-    gui (bool): indicate GUI is executing function
 
     Returns
     -------
