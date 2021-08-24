@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('../moseq2_extract/'))
 
 
 # -- Project information -----------------------------------------------------
@@ -80,3 +80,10 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# Source: https://gist.github.com/alfredodeza/7fb5c667addb1c6963b9
+# index - master document
+# rst2pdf - Documentation
+# MoSeq2-Extract Documentation - title of the pdf
+# Datta Lab - author name in the pdf
+pdf_documents = [('index', u'Documentation', u'MoSeq2-Extract Documentation', u'Datta Lab'),]
