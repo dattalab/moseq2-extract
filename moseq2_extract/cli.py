@@ -48,7 +48,7 @@ def common_roi_options(function):
     '''
 
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
-                            help='Size of strel to dilate roi')(function)
+                            help='Size of StructuringElement to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
                             help='Shape to use to dilate roi (ellipse or rect)')(function)
     function = click.option('--bg-roi-index', default=0, type=int,

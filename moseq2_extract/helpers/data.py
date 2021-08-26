@@ -267,7 +267,6 @@ def handle_extract_metadata(input_file, dirname):
     -------
     acquisition_metadata (dict): key-value pairs of JSON contents
     timestamps (1D array): list of loaded timestamps
-    alternate_correct (bool): indicator for whether an alternate timestamp file was used
     tar (bool): indicator for whether the file is compressed.
     '''
 

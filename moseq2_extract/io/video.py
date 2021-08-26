@@ -107,14 +107,14 @@ def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **k
 
     Parameters
     ----------
-    filename (string): name of file
+    filename (string): name of file to read video metadata from.
     mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
     threads (int): number of threads to simultanoues run the ffprobe command
     count_frames (bool): indicates whether to count the frames individually.
 
     Returns
     -------
-    (dict): dictionary containing video file metadata
+    out_dict (dict): dictionary containing video file metadata
     '''
 
     mapping_dict = get_stream_names(filename)
@@ -277,14 +277,16 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     frames (list or 1d numpy array): list of frames to grab
     threads (int): number of threads to use for decode
     fps (int): frame rate of camera in Hz
+    frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
+     if True, indicates azure relative start_time timestamps (i.e. first frame timestamp == 0.000).
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
-    frame_dtype (str): indicates the data type to use when reading the videos 
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
     mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format).
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
+    finfo (dict): dictionary containing video file metadata
 
     Returns
     -------
@@ -355,18 +357,20 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     ----------
     filename (str): filename to get frames from
     frames (list or 1d numpy array): list of frame indices to read
-    threads (int): number of threads to use for decode
-    fps (int): frame rate of camera in Hz
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
+    frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
+     if True, indicates azure relative start_time timestamps (i.e. first frame timestamp == 0.000).
+    timestamps (list): array of timestamps to slice into using the frame indices
+    threads (int): number of threads to use for decode
+    fps (int): frame rate of camera in Hz
     frame_size (str): wxh frame size in pixels
-    frame_dtype (str): indicates the data type to use when reading the videos 
+    frame_dtype (str): indicates the data type to use when reading the videos
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
     mapping (int): ffmpeg channel mapping; "o:mapping"; chooses the stream to read from mkv files.
      (Will default to if video is not an mkv format)
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
-    timestamps (list): array of timestamps to slice into using the frame indices
 
     Returns
     -------
@@ -415,6 +419,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     pipe (subProcess.Pipe): pipe to currently open video file.
     close_pipe (bool): indicates to close the open pipe to video when done writing.
     frame_range (range()): frame indices to write on video
+    progress_bar (bool): If True, displays a TQDM progress bar for the video writing progress.
 
     Returns
     -------
@@ -546,6 +551,8 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
     filename (str): path to video file
     frame_dims (tuple): video dimensions
     bit_depth (int): integer indicating data type encoding
+    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    threads (int): number of threads to simultaneously read timestamps stored within the raw data file.
 
     Returns
     -------
