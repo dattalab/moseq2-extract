@@ -287,7 +287,7 @@ class TestExtractUtils(TestCase):
 
     def test_click_param_annot(self):
         ref_dict = {
-            'bg_roi_dilate': 'Size of strel to dilate roi',
+            'bg_roi_dilate': 'Size of StructuringElement to dilate roi',
             'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
             'bg_roi_index': 'Index of which background mask(s) to use',
             'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
