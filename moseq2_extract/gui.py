@@ -210,7 +210,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
-    mouse_threshold (float): threshold value of mean frame depth to include session frames
+    mouse_threshold (float): threshold value of captured mouse height in order to include a session
+     in the list of session to copy over to the output_dir. If no mouse was extracted for the whole session, this
+     value will ensure it does not get aggregated or included in the index file.
 
     Returns
     -------
@@ -238,7 +240,6 @@ def download_flip_command(output_dir, config_file="", selection=1):
 
     Returns
     -------
-    None
     '''
 
     flip_file_wrapper(config_file, output_dir, selected_flip=selection)
@@ -300,15 +301,15 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
 
     Parameters
     ----------
-    input_file (str): path to depthfile
-    output_dir (str): path to output directory
-    config_file (str): path to config file
+    input_file (str): path to raw input file to extract.
+    output_dir (str): path to output directory.
+    config_file (str): path to config file.
     num_frames (int): number of frames to extract. All if None.
     skip (bool): skip already extracted file.
 
     Returns
     -------
-    None
+    (str): String indicating that wrapper has returned without any interruptions.
     '''
 
     config_data = read_yaml(config_file)

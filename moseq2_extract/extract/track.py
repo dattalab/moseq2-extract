@@ -58,8 +58,11 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     return mean, cov
 
 
-def em_init(depth_frame, depth_floor, depth_ceiling,
-            init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)), strel_iters=1):
+def em_init(depth_frame,
+            depth_floor,
+            depth_ceiling,
+            init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
+            strel_iters=1):
     '''
     Initialize EM Mask.
 

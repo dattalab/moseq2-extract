@@ -48,7 +48,7 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
     image (2d numpy array): the (unscaled) 2-D image to save
     scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
-    dtype (str): array data type
+    frame_dtype (str): array data type
     compress (int): image compression level
 
     Returns

@@ -17,7 +17,6 @@ jobs:
       # get the dependencies
       before_install:
         - pip install -U pip
-        - pip install awscli
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -27,7 +26,7 @@ jobs:
       install:
         - pip install -e .
       before_script:
-        - make
+        - ./scripts/download_test_dataset.sh
       script:
         - pytest --cov=./tests/
       after_success:
@@ -40,7 +39,6 @@ jobs:
       # get the dependencies
       before_install:
         - pip install -U pip
-        - pip install awscli
         - pip install pytest codecov
         - pip install "pytest-cov>=2.4.0,<2.6"
         - export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -50,7 +48,7 @@ jobs:
       install:
         - pip install -e .
       before_script:
-        - make
+        - ./scripts/download_test_dataset.sh
       script:
         - pytest --cov=./tests/
       after_success:

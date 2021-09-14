@@ -48,7 +48,7 @@ def common_roi_options(function):
     '''
 
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
-                            help='Size of strel to dilate roi')(function)
+                            help='Size of StructuringElement to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
                             help='Shape to use to dilate roi (ellipse or rect)')(function)
     function = click.option('--bg-roi-index', default=0, type=int,
@@ -203,7 +203,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
 @click.argument('config-file', type=click.Path(exists=True, resolve_path=False), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
-              default=os.path.expanduser('~/moseq2'), help="Temp storage")
+              default=os.getcwd(), help="Output directory for downloaded flip flie")
 def download_flip_file(config_file, output_dir):
 
     flip_file_wrapper(config_file, output_dir)
