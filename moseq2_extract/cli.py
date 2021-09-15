@@ -117,7 +117,7 @@ def extract_options(function):
     function = click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')(function)
     function = click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')(function)
     function = click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')(function)
-    function = click.option('--max-height', default=115, type=int, help='Max mouse height from floor (mm)')(function)
+    function = click.option('--max-height', default=120, type=int, help='Max mouse height from floor (mm)')(function)
     function = click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
 This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')(function)
     function = click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")(function)
