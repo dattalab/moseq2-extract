@@ -192,3 +192,7 @@ def run_local_extract(to_extract, config_file, skip_extracted=False):
         except Exception as e:
             print('Unexpected error:', e)
             print('could not extract', ext)
+
+def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
+    print(config_data.keys())
+    
