@@ -6,8 +6,12 @@ These functions are primarily called from inside the extract_wrapper() function.
 '''
 
 import numpy as np
+import ruamel.yaml as yaml
+from os.path import exists, basename, dirname, join
+from os import makedirs
 from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk
+from moseq2_extract.util import read_yaml
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
@@ -194,5 +198,37 @@ def run_local_extract(to_extract, config_file, skip_extracted=False):
             print('could not extract', ext)
 
 def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
-    print(config_data.keys())
-    
+    # make session_specific config file and save it in proc folder if session config exists
+    if exists(config_data.get('session_config_path', '')):
+        session_configs = read_yaml(config_data['session_config_path'])
+        for depth_file in to_extract:
+            output_dir = join(dirname(depth_file), config_data['output_dir'])
+            
+            # ensure output_dir exists
+            if not exists(output_dir):
+                makedirs(output_dir)
+
+            # get and write session-specific parameters
+            output_file = join(output_dir , 'config.yaml')
+            session_key = basename(dirname(depth_file))
+
+            with open(output_file, 'w') as f:
+                yaml.safe_dump(session_configs[session_key], f)
+
+
+            
+
+
+
+    # # Loading individual session config parameters if it exists
+    # if exists(config_data.get('session_config_path', '')):
+    #     session_configs = read_yaml(config_data['session_config_path'])
+    #     session_key = basename(dirname(input_file))
+
+    #     # If key is found, update config_data, otherwise, use default dict
+    #     config_data = session_configs.get(session_key, config_data)
+
+    # if output_dir is None:
+    #     output_dir = config_data.get('output_dir', 'proc')
+
+    # extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
