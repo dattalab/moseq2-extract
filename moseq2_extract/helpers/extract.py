@@ -202,6 +202,7 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
     assert 'extract_out_script' in config_data, 'Need to supply extract_out_script to save extract commands'
     # expand input_dir absolute path
     input_dir = abspath(input_dir)
+
     # make session_specific config file and save it in proc folder if session config exists
     if exists(config_data.get('session_config_path', '')):
         session_configs = read_yaml(config_data['session_config_path'])
@@ -219,15 +220,14 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
             with open(output_file, 'w') as f:
                 yaml.safe_dump(session_configs[session_key], f)
     
-    # TODO: make commands
-    if exists(config_data.get('session_config_path', '')):
-        config_file = 'config.yaml'
-    else:
-        config_file = 'config.yaml'
-
-    # TODO: append all these a string
+    # Construct sbatch command for slurm
     commands = ''
     for depth_file in to_extract:
+        if exists(config_data.get('session_config_path', '')):
+            config_file = join(dirname(depth_file), config_data['output_dir'], 'config.yaml')
+            print(config_file, 'in session')
+        else:
+            config_file = config_data['config_file']
         base_command = f'moseq2-extract extract --config-file {config_file} {depth_file}; "\n'
         prefix = f'sbatch -c {config_data["ncpus"] if config_data["ncpus"] > 0 else 8} --mem={config_data["memory"]} '
         prefix += f'-p {config_data["partition"]} -t {config_data["wall_time"]} --wrap "{config_data["prefix"]}'
