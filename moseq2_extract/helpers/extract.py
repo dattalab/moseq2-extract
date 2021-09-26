@@ -8,11 +8,12 @@ These functions are primarily called from inside the extract_wrapper() function.
 import numpy as np
 import ruamel.yaml as yaml
 from os.path import exists, basename, dirname, join, abspath
-from os import makedirs
+from os import makedirs, system
 from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.util import read_yaml
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
+from moseq2_extract.helpers.data import check_completion_status
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
     '''
@@ -234,6 +235,8 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
             config_file = join(output_dir, 'config.yaml')
         else:
             config_file = config_data['config_file']
+        
+        # construct command
         base_command = f'moseq2-extract extract --config-file {config_file} {depth_file}; "\n'
         prefix = f'sbatch -c {config_data["ncpus"] if config_data["ncpus"] > 0 else 8} --mem={config_data["memory"]} '
         prefix += f'-p {config_data["partition"]} -t {config_data["wall_time"]} --wrap "{config_data["prefix"]}'
@@ -243,7 +246,14 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
     config_data['extract_out_script'] = join(input_dir, config_data['extract_out_script'])
     with open(config_data['extract_out_script'], 'w') as f:
         f.write(commands)
-    
     print('Commands saved to:', config_data['extract_out_script'])
 
-    return commands
+    # Print command
+    if config_data['get_cmd']:
+        print('Listing extract commands...\n')
+        print(commands)
+
+    # Run command using system
+    if config_data['run_cmd']:
+        print('Running extract commands')
+        system(commands)
