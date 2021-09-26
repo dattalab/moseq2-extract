@@ -223,9 +223,15 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
     # Construct sbatch command for slurm
     commands = ''
     for depth_file in to_extract:
+        output_dir = join(dirname(depth_file), config_data['output_dir'])
+        
+        # skip session if skip_extracted is true and the session is already extracted
+        if skip_extracted and check_completion_status(join(output_dir, 'results_00.yaml')):
+            continue
+
+        # set up config file
         if exists(config_data.get('session_config_path', '')):
-            config_file = join(dirname(depth_file), config_data['output_dir'], 'config.yaml')
-            print(config_file, 'in session')
+            config_file = join(output_dir, 'config.yaml')
         else:
             config_file = config_data['config_file']
         base_command = f'moseq2-extract extract --config-file {config_file} {depth_file}; "\n'
