@@ -193,7 +193,7 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 @click.option('--memory', type=str, default="5GB", help="RAM (slurm only)")
 @click.option('--wall-time', type=str, default='3:00:00', help="Wall time (slurm only)")
 @click.option('--partition', type=str, default='short', help="Partition name (slurm only)")
-@click.option("--get-cmd", is_flag=True, help="Print scan command strings.")
+@click.option("--get-cmd", is_flag=True, default=True, help="Print scan command strings.")
 @click.option("--run-cmd", is_flag=True, help="Run scan command strings.")
 def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensions,
                   skip_checks, config_file, **config_data):
@@ -204,7 +204,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
-    
+
     if config_data['cluster_type'] == 'local':
         for session in tqdm(to_extract, desc='Extracting Sessions'):
             extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
