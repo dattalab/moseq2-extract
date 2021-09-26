@@ -218,7 +218,7 @@ def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
             session_key = basename(dirname(depth_file))
 
             with open(output_file, 'w') as f:
-                yaml.safe_dump(session_configs[session_key], f)
+                yaml.safe_dump(session_configs[session_key] if session_configs.get(session_key) else config_data, f)
     
     # Construct sbatch command for slurm
     commands = ''
