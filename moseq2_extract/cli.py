@@ -170,6 +170,7 @@ def find_roi(input_file, output_dir, **config_data):
              help="Processes raw input depth recordings to output a cropped and oriented"
              "video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
+@click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
 @common_roi_options
 @common_avi_options
 @extract_options
