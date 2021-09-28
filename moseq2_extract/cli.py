@@ -15,7 +15,7 @@ from moseq2_extract.util import command_with_config, read_yaml, recursive_find_u
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
                                              convert_raw_to_avi_wrapper, copy_slice_wrapper)
-from moseq2_extract.helpers.extract import run_slurm_extract
+from moseq2_extract.helpers.extract import run_slurm_extract, run_local_extract
 
 orig_init = click.core.Option.__init__
 
@@ -207,9 +207,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
 
     if config_data['cluster_type'] == 'local':
-        for session in tqdm(to_extract, desc='Extracting Sessions'):
-            extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
-                            skip=skip_completed)
+        run_local_extract(to_extract, config_file, skip_completed)
     else:
         # add paramters to config
         config_data['session_config_path'] = read_yaml(config_file).get('session_config_path', '') if config_file is not None else ''
