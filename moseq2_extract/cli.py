@@ -212,7 +212,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
                             skip=skip_completed)
     else:
         # add paramters to config
-        config_data['session_config_path'] = read_yaml(config_file).get('session_config_path') if config_file is not None else None
+        config_data['session_config_path'] = read_yaml(config_file).get('session_config_path', '') if config_file is not None else ''
         config_data['config_file'] = os.path.abspath(config_file)
         config_data['output_dir'] = output_dir
         config_data['skip_completed'] = skip_completed
