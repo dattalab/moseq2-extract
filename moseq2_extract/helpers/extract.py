@@ -6,9 +6,14 @@ These functions are primarily called from inside the extract_wrapper() function.
 '''
 
 import numpy as np
+import ruamel.yaml as yaml
+from os.path import exists, basename, dirname, join, abspath
+from os import makedirs, system
 from tqdm.auto import tqdm
 from moseq2_extract.extract.extract import extract_chunk
+from moseq2_extract.util import read_yaml
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
+from moseq2_extract.helpers.data import check_completion_status
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
     '''
@@ -192,3 +197,63 @@ def run_local_extract(to_extract, config_file, skip_extracted=False):
         except Exception as e:
             print('Unexpected error:', e)
             print('could not extract', ext)
+
+def run_slurm_extract(input_dir, to_extract, config_data, skip_extracted=False):
+
+    assert 'extract_out_script' in config_data, 'Need to supply extract_out_script to save extract commands'
+    # expand input_dir absolute path
+    input_dir = abspath(input_dir)
+
+    # make session_specific config file and save it in proc folder if session config exists
+    if exists(config_data.get('session_config_path', '')):
+        session_configs = read_yaml(config_data['session_config_path'])
+        for depth_file in to_extract:
+            output_dir = join(dirname(depth_file), config_data['output_dir'])
+            
+            # ensure output_dir exists
+            if not exists(output_dir):
+                makedirs(output_dir)
+
+            # get and write session-specific parameters
+            output_file = join(output_dir , 'config.yaml')
+            session_key = basename(dirname(depth_file))
+
+            with open(output_file, 'w') as f:
+                yaml.safe_dump(session_configs[session_key] if session_configs.get(session_key) else config_data, f)
+    
+    # Construct sbatch command for slurm
+    commands = ''
+    for depth_file in to_extract:
+        output_dir = join(dirname(depth_file), config_data['output_dir'])
+        
+        # skip session if skip_extracted is true and the session is already extracted
+        if skip_extracted and check_completion_status(join(output_dir, 'results_00.yaml')):
+            continue
+
+        # set up config file
+        if exists(config_data.get('session_config_path', '')):
+            config_file = join(output_dir, 'config.yaml')
+        else:
+            config_file = config_data['config_file']
+        
+        # construct command
+        base_command = f'moseq2-extract extract --config-file {config_file} {depth_file}; "\n'
+        prefix = f'sbatch -c {config_data["ncpus"] if config_data["ncpus"] > 0 else 8} --mem={config_data["memory"]} '
+        prefix += f'-p {config_data["partition"]} -t {config_data["wall_time"]} --wrap "{config_data["prefix"]}'
+        commands += prefix + base_command
+
+    # Ensure output directory exists
+    config_data['extract_out_script'] = join(input_dir, config_data['extract_out_script'])
+    with open(config_data['extract_out_script'], 'w') as f:
+        f.write(commands)
+    print('Commands saved to:', config_data['extract_out_script'])
+
+    # Print command
+    if config_data['get_cmd']:
+        print('Listing extract commands...\n')
+        print(commands)
+
+    # Run command using system
+    if config_data['run_cmd']:
+        print('Running extract commands')
+        system(commands)

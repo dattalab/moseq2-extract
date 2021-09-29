@@ -12,10 +12,11 @@ from ast import literal_eval
 from os.path import dirname, basename, exists, join
 from moseq2_extract.util import read_yaml
 from moseq2_extract.io.image import read_tiff_files
-from moseq2_extract.helpers.extract import run_local_extract
+from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
                                             generate_index_wrapper, aggregate_extract_results_wrapper
 from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_session_paths, filter_warnings)
+from moseq2_extract.cli import batch_extract
 
 def get_selected_sessions(to_extract, extract_all):
     '''
@@ -175,9 +176,20 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     temp = sorted([sess_dir for sess_dir in to_extract if '/tmp/' not in sess_dir])
     to_extract = get_selected_sessions(temp, extract_all)
 
-    run_local_extract(to_extract, config_file, skip_extracted)
+    # read in the config file
+    config_data = read_yaml(config_file)
 
-    print('Extractions Complete.')
+    if config_data['cluster_type'] == 'local':
+        run_local_extract(to_extract, config_file, skip_extracted)
+        print('Extractions Complete.')
+    else:
+        # Get default CLI params
+        params = {tmp.name: tmp.default for tmp in batch_extract.params if not tmp.required}
+        # merge default params and config data, preferring values in config data
+        config_data = {**params, **config_data}
+        
+        # function call to run_slurm_extract to be implemented
+        run_slurm_extract(input_dir, to_extract, config_data, skip_extracted)
 
 def generate_index_command(input_dir, output_file):
     '''
