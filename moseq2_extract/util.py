@@ -8,6 +8,7 @@ import math
 import json
 import h5py
 import click
+import tarfile
 import warnings
 import numpy as np
 from glob import glob
@@ -16,10 +17,24 @@ import ruamel.yaml as yaml
 from typing import Pattern
 from cytoolz import valmap
 from moseq2_extract.io.image import write_image
-from os.path import join, exists, splitext, basename, abspath
+from moseq2_extract.io.video import get_movie_info
+from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
+    '''
+    Applies warnings.simplefilter() to hide extraneous warnings when
+     running the main gui functionaity in a Jupyter Notebook.
+     The function will filter out: yaml.error.UnsafeLoaderWarning, FutureWarning and UserWarning.
+
+    Parameters
+    ----------
+    func (function): function to silence enclosed warnings.
+
+    Returns
+    -------
+    apply_warning_filters (func): Returns passed function after warnings filtering is completed.
+    '''
     def apply_warning_filters(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -32,6 +47,19 @@ def filter_warnings(func):
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
 def command_with_config(config_file_param_name):
+    '''
+    Function that is run in the CLI to override default CLI variables with the values contained within the
+     config_file being passed.
+
+    Parameters
+    ----------
+    config_file_param_name (str): name of the parameter to check and update.
+
+    Returns
+    -------
+    custom_command_class (function): decorator function to update click.Command parameters with the config_file
+     parameter values.
+    '''
 
     class custom_command_class(click.Command):
 
@@ -93,14 +121,15 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
     return plane_im
 
-def get_frame_range_indices(config_data, nframes):
+def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     '''
     Computes the total number of frames to be extracted, given the total number of frames
     and an initial frame index starting point.
 
     Parameters
     ----------
-    config_data (dict): dictionary holding all extraction parameters
+    trim_beginning (int): number of frames to remove from beginning of recording
+    trim_ending (int): number of frames to remove from ending of recording
     nframes (int): total number of requested frames to extract
 
     Returns
@@ -109,20 +138,19 @@ def get_frame_range_indices(config_data, nframes):
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
     '''
+    assert all((trim_ending >= 0, trim_beginning >= 0)) , "frame_trim arguments must be greater than or equal to 0!"
 
-    if config_data['frame_trim'][0] > 0 and config_data['frame_trim'][0] < nframes:
-        first_frame_idx = config_data['frame_trim'][0]
-    else:
-        first_frame_idx = 0
+    first_frame_idx = 0
+    if trim_beginning > 0 and trim_beginning < nframes:
+        first_frame_idx = trim_beginning
 
-    if nframes - config_data['frame_trim'][1] > first_frame_idx:
-        last_frame_idx = nframes - config_data['frame_trim'][1]
-    else:
-        last_frame_idx = nframes
+    last_frame_idx = nframes
+    if first_frame_idx < (nframes - trim_ending) and trim_ending > 0:
+        last_frame_idx = nframes - trim_ending
 
-    nframes = last_frame_idx - first_frame_idx
+    total_frames = last_frame_idx - first_frame_idx
 
-    return nframes, first_frame_idx, last_frame_idx
+    return total_frames, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -141,9 +169,10 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
 
     seq = range(offset, nframes)
-    for i in range(offset, len(seq) - overlap, chunk_size - overlap):
-        yield seq[i:i + chunk_size]
-
+    out = []
+    for i in range(0, len(seq) - overlap, chunk_size - overlap):
+        out.append(seq[i:i + chunk_size])
+    return out
 
 def load_timestamps(timestamp_file, col=0, alternate=False):
     '''
@@ -175,10 +204,10 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
         ts = np.array(ts)
     except FileNotFoundError as e:
         ts = None
-        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named \
-            "depth_ts.txt" or "timestamps.csv".')
-        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while \
-            imputing missing data.')
+        warnings.warn('Timestamp file was not found! Make sure the timestamp file exists is named '
+            '"depth_ts.txt" or "timestamps.csv".')
+        warnings.warn('This could cause issues for large number of dropped frames during the PCA step while '
+            'imputing missing data.')
 
     # if timestamps were saved in a csv file
     if alternate:
@@ -186,7 +215,48 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
 
     return ts
 
-def set_bg_roi_weights(config_data):
+def detect_avi_file(finfo):
+    '''
+    Detects the camera type by comparing the read video resolution with known
+     outputted dimensions of different camera types.
+
+    Parameters
+    ----------
+    finfo (dict): dictionary containing the file metadata,
+     outputted by moseq2_extract.io.video.get_movie_info().
+
+    Returns
+    -------
+    detected (str): name of the detected camera type.
+    '''
+
+    detected = 'azure'
+    potential_camera_dims = {
+        'kinect': [[512, 424]],
+        'realsense': [[640, 480]],
+        'azure': [[640, 576],
+                  [320, 288],
+                  [512, 512],
+                  [1024, 1024]]
+    }
+
+    # Check dimensions
+    if finfo is not None:
+        if list(finfo['dims']) in potential_camera_dims['azure']:
+            # Default Azure dimensions
+            detected = 'azure'
+        elif list(finfo['dims']) in potential_camera_dims['realsense']:
+            # Realsense D415 output dimensions
+            detected = 'realsense'
+        elif list(finfo['dims']) in potential_camera_dims['kinect']:
+            # Kinect output dimensions
+            detected = 'kinect'
+        else:
+            warnings.warn('Could not infer camera type, using default Azure parameters.')
+
+    return detected
+
+def detect_and_set_camera_parameters(config_data, input_file=None):
     '''
     Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
     If no camera_type is inputted, program will assume a kinect camera is being used.
@@ -194,6 +264,7 @@ def set_bg_roi_weights(config_data):
     Parameters
     ----------
     config_data (dict): dictionary containing all input parameters to a CLI/GUI command.
+    input_file (str): path to raw depth avi file; used to run further check for camera-ambiguous file extension.
 
     Returns
     -------
@@ -202,15 +273,52 @@ def set_bg_roi_weights(config_data):
 
     # Auto-setting background weights
     camera_type = config_data.get('camera_type')
-    if camera_type == 'kinect':
-        config_data['bg_roi_weights'] = (1, .1, 1)
-    elif camera_type == 'azure':
-        config_data['bg_roi_weights'] = (10, 0.1, 1)
-    elif camera_type == 'realsense':
-        config_data['bg_roi_weights'] = (10, 1, 4)
+    finfo = config_data.get('finfo')
+
+    default_parameters = {
+        'kinect': {
+            'bg_roi_weights': (1, .1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2'
+        },
+        'azure': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16be',
+            'movie_dtype': '>u2'
+        },
+        'realsense': {
+            'bg_roi_weights': (10, 0.1, 1),
+            'pixel_format': 'gray16le',
+            'movie_dtype': '<u2',
+        },
+    }
+
+    if type(input_file) is tarfile.TarFile:
+        detected = 'kinect'
+    elif camera_type == 'auto' and input_file is not None:
+        if input_file.endswith('.dat'):
+            detected = 'kinect'
+        elif input_file.endswith('.mkv'):
+            detected = 'azure'
+        elif input_file.endswith('.avi'):
+            if finfo is None:
+                finfo = get_movie_info(input_file,
+                                       mapping=config_data.get('mapping', 0),
+                                       threads=config_data.get('threads', 8)
+                                       )
+            detected = detect_avi_file(finfo)
+        else:
+            warnings.warn('Extension not recognized, trying default Kinect v2 parameters.')
+            detected = 'kinect'
+
+        # set the params
+        config_data.update(**default_parameters[detected])
+    elif camera_type in default_parameters:
+        # update the config with the corresponding param set
+        config_data.update(**default_parameters[camera_type])
     else:
-        warnings.warn('Using default bg-roi-weights: (1, .1, 1)')
-        config_data['bg_roi_weights'] = (1, .1, 1)
+        warnings.warn('Warning, make sure the following parameters are set to best handle your camera type: '
+                      '"bg_roi_weights", "pixel_format", "movie_dtype"')
 
     return config_data
 
@@ -239,6 +347,27 @@ def check_filter_sizes(config_data):
 
     return config_data
 
+def generate_missing_metadata(sess_dir, sess_name):
+    '''
+    Generates default metadata.json file for session that does not already include one.
+
+    Parameters
+    ----------
+    sess_dir (str): Path to directory to create metadata.json file in.
+    sess_name (str): Name of the directory to set the metadata SessionName.
+
+    Returns
+    -------
+    '''
+
+    # generate sample metadata json for each session that is missing one
+    sample_meta = {'SubjectName': '', f'SessionName': f'{sess_name}',
+                   'NidaqChannels': 0, 'NidaqSamplingRate': 0.0, 'DepthResolution': [512, 424],
+                   'ColorDataType': "Byte[]", "StartTime": ""}
+
+    with open(join(sess_dir, 'metadata.json'), 'w') as fp:
+        json.dump(sample_meta, fp)
+
 def load_metadata(metadata_file):
     '''
     Loads metadata from session metadata.json file.
@@ -252,12 +381,12 @@ def load_metadata(metadata_file):
     metadata (dict): key-value pairs of JSON contents
     '''
 
-    metadata = {}
-
     try:
-        if exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
+        if not exists(metadata_file):
+            generate_missing_metadata(dirname(metadata_file), basename(dirname(metadata_file)))
+
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
     except TypeError:
         # try loading directly
         metadata = json.load(metadata_file)
@@ -323,7 +452,7 @@ def select_strel(string='e', size=(10, 10)):
 
     Returns
     -------
-    strel (cv2.StructuringElement)
+    strel (cv2.StructuringElement): selected cv2 StructuringElement to use in video filtering or ROI dilation/erosion.
     '''
 
     if string[0].lower() == 'e':
@@ -714,7 +843,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 
     Returns
     -------
-    out (dict): a dict with h5 file contents with the same path structure
+    ans (dict): a dict with h5 file contents with the same path structure
     '''
 
     ans = {}
@@ -759,7 +888,7 @@ def clean_dict(dct):
 
     Returns
     -------
-    dct (dict): dict object with list value objects.
+    out (dict): dict object with list value objects.
     '''
 
     def clean_entry(e):
@@ -923,7 +1052,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     # Calculate the weight for each pixel
     weights = (((x * ct + y * st) ** 2) / aa) + (((x * st - y * ct) ** 2) / bb)
 
-    return np.clip(1 - weights, 0.08, 0.8)
+    return np.clip(0.98 - weights, 0, 0.81)
 
 
 def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir):
@@ -958,9 +1087,9 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     # getting helper user parameters
     true_depth = config_data['true_depth']
     xoffset = config_data.get('x_bg_offset', -2)
-    yoffset = config_data.get('y_offset', 2)
+    yoffset = config_data.get('y_bg_offset', 2)
     widen_radius = config_data.get('widen_radius', 0)
-    bg_threshold = config_data.get('bg_threshold', 650)
+    bg_threshold = config_data.get('bg_threshold', np.median(bground_im))
 
     # getting bground centroid
     cx, cy = get_bucket_center(deepcopy(old_bg), true_depth, threshold=bg_threshold)
@@ -971,14 +1100,25 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     theta = math.pi/24 # gradient angle; arbitrary - used to rotate ellipses.
 
     # create slant gradient
-    bground_im = np.float64((make_gradient(width, height, h, k, a, b, theta)) * 255)
+    bground_im = np.uint16((make_gradient(width, height, h, k, a, b, theta)) * 255)
 
     # scale it back to depth
-    bground_im *= np.uint8((true_depth*1.1) / (bground_im.max()))  # fine-tuned - probably needs revising
+    bground_im = np.uint16((bground_im/bground_im.max())*true_depth)
 
     # overlay with actual bucket floor distance
-    mask = np.ma.equal(old_bg, old_bg.max())
-    bground_im = np.where(mask == True, old_bg, bground_im)
+    if config_data.get('floor_slant', False):
+        ret, thresh = cv2.threshold(old_bg, np.median(old_bg), true_depth, 0)
+        contours, _ = cv2.findContours(thresh.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros(bground_im.shape, np.uint8)
+
+        cv2.drawContours(mask, contours, -1, (255), -1)
+
+        tmp = np.where(mask == True, bground_im, old_bg)
+        bground_im = np.where(tmp == 0, bground_im, tmp)
+    else:
+        mask = np.ma.equal(old_bg, old_bg.max())
+        bground_im = np.where(mask == True, old_bg, bground_im)
+
     bground_im = cv2.GaussianBlur(bground_im, (7, 7), 7)
 
     write_image(join(output_dir, 'new_bg.tiff'), bground_im, scale=True)

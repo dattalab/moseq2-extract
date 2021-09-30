@@ -15,6 +15,7 @@ from moseq2_extract.util import command_with_config, read_yaml, recursive_find_u
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
                                              convert_raw_to_avi_wrapper, copy_slice_wrapper)
+from moseq2_extract.helpers.extract import run_slurm_extract, run_local_extract
 
 orig_init = click.core.Option.__init__
 
@@ -48,16 +49,18 @@ def common_roi_options(function):
     '''
 
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
-                            help='Size of strel to dilate roi')(function)
+                            help='Size of StructuringElement to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
                             help='Shape to use to dilate roi (ellipse or rect)')(function)
     function = click.option('--bg-roi-index', default=0, type=int,
                             help='Index of which background mask(s) to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
                             help='ROI feature weighting (area, extent, dist)')(function)
-    function = click.option('--camera-type', default='kinect', type=click.Choice(["kinect", "azure", "realsense"]),
+    function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense"]),
                             help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
                              Possible types: ["kinect", "azure", "realsense"]')(function)
+    function = click.option('--manual-set-depth-range', is_flag=True,
+                            help='Flag to deactivate auto depth range setting.')(function)
     function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
@@ -82,6 +85,8 @@ def common_roi_options(function):
     function = click.option('--output-dir', default='proc', help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
+    function = click.option('--recompute-bg', default=False, help='Overwrite previously computed background image')(
+        function)
     function = click.option("--config-file", type=click.Path())(function)
     function = click.option('--progress-bar', '-p', is_flag=True, help='Show verbose progress bars.')(function)
     return function
@@ -104,14 +109,16 @@ def common_avi_options(function):
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
     function = click.option('--fps', type=float, default=30, help='Video FPS')(function)
     function = click.option('--delete', is_flag=True, help='Delete raw file if encoding is sucessful')(function)
-    function = click.option('-t', '--threads', type=int, default=3, help='Number of threads for encoding')(function)
+    function = click.option('-t', '--threads', type=int, default=8, help='Number of threads for encoding')(function)
+    function = click.option('-m', '--mapping', type=str, default='DEPTH', help='Ffprobe stream selection variable. Default: DEPTH')(function)
+
     return function
 
 def extract_options(function):
     function = click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')(function)
     function = click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')(function)
     function = click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')(function)
-    function = click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')(function)
+    function = click.option('--max-height', default=120, type=int, help='Max mouse height from floor (mm)')(function)
     function = click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
 This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')(function)
     function = click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")(function)
@@ -137,6 +144,8 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')(function)
     function = click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')(function)
     function = click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')(function)
+    function = click.option('--movie-dtype', default='<i2', help='Data type for raw frames read in for extraction')(function)
+    function = click.option('--pixel-format', default='gray16le', type=str, help='Pixel format for reading in .avi and .mkv videos')(function)
     function = click.option('--centroid-hampel-span', default=0, type=int, help='Hampel filter span')(function)
     function = click.option('--centroid-hampel-sig', default=3, type=float, help='Hampel filter sig')(function)
     function = click.option('--angle-hampel-span', default=0, type=int, help='Angle filter span')(function)
@@ -160,7 +169,8 @@ def find_roi(input_file, output_dir, **config_data):
 @cli.command(name="extract", cls=command_with_config('config_file'),
              help="Processes raw input depth recordings to output a cropped and oriented"
              "video of the mouse and saves the output+metadata to h5 files in the given output directory.")
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
+@click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
 @common_roi_options
 @common_avi_options
 @extract_options
@@ -171,14 +181,23 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 
 @cli.command(name='batch-extract', cls=command_with_config('config_file'), help='Batch processes '
              'all the raw depth recordings located in the input folder.')
-@click.argument('input-folder', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-folder', type=click.Path(exists=True, resolve_path=False))
 @common_roi_options
 @common_avi_options
 @extract_options
 @click.option('--extensions', default=['.dat'], type=str, help='File extension of raw data', multiple=True)
 @click.option('--skip-checks', is_flag=True, help='Flag: skip checks for the existance of a metadata file')
+@click.option("--extract-out-script", type=click.Path(), default='extract_out.sh', help="Name of bash script file to save extract commands.")
+@click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
+@click.option('--prefix', type=str, default='', help='Batch command string to prefix model training command (slurm only).')
+@click.option("--ncpus", "-c", type=int, default=0, help="Number of cores to use for resampling")
+@click.option('--memory', type=str, default="5GB", help="RAM (slurm only)")
+@click.option('--wall-time', type=str, default='3:00:00', help="Wall time (slurm only)")
+@click.option('--partition', type=str, default='short', help="Partition name (slurm only)")
+@click.option("--get-cmd", is_flag=True, default=True, help="Print scan command strings.")
+@click.option("--run-cmd", is_flag=True, help="Run scan command strings.")
 def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensions,
-                  skip_checks, **config_data):
+                  skip_checks, config_file, **config_data):
 
     to_extract = []
     for ex in extensions:
@@ -186,16 +205,26 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
-    for session in tqdm(to_extract):
-        extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
-                        skip=skip_completed)
+
+    if config_data['cluster_type'] == 'local':
+        run_local_extract(to_extract, config_file, skip_completed)
+    else:
+        # add paramters to config
+        config_data['session_config_path'] = read_yaml(config_file).get('session_config_path', '') if config_file is not None else ''
+        config_data['config_file'] = os.path.abspath(config_file)
+        config_data['output_dir'] = output_dir
+        config_data['skip_completed'] = skip_completed
+        config_data['num_frames'] = num_frames
+        config_data['extensions'] = extensions
+        config_data['skip_checks'] = skip_checks
+        run_slurm_extract(input_folder, to_extract, config_data, skip_completed)
 
     
 
 @cli.command(name="download-flip-file", help="Downloads Flip-correction model that helps with orienting the mouse during extraction.")
-@click.argument('config-file', type=click.Path(exists=True, resolve_path=True), default='config.yaml')
+@click.argument('config-file', type=click.Path(exists=True, resolve_path=False), default='config.yaml')
 @click.option('--output-dir', type=click.Path(),
-              default=os.path.expanduser('~/moseq2'), help="Temp storage")
+              default=os.getcwd(), help="Output directory for downloaded flip flie")
 def download_flip_file(config_file, output_dir):
 
     flip_file_wrapper(config_file, output_dir)
@@ -233,19 +262,19 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
     aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads):
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, mapping):
 
-    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads)
+    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping)
 
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
-@click.argument('input-file', type=click.Path(exists=True, resolve_path=True))
+@click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice indices used for copy')
-def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads):
+def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
 
-    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads)
+    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping)
 
 if __name__ == '__main__':
     cli()

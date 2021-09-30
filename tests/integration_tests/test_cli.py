@@ -5,6 +5,7 @@ import click
 import shutil
 import numpy as np
 import ruamel.yaml as yaml
+from os.path import exists
 import numpy.testing as npt
 from unittest import TestCase
 from click.testing import CliRunner
@@ -102,13 +103,24 @@ class CLITests(TestCase):
         runner = CliRunner()
         result = runner.invoke(extract, [data_path, '--output-dir', 'test_out/', '--compute-raw-scalars',
                                          '--config-file', config_file,
-                                         '--use-tracking-model', True],
+                                         '--use-tracking-model', True,
+                                         '--bg-roi-depth-range', 'auto'],
                                catch_exceptions=False)
 
-        assert(result.exit_code == 0), "CLI command did not successfully complete"
+        assert(result.exit_code == 2), "CLI command did not successfully complete, bg-roi-depth-range must be a float tuple"
+        assert not exists('data/test_out/')
+
+        result_2 = runner.invoke(extract, [data_path,
+                                           '--output-dir', 'test_out/',
+                                           '--config-file', config_file,
+                                           '--bg-roi-depth-range', 650, 750,
+                                           '--manual-set-depth-range',],
+                                 catch_exceptions=False)
+
+        assert (result_2.exit_code == 0), "CLI command did not successfully complete"
+        assert exists('data/test_out/')
         shutil.rmtree('data/test_out/')
         os.remove(data_path)
-
 
     def test_find_roi(self):
 
@@ -119,10 +131,20 @@ class CLITests(TestCase):
         write_fake_movie(data_path)
 
         runner = CliRunner()
-        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path])
+        result = runner.invoke(find_roi, [data_path, '--output-dir', out_path,
+                                          '--bg-roi-depth-range', 'auto'])
 
-        assert(result.exit_code == 0), "CLI command did not successfully complete"
-        assert len(glob.glob(output_dir+'*.tiff')) == 3, \
+        assert(result.exit_code == 2), "CLI command did not successfully complete"
+        assert len(glob.glob(output_dir+'*.tiff')) < 3, \
+            "ROI files were not generated in the correct directory"
+
+        # using default cli bg-roi-depth-range values
+        result = runner.invoke(find_roi, [data_path,
+                                          '--output-dir', out_path,
+                                          '--manual-set-depth-range'])
+
+        assert (result.exit_code == 0), "CLI command did not successfully complete"
+        assert len(glob.glob(output_dir + '*.tiff')) == 3, \
             "ROI files were not generated in the correct directory"
 
         shutil.rmtree(output_dir)

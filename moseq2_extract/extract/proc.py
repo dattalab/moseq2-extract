@@ -5,12 +5,14 @@ Video pre-processing utilities for detecting ROIs and extracting raw data.
 import cv2
 import math
 import joblib
+import tarfile
 import scipy.stats
 import numpy as np
 import scipy.signal
 import skimage.measure
 import scipy.interpolate
 import skimage.morphology
+from copy import deepcopy
 from tqdm.auto import tqdm
 import moseq2_extract.io.video
 import moseq2_extract.extract.roi
@@ -79,7 +81,7 @@ def get_largest_cc(frames, progress_bar=False):
 
     foreground_obj = np.zeros((frames.shape), 'bool')
 
-    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='CC'):
+    for i in tqdm(range(frames.shape[0]), disable=not progress_bar, desc='Computing largest Connected Component'):
         nb_components, output, stats, centroids =\
             cv2.connectedComponentsWithStats(frames[i], connectivity=4)
         szs = stats[:, -1]
@@ -88,24 +90,7 @@ def get_largest_cc(frames, progress_bar=False):
     return foreground_obj
 
 
-def get_bground_im(frames):
-    '''
-    Returns median 2D frame; AKA background.
-
-    Parameters
-    ----------
-    frames (3d numpy array): frames x r x c, uncropped mouse
-
-    Returns
-    -------
-    bground (2d numpy array):  r x c, background image
-    '''
-
-    bground = np.median(frames, 0)
-    return bground
-
-
-def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
+def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=None, **kwargs):
     '''
     Returns background from file. If the file is not found, session frames will be read in
      and a median frame (background) will be computed.
@@ -122,38 +107,36 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, **kwargs):
     bground (2d numpy array):  r x c, background image
     '''
 
-    bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    if output_dir is None:
+        bground_path = join(dirname(frames_file), 'proc', 'bground.tiff')
+    else:
+        bground_path = join(output_dir, 'bground.tiff')
+
+    if type(frames_file) is not tarfile.TarFile:
+        kwargs = deepcopy(kwargs)
+    finfo = kwargs.pop('finfo', None)
 
     # Compute background image if it doesn't exist. Otherwise, load from file
-    if not exists(bground_path):
-        try:
-            if frames_file.endswith(('dat', 'mkv')):
-                finfo = moseq2_extract.io.video.get_raw_info(frames_file)
-            elif frames_file.endswith('avi'):
-                finfo = moseq2_extract.io.video.get_video_info(frames_file)
-        except AttributeError as e:
-            finfo = moseq2_extract.io.video.get_raw_info(frames_file)
+    if not exists(bground_path) or kwargs.get('recompute_bg', False):
+        if finfo is None:
+            finfo = moseq2_extract.io.video.get_movie_info(frames_file, **kwargs)
 
         frame_idx = np.arange(0, finfo['nframes'], frame_stride)
-        frame_store = np.zeros((len(frame_idx), finfo['dims'][1], finfo['dims'][0]))
+        frame_store = []
         for i, frame in enumerate(frame_idx):
-            try:
-                if frames_file.endswith(('dat')):
-                    frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), frame_dims=finfo['dims']).squeeze()
-                elif frames_file.endswith(('avi', 'mkv')):
-                    frs = moseq2_extract.io.video.read_frames(frames_file, [int(frame)], frame_size=finfo['dims']).squeeze()
-            except AttributeError as e:
-                print('Error reading frames:', e)
-                print('Attempting raw file read...')
-                frs = moseq2_extract.io.video.read_frames_raw(frames_file, int(frame), **kwargs).squeeze()
+            frs = moseq2_extract.io.video.load_movie_data(frames_file,
+                                                          [int(frame)], 
+                                                          frame_size=finfo['dims'], 
+                                                          finfo=finfo, 
+                                                          **kwargs).squeeze()
+            frame_store.append(cv2.medianBlur(frs, med_scale))
 
-            frame_store[i] = cv2.medianBlur(frs, med_scale)
+        bground = np.nanmedian(frame_store, axis=0)
 
-        bground = get_bground_im(frame_store)
         write_image(bground_path, bground, scale=True)
     else:
         bground = read_image(bground_path, scale=True)
-
+        
     return bground
 
 
@@ -418,13 +401,12 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
                 filtered_frames[i] = cv2.medianBlur(filtered_frames[i], prefilter_space[j])
         # Tail Filter
         if iters_tail is not None and iters_tail > 0:
-            filtered_frames[i] = cv2.morphologyEx(
-                filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+            filtered_frames[i] = cv2.morphologyEx(filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+
     # Temporal Median Filter
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
         for j in range(len(prefilter_time)):
-            filtered_frames = scipy.signal.medfilt(
-                filtered_frames, [prefilter_time[j], 1, 1])
+            filtered_frames = scipy.signal.medfilt(filtered_frames, [prefilter_time[j], 1, 1])
 
     return filtered_frames
 
@@ -481,9 +463,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
             mask[i] = frame_mask
 
         # Get contours in frame
-        cnts, hierarchy = cv2.findContours(
-            frame_mask.astype('uint8'),
-            cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnts, hierarchy = cv2.findContours(frame_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         tmp = np.array([cv2.contourArea(x) for x in cnts])
 
         if tmp.size == 0:
@@ -508,7 +488,6 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
     features (dict): dict of extracted features, found in result_00.h5 files.
     crop_size (tuple): size of cropped image.
     progress_bar (bool): Display progress bar.
-    gui (bool): indicate GUI is executing function
 
     Returns
     -------
@@ -550,7 +529,7 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
         rot_mat = cv2.getRotationMatrix2D((crop_size[0] // 2, crop_size[1] // 2),
                                           -np.rad2deg(features['orientation'][i]), 1)
         cropped_frames[i] = cv2.warpAffine(use_frame[rr[0]:rr[-1], cc[0]:cc[-1]],
-                                                 rot_mat, (crop_size[0], crop_size[1]))
+                                           rot_mat, (crop_size[0], crop_size[1]))
 
     return cropped_frames
 
