@@ -210,6 +210,10 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
+    
+    # Add message when all sessions are extracted
+    if len(to_extract) == 0:
+        print('No session to be extracted. If you want to re-extract the data, please add "--skip-checks"')
 
     if config_data['cluster_type'] == 'local':
         run_local_extract(to_extract, config_file, skip_completed)
