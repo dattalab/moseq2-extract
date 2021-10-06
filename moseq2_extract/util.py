@@ -74,6 +74,12 @@ def command_with_config(config_file_param_name):
             if config_file is not None:
 
                 config_data = read_yaml(config_file)
+                # set config_data['output_file'] ['output_dir'] ['input_dir'] to None to avoid overwriting previous files
+                # assuming users would either input their own paths or use the default path
+                config_data['input_dir'] = None
+                config_data['output_dir'] = None
+                config_data['output_file'] = None
+
                 # modified to only use keys that are actually defined in options and the value is not not none
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
                                for k, v in config_data.items() if k in param_defaults.keys() and v}
