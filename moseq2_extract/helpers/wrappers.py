@@ -263,6 +263,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         'metadata': '',
         'parameters': deepcopy(config_data)
     }
+    # ensure 'get_cmd' and 'run_cmd' are not in config_data or get_bground_im_file will fail
+    config_data = {k:v for k, v in config_data.items() if k not in ('get_cmd', 'run_cmd', 'extensions')}
 
     # save input directory path
     in_dirname = dirname(input_file)

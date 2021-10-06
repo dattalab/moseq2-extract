@@ -337,8 +337,6 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     if output_dir is None:
         output_dir = config_data.get('output_dir', 'proc')
 
-    # ensure 'get_cmd' and 'run_cmd' are not in config_data or local extract fails
-    config_data = {k:v for k, v in config_data.items() if k not in ('get_cmd', 'run_cmd')}
     extract_wrapper(input_file, output_dir, config_data, num_frames=num_frames, skip=skip)
 
     return 'Extraction completed.'
