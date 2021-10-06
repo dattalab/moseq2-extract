@@ -74,9 +74,9 @@ def command_with_config(config_file_param_name):
             if config_file is not None:
 
                 config_data = read_yaml(config_file)
-                # modified to only use keys that are actually defined in options
+                # modified to only use keys that are actually defined in options and the value is not not none
                 config_data = {k: tuple(v) if isinstance(v, yaml.comments.CommentedSeq) else v
-                               for k, v in config_data.items() if k in param_defaults.keys()}
+                               for k, v in config_data.items() if k in param_defaults.keys() and v}
 
                 # find differences btw config and param defaults
                 diffs = set(param_defaults.items()) ^ set(param_cli.items())
@@ -90,6 +90,13 @@ def command_with_config(config_file_param_name):
                     combined[k] = ctx.params[k]
 
                 ctx.params = combined
+                
+                # add new parameters to the original config file
+                config_data = read_yaml(config_file)
+                # combine original config data and the combined params prioritizing the combined
+                config_data = {**config_data, **combined}
+                with open(config_file, 'w') as f:
+                    yaml.safe_dump(config_data, f)
 
             return super().invoke(ctx)
 
