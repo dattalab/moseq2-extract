@@ -12,10 +12,11 @@ from ast import literal_eval
 from os.path import dirname, basename, exists, join
 from moseq2_extract.util import read_yaml
 from moseq2_extract.io.image import read_tiff_files
-from moseq2_extract.helpers.extract import run_local_extract
+from moseq2_extract.helpers.extract import run_local_extract, run_slurm_extract
 from moseq2_extract.helpers.wrappers import get_roi_wrapper, extract_wrapper, flip_file_wrapper, \
                                             generate_index_wrapper, aggregate_extract_results_wrapper
 from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_session_paths, filter_warnings)
+from moseq2_extract.cli import batch_extract
 
 def get_selected_sessions(to_extract, extract_all):
     '''
@@ -175,9 +176,20 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     temp = sorted([sess_dir for sess_dir in to_extract if '/tmp/' not in sess_dir])
     to_extract = get_selected_sessions(temp, extract_all)
 
-    run_local_extract(to_extract, config_file, skip_extracted)
+    # read in the config file
+    config_data = read_yaml(config_file)
 
-    print('Extractions Complete.')
+    if config_data['cluster_type'] == 'local':
+        run_local_extract(to_extract, config_file, skip_extracted)
+        print('Extractions Complete.')
+    else:
+        # Get default CLI params
+        params = {tmp.name: tmp.default for tmp in batch_extract.params if not tmp.required}
+        # merge default params and config data, preferring values in config data
+        config_data = {**params, **config_data}
+        
+        # function call to run_slurm_extract to be implemented
+        run_slurm_extract(input_dir, to_extract, config_data, skip_extracted)
 
 def generate_index_command(input_dir, output_file):
     '''
@@ -210,7 +222,9 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     input_dir (str): path to base directory to recursively search for h5s
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
-    mouse_threshold (float): threshold value of mean frame depth to include session frames
+    mouse_threshold (float): threshold value of captured mouse height in order to include a session
+     in the list of session to copy over to the output_dir. If no mouse was extracted for the whole session, this
+     value will ensure it does not get aggregated or included in the index file.
 
     Returns
     -------
@@ -238,7 +252,6 @@ def download_flip_command(output_dir, config_file="", selection=1):
 
     Returns
     -------
-    None
     '''
 
     flip_file_wrapper(config_file, output_dir, selected_flip=selection)
@@ -300,15 +313,15 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
 
     Parameters
     ----------
-    input_file (str): path to depthfile
-    output_dir (str): path to output directory
-    config_file (str): path to config file
+    input_file (str): path to raw input file to extract.
+    output_dir (str): path to output directory.
+    config_file (str): path to config file.
     num_frames (int): number of frames to extract. All if None.
     skip (bool): skip already extracted file.
 
     Returns
     -------
-    None
+    (str): String indicating that wrapper has returned without any interruptions.
     '''
 
     config_data = read_yaml(config_file)

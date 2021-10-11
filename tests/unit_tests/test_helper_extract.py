@@ -53,6 +53,7 @@ class TestHelperExtract(TestCase):
         first_frame = np.zeros(roi.shape)
         true_depth = 773.0
         first_frame_idx = 0
+        last_frame_idx = 20
         nframes = 20
 
         flip_file = 'data/flip/flip_classifier_k2_c57_10to13weeks.pkl'
@@ -99,10 +100,10 @@ class TestHelperExtract(TestCase):
 
         with h5py.File(os.path.join(output_dir, f'{output_filename}.h5'), 'w') as g:
             create_extract_h5(g, acquisition_metadata, config_data, status_dict, scalars_attrs, nframes,
-                              roi, bground_im, first_frame, None)
+                              roi, bground_im, first_frame, first_frame_idx, last_frame_idx)
 
             process_extract_batches(data_file, config_data, bground_im, roi, frame_batches,
-                                    first_frame_idx, str_els, os.path.join(output_dir, output_filename+'.mp4'),
+                                    str_els, os.path.join(output_dir, output_filename+'.mp4'),
                                     scalars=scalars, h5_file=g)
 
         assert os.path.exists(os.path.join(output_dir, f'{output_filename}.h5'))

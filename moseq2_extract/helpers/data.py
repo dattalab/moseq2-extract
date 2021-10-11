@@ -15,6 +15,7 @@ import ruamel.yaml as yaml
 from tqdm.auto import tqdm
 from cytoolz import keymap
 from pkg_resources import get_distribution
+from moseq2_extract.io.video import load_timestamps_from_movie
 from os.path import exists, join, dirname, basename, splitext
 from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read_yaml, \
     camel_to_snake, load_textdata, build_path, dict_to_h5, click_param_annot
@@ -266,13 +267,13 @@ def handle_extract_metadata(input_file, dirname):
     -------
     acquisition_metadata (dict): key-value pairs of JSON contents
     timestamps (1D array): list of loaded timestamps
-    alternate_correct (bool): indicator for whether an alternate timestamp file was used
     tar (bool): indicator for whether the file is compressed.
     '''
 
     tar = None
     tar_members = None
     alternate_correct = False
+    from_depth_file = False
 
     # Handle TAR files
     if input_file.endswith(('.tar.gz', '.tgz')):
@@ -301,16 +302,21 @@ def handle_extract_metadata(input_file, dirname):
         if not exists(timestamp_path) and exists(alternate_timestamp_path):
             timestamp_path = alternate_timestamp_path
             alternate_correct = True
+        elif not (exists(timestamp_path) or exists(alternate_timestamp_path)) and input_file.endswith('.mkv'):
+            from_depth_file = True
 
     acquisition_metadata = load_metadata(metadata_path)
-    timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
+    if not from_depth_file:
+        timestamps = load_timestamps(timestamp_path, col=0, alternate=alternate_correct)
+    else:
+        timestamps = load_timestamps_from_movie(input_file)
 
     return acquisition_metadata, timestamps, tar
 
 
 # extract h5 helper function
 def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, scalars_attrs,
-                      nframes, roi, bground_im, first_frame, timestamps, **kwargs):
+                      nframes, roi, bground_im, first_frame, first_frame_idx, last_frame_idx, **kwargs):
     '''
     This is a helper function for extract_wrapper(); handles writing the following metadata
     to an open results_00.h5 file:
@@ -343,15 +349,15 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
         h5_file[f'scalars/{scalar}'].attrs['description'] = scalars_attrs[scalar]
 
     # Timestamps
-    if timestamps is not None:
-        h5_file.create_dataset('timestamps', compression='gzip', data=timestamps)
+    if config_data.get('timestamps') is not None:
+        h5_file.create_dataset('timestamps', compression='gzip', data=config_data['timestamps'][first_frame_idx:last_frame_idx])
         h5_file['timestamps'].attrs['description'] = "Depth video timestamps"
 
     # Cropped Frames
     h5_file.create_dataset('frames', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]),
                      config_data['frame_dtype'], compression='gzip')
-    h5_file['frames'].attrs['description'] = '3D Numpy array of depth frames (nframes x w x h, in mm)'
-
+    h5_file['frames'].attrs['description'] = ('3D Numpy array of depth frames (nframes x w x h).' +
+                                              ' Depth values are in mm.')
     # Frame Masks for EM Tracking
     if config_data['use_tracking_model']:
         h5_file.create_dataset('frames_mask', (nframes, config_data['crop_size'][0], config_data['crop_size'][1]), 'float32',
@@ -378,6 +384,14 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     # First Frame
     h5_file.create_dataset('metadata/extraction/first_frame', data=first_frame[0], compression='gzip')
     h5_file['metadata/extraction/first_frame'].attrs['description'] = 'First frame of depth dataset'
+
+    # First Frame index
+    h5_file.create_dataset('metadata/extraction/first_frame_idx', data=[first_frame_idx], compression='gzip')
+    h5_file['metadata/extraction/first_frame_idx'].attrs['description'] = 'First frame index of this dataset'
+
+    # Last Frame index
+    h5_file.create_dataset('metadata/extraction/last_frame_idx', data=[last_frame_idx], compression='gzip')
+    h5_file['metadata/extraction/last_frame_idx'].attrs['description'] = 'Last frame index of this dataset'
 
     # Background
     h5_file.create_dataset('metadata/extraction/background', data=bground_im, compression='gzip')
