@@ -200,9 +200,8 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
                   skip_checks, **config_data):
     
     # check if there is a config file
-    try:
-        config_file = config_data['config_file']
-    except KeyError:
+    config_file = config_data.get('config_file')
+    if not config_file:
         # Add message to tell the users to specify a config file
         print('Command not run. Please specified a config file using --config-file flag.')
         return
