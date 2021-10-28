@@ -99,6 +99,10 @@ def command_with_config(config_file_param_name):
                 
                 # add new parameters to the original config file
                 config_data = read_yaml(config_file)
+                
+                # remove flags from combined so the flag values in config.yaml won't get overwritten
+                flag_list = ['manual_set_depth_range', 'use_plane_bground', 'progress_bar', 'delete', 'compute_raw_scalars', 'skip_completed', 'skip_checks', 'get_cmd', 'run_cmd']
+                combined = {k:v for k, v in combined.items() if k not in flag_list}
                 # combine original config data and the combined params prioritizing the combined
                 config_data = {**config_data, **combined}
                 with open(config_file, 'w') as f:
