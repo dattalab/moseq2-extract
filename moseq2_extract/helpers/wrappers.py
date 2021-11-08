@@ -256,6 +256,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     print('Processing:', input_file)
     # get the basic metadata
 
+    # ensure 'get_cmd' and 'run_cmd' are not in config_data or get_bground_im_file will fail
+    config_data = {k:v for k, v in config_data.items() if k not in ('get_cmd', 'run_cmd', 'extensions')}
+
     status_dict = {
         'complete': False,
         'skip': False,

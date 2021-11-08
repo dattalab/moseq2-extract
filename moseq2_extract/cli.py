@@ -197,14 +197,27 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 @click.option("--get-cmd", is_flag=True, default=True, help="Print scan command strings.")
 @click.option("--run-cmd", is_flag=True, help="Run scan command strings.")
 def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensions,
-                  skip_checks, config_file, **config_data):
-
+                  skip_checks, **config_data):
+    
+    # check if there is a config file
+    config_file = config_data.get('config_file')
+    if not config_file:
+        # Add message to tell the users to specify a config file
+        print('Command not run. Please specified a config file using --config-file flag.')
+        return
+    
+    # Add message to tell the users to specify a config file
     to_extract = []
     for ex in extensions:
         to_extract.extend(
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
+    
+    # Add message when all sessions are extracted
+    if len(to_extract) == 0:
+        print('No session to be extracted. If you want to re-extract the data, please add "--skip-checks"')
+        return
 
     if config_data['cluster_type'] == 'local':
         run_local_extract(to_extract, config_file, skip_completed)
