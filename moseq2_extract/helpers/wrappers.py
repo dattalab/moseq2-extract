@@ -189,7 +189,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     # readjust depth range
-    if config_data.get('manual_set_depth_range', False):
+    if not config_data.get('manual_set_depth_range', False):
         # search for depth values between the max distance and the halfway point to the camera
         print('Automatically setting depth range. To manually set range values,'
               ' set "manual_set_depth_range" to True.\n For CLI users: use the --manual-set-depth-range flag.')
