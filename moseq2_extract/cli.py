@@ -156,7 +156,8 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--compress-chunk-size', type=int, default=3000, help='Chunk size for .avi compression')(function)
     function = click.option('--compress-threads', type=int, default=3, help='Number of threads for encoding')(function)
     function = click.option('--skip-completed', is_flag=True, help='Will skip the extraction if it is already completed.')(function)
-
+    function = click.option('--detect-circles', is_flag=True, help='Will run novel object detection and height correction for circular objects in the arena.')(function)
+    function = click.option('--crop-square-roi', type=int, default=0, help='Reduce the detected SQUARE ROI dimensions by an offset value.')(function)
     return function
 
 @cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
