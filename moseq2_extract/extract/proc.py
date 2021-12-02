@@ -298,7 +298,7 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
                                                           **kwargs).squeeze()
             frame_store.append(cv2.medianBlur(frs, med_scale))
 
-        bground = np.nanmedian(frame_store, axis=0)
+        bground = np.nanmax(frame_store, axis=0)
 
         write_image(bground_path, bground, scale=True)
     else:
