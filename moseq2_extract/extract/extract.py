@@ -17,7 +17,7 @@ from moseq2_extract.extract.track import em_tracking, em_get_ll
 from moseq2_extract.extract.proc import (crop_and_rotate_frames, threshold_chunk,
                                          clean_frames, apply_roi, get_frame_features,
                                          get_flips, compute_scalars, feature_hampel_filter,
-                                         model_smoother)
+                                         model_smoother, remove_wall_noise)
 
 # one stop shopping for taking some frames and doing stuff
 def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
@@ -111,6 +111,9 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     # Apply ROI mask
     if roi is not None:
         chunk = apply_roi(chunk, roi)
+
+    # Remove wall noise
+    chunk = remove_wall_noise(chunk, min_height, max_height, frame_dtype=frame_dtype)
 
     # Denoise the frames before we do anything else
     filtered_frames = clean_frames(chunk,
