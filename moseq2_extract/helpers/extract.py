@@ -14,6 +14,8 @@ from moseq2_extract.extract.extract import extract_chunk
 from moseq2_extract.util import read_yaml
 from moseq2_extract.io.video import load_movie_data, write_frames_preview
 from moseq2_extract.helpers.data import check_completion_status
+from moseq2_extract.extract.proc import (detect_circle_objects, apply_bground_circle_mask,
+                                        detect_and_crop_square_arena, correct_detected_object_raw_heights)
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
     '''
@@ -132,11 +134,27 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     tracking_init_mean = config_data.pop('tracking_init_mean', None)
     tracking_init_cov = config_data.pop('tracking_init_cov', None)
 
+    if config_data['detect_circles']:
+        # detect circular objects in the arena
+        circles = detect_circle_objects(bground_im, roi)
+        bground_im, object_mask = apply_bground_circle_mask(bground_im, circles)
+
+    if config_data['crop_square_roi'] > 0:
+        # reduce roi region to exclude as much wall noise as possible
+        roi = detect_and_crop_square_arena(roi, offset=config_data['crop_square_roi'])
+
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_chunk = load_movie_data(input_file,
                                     frame_range,
                                     frame_size=bground_im.shape[::-1],
                                     **config_data)
+
+        if config_data['detect_circles']:
+            # adjust the object height values in the raw video
+            raw_chunk = correct_detected_object_raw_heights(raw_chunk,
+                                                            object_mask,
+                                                            min_height=config_data['min_height'],
+                                                            max_height=config_data['max_height'])
 
         offset = config_data['chunk_overlap'] if i > 0 else 0
 
