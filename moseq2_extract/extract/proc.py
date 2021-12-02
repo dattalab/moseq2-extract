@@ -20,6 +20,35 @@ from os.path import exists, join, dirname
 from moseq2_extract.io.image import read_image, write_image
 from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
+def remove_wall_noise(chunk, min_height, max_height, frame_dtype='uint8'):
+    '''
+    Uses OpenCV thresholding and Canny outline detection in order to create a mask containing the outlines of
+     the noise in the image. The mask is then used to zero-out all the detected noise in each frame of the inputted
+     chunk.
+
+    Parameters
+    ----------
+    chunk (3D numpy array: nframes x rows, cols): background subtracted+roi-cropped video to clean
+    min_height (int): minimum thresholding height to search for outlines
+    max_height (int): maximum thresholding height to search for outlines
+    frame_dtype (str): data type to cast frames to for cv2 processing.
+
+    Returns
+    -------
+    chunk (3D numpy array: nframes x rows, cols): updated input video chunk with removed outlines.
+    '''
+
+    for i in range(len(chunk)):
+        img = chunk[i].astype(frame_dtype)
+
+        _, thresh = cv2.threshold(img, min_height, max_height, cv2.THRESH_BINARY_INV)
+
+        edges = cv2.dilate(cv2.Canny(thresh, 0, 50, (6, 6)), (3, 3), iterations=1)
+
+        new_img = np.where(edges == 0, chunk[i], 0).astype(frame_dtype)
+        chunk[i] = new_img
+
+    return chunk
 
 def get_flips(frames, flip_file=None, smoothing=None):
     '''
