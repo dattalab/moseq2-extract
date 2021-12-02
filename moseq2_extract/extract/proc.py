@@ -50,6 +50,144 @@ def remove_wall_noise(chunk, min_height, max_height, frame_dtype='uint8'):
 
     return chunk
 
+def detect_circle_objects(bground_im, roi, frame_dtype='uint8'):
+    '''
+    Uses OpenCV HoughCircles method to find circular objects in the background image of an arena.
+
+    Parameters
+    ----------
+    bground_im (2D numpy array): background image to find circular objects in.
+    roi (2D numpy array): computed ROI mask to aid in accurately detecting circles.
+    frame_dtype (str): data type to cast frames to for cv2 processing.
+
+    Returns
+    -------
+    circles (list): 2D List of 3-tuples (x, y, r) for all the detected circles in the background
+    '''
+
+    # find circular object in arena
+    data = bground_im.copy().astype(frame_dtype)
+    data[roi == 0] = 0
+    circles = cv2.HoughCircles(data, cv2.HOUGH_GRADIENT,
+                               param1=85, param2=85,
+                               dp=8,
+                               minDist=80, minRadius=12, maxRadius=25)
+
+    print('N circles detected:', len(circles[0]))
+
+    return circles
+
+def apply_bground_circle_mask(bground_im, circles, max_circles=2, frame_dtype='uint8'):
+    '''
+    Updates the background image to contain consistent and corrected pre-detected circular object height values.
+    Additionally creates a mask array containing only the object heights for later raw data correction.
+
+    Parameters
+    ----------
+    bground_im (2D numpy array): background image to find circular objects in.
+    circles (2D list of 3-tuples): 2D List of 3-tuples (x, y, r) for all the detected circles in the background.
+     Generated via running detect_circle_objects
+    frame_dtype (str): data type to cast frames to for cv2 processing.
+
+    Returns
+    -------
+    bground_im (2D numpy array): updated background image containing new circular object heights
+    bg_output (2D numpy array): mask array containing only object heights
+    '''
+
+    data = bground_im.copy().astype(frame_dtype)
+
+    # create mask array to hold object location
+    output = np.zeros_like(data)
+    new_bground = np.zeros_like(data)
+
+    if circles is not None:
+        # convert the (x, y) coordinates and radius of the circles to integers
+        circles = list(np.round(circles[0, :]).astype("int"))
+
+        # sort the circle tuples and only use top 2
+        circles.sort(key=lambda k: k[2])
+
+        # loop over the (x, y) coordinates and radius of the circles
+        for (x, y, r) in circles[:min(len(circles), max_circles)]:
+            # draw the circle in the output image, then draw a rectangle
+            # corresponding to the center of the circle
+            radius = r
+
+            cv2.circle(output, (x, y), radius, 255, -1)
+
+            # create temp mask to hold heights of each separate circle object
+            tmp = np.zeros_like(output)
+            cv2.circle(tmp, (x, y), radius, 255, -1)
+            new_bground = np.where(tmp != 0, np.nanmedian(bground_im[tmp != 0]), new_bground)
+
+    # set the height of the circle object equal to the floor distance
+    bground_im = np.where(new_bground == 0, bground_im, new_bground)
+
+    # get mask of the object containing the updated background values
+    bg_output = np.where(output, new_bground, 0)
+
+    return bground_im, bg_output
+
+def detect_and_crop_square_arena(roi, offset=11):
+    '''
+    Crops the walls from the inputted square arena ROI. Uses OpenCV to detect a bounding rectangle, then generates
+    a "cropped_roi" image with crisp lines. Use the offset parameter to control how much wall area to remove.
+
+    Parameters
+    ----------
+    roi (2D numpy array: rows x cols): computed ROI mask to crop.
+
+    Returns
+    -------
+    cropped_roi (2D numpy array: rows x cols): new roi mask with smaller ROI region.
+    '''
+
+    # create square ROI
+    x, y, w, h = cv2.boundingRect(roi.astype('uint8'))
+    cropped_roi = np.zeros_like(roi)
+
+    # crop the ROI
+    cropped_roi[y + offset:y + h - offset, x + offset:x + w - offset] = 1
+
+    return cropped_roi
+
+def correct_detected_object_raw_heights(raw_chunk, object_mask, min_height=10, max_height=120):
+    '''
+    Finds the regions in each raw input frame that contains the mouse and objects, and adjusts the raw_chunk array
+     to compensate for the mouse height + object height. The input raw_chunk will be updated in place and returned for
+     for extraction.
+
+    Parameters
+    ----------
+    raw_chunk (3D numpy array: nframes x rows, cols): raw input data outputted from load_movie_data().
+    object_mask (2D numpy array): mask containing only object regions with their corresponding height values
+    min_height (int): minimum height to include in the extraction.
+    max_height (int): maximum height to include in the extraction.
+
+    Returns
+    -------
+    raw_chunk (3D numpy array: nframes x rows, cols): mouse+object height corrected input video.
+    '''
+
+    # get object heights to re-add
+    obj_height = (object_mask - raw_chunk).astype('uint8')
+    obj_height[obj_height > min_height] = 0
+    obj_height[obj_height <= max_height] = 0
+
+    # get mask to "remove" object from raw chunk
+    obj = ~(~(object_mask - 10 >= raw_chunk) & ~(object_mask < raw_chunk))
+
+    # get mask for when mouse is overlapping with object
+    # this will be used to re-add the height of the mouse on the object
+    re_add = cv2.dilate(np.logical_and(object_mask, obj).astype('uint8'), (3, 3), iterations=1)
+
+    # adjust the raw chunk depth values: remove object and readd
+    for j in range(len(raw_chunk)):
+        raw_chunk[j] = np.where(re_add[j] != 0, raw_chunk[j] - obj_height[j], raw_chunk[j])
+
+    return raw_chunk
+
 def get_flips(frames, flip_file=None, smoothing=None):
     '''
     Predicts frames where mouse orientation is flipped to later correct.
