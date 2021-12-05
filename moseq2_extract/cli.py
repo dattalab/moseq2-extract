@@ -85,6 +85,8 @@ def common_roi_options(function):
     function = click.option('--output-dir', default='proc', help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
                             help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
+    function = click.option('--frames-is-timestamp', is_flag=True,
+                            help='Use frames as timestamp')(function)
     function = click.option('--recompute-bg', default=False, help='Overwrite previously computed background image')(
         function)
     function = click.option("--config-file", type=click.Path())(function)
