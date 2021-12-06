@@ -464,7 +464,7 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
         print('Could not update configuration file flip classifier path')
         print('Unexpected error:', e)
 
-def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping):
+def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, frames_is_timestamp, threads, mapping):
     '''
     Wrapper function used to convert/compress a raw depth file into
      an avi file (with depth values) that is 8x smaller.
@@ -492,7 +492,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
     video_pipe = None
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch, mapping=mapping)
+        frames = load_movie_data(input_file, batch, mapping=mapping, frames_is_timestamp = frames_is_timestamp)
         video_pipe = write_frames(output_file, frames, pipe=video_pipe,
                                   close_pipe=False, threads=threads, fps=fps)
 
@@ -500,8 +500,8 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         video_pipe.communicate()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
-        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping, frames_is_timestamp = frames_is_timestamp)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping, frames_is_timestamp = frames_is_timestamp)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')
@@ -512,7 +512,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         print('Deleting', input_file)
         os.remove(input_file)
 
-def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
+def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, frames_is_timestamp, threads, mapping):
     '''
     Wrapper function to copy a segment of an input depth recording into a new video file.
 
@@ -556,7 +556,7 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
             sys.exit(0)
 
     for batch in tqdm(frame_batches, desc='Encoding batches'):
-        frames = load_movie_data(input_file, batch, mapping=mapping)
+        frames = load_movie_data(input_file, batch, mapping=mapping, frames_is_timestamp=frames_is_timestamp)
         if avi_encode:
             video_pipe = write_frames(output_file,
                                       frames,
@@ -572,8 +572,8 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
         video_pipe.communicate()
 
     for batch in tqdm(frame_batches, desc='Checking data integrity'):
-        raw_frames = load_movie_data(input_file, batch, mapping=mapping)
-        encoded_frames = load_movie_data(output_file, batch, mapping=mapping)
+        raw_frames = load_movie_data(input_file, batch, mapping=mapping, frames_is_timestamp=frames_is_timestamp)
+        encoded_frames = load_movie_data(output_file, batch, mapping=mapping, frames_is_timestamp=frames_is_timestamp)
 
         if not np.array_equal(raw_frames, encoded_frames):
             raise RuntimeError(f'Raw frames and encoded frames not equal from {batch[0]} to {batch[-1]}')

@@ -279,17 +279,19 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 @cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
-def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, mapping):
+@click.option('--frames-is-timestamp', is_flag=True, default = False, help='Use frames as timestamp')
+def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, frames_is_timestamp, threads, mapping):
 
-    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping)
+    convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, frames_is_timestamp, threads, mapping)
 
 @cli.command(name="copy-slice", help='Copies a segment of an input depth recording into a new video file.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 @click.option('-c', '--copy-slice', type=(int, int), default=(0, 1000), help='Slice indices used for copy')
-def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
+@click.option('--frames-is-timestamp', is_flag=True, default = False, help='Use frames as timestamp')
+def copy_slice(input_file, output_file, copy_slice, chunk_size, fps, delete, frames_is_timestamp, threads, mapping):
 
-    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping)
+    copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, frames_is_timestamp, threads, mapping)
 
 if __name__ == '__main__':
     cli()
