@@ -279,7 +279,7 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     fps (int): frame rate of camera in Hz
     frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
      if True, indicates azure relative start_time timestamps (i.e. first frame timestamp == 0.000).
-    pixel_format (str): ffmpeg pixel format of data
+    pixel_format (str): ffmpeg pixel format of da
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
     slices (int): number of slices to use for decode
@@ -377,9 +377,11 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     video (3d numpy array):  frames x h x w
     '''
 
+    # extract timestamp from mkv if the timestamps is not provided
     if timestamps is None and exists(filename):
         timestamps = load_timestamps_from_movie(filename, mapping=kwargs.get('mapping', 'DEPTH'))
 
+    # slice the timestamp into frames
     if timestamps is not None:
         if isinstance(frames, range):
             frames = timestamps[slice(frames.start, frames.stop, frames.step)]
