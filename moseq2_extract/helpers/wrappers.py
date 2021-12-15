@@ -396,6 +396,8 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         print(e)
 
     status_dict['complete'] = True
+    if status_dict['parameters'].get('true_depth') is None:
+        status_dict['parameters']['true_depth'] = int(config_data.get('true_depth'))
 
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
