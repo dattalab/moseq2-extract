@@ -15,6 +15,7 @@ from moseq2_extract.util import command_with_config, read_yaml, recursive_find_u
 from moseq2_extract.helpers.wrappers import (get_roi_wrapper, extract_wrapper, flip_file_wrapper,
                                              generate_index_wrapper, aggregate_extract_results_wrapper,
                                              convert_raw_to_avi_wrapper, copy_slice_wrapper)
+from moseq2_extract.helpers.extract import run_slurm_extract, run_local_extract
 
 orig_init = click.core.Option.__init__
 
@@ -117,7 +118,7 @@ def extract_options(function):
     function = click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')(function)
     function = click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')(function)
     function = click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')(function)
-    function = click.option('--max-height', default=100, type=int, help='Max mouse height from floor (mm)')(function)
+    function = click.option('--max-height', default=120, type=int, help='Max mouse height from floor (mm)')(function)
     function = click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
 This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')(function)
     function = click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")(function)
@@ -169,6 +170,7 @@ def find_roi(input_file, output_dir, **config_data):
              help="Processes raw input depth recordings to output a cropped and oriented"
              "video of the mouse and saves the output+metadata to h5 files in the given output directory.")
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
+@click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
 @common_roi_options
 @common_avi_options
 @extract_options
@@ -185,18 +187,50 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 @extract_options
 @click.option('--extensions', default=['.dat'], type=str, help='File extension of raw data', multiple=True)
 @click.option('--skip-checks', is_flag=True, help='Flag: skip checks for the existance of a metadata file')
+@click.option("--extract-out-script", type=click.Path(), default='extract_out.sh', help="Name of bash script file to save extract commands.")
+@click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
+@click.option('--prefix', type=str, default='', help='Batch command string to prefix model training command (slurm only).')
+@click.option("--ncpus", "-c", type=int, default=0, help="Number of cores to use for resampling")
+@click.option('--memory', type=str, default="5GB", help="RAM (slurm only)")
+@click.option('--wall-time', type=str, default='3:00:00', help="Wall time (slurm only)")
+@click.option('--partition', type=str, default='short', help="Partition name (slurm only)")
+@click.option("--get-cmd", is_flag=True, default=True, help="Print scan command strings.")
+@click.option("--run-cmd", is_flag=True, help="Run scan command strings.")
 def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensions,
                   skip_checks, **config_data):
-
+    
+    # check if there is a config file
+    config_file = config_data.get('config_file')
+    if not config_file:
+        # Add message to tell the users to specify a config file
+        print('Command not run. Please specified a config file using --config-file flag.')
+        return
+    
+    # Add message to tell the users to specify a config file
     to_extract = []
     for ex in extensions:
         to_extract.extend(
             recursive_find_unextracted_dirs(input_folder, extension=ex,
                 skip_checks=True if ex in ('.tgz', '.tar.gz') else skip_checks,
                  yaml_path=os.path.join(output_dir, 'results_00.yaml')))
-    for session in tqdm(to_extract, desc='Extracting Sessions'):
-        extract_wrapper(session, output_dir, deepcopy(config_data), num_frames=num_frames,
-                        skip=skip_completed)
+    
+    # Add message when all sessions are extracted
+    if len(to_extract) == 0:
+        print('No session to be extracted. If you want to re-extract the data, please add "--skip-checks"')
+        return
+
+    if config_data['cluster_type'] == 'local':
+        run_local_extract(to_extract, config_file, skip_completed)
+    else:
+        # add paramters to config
+        config_data['session_config_path'] = read_yaml(config_file).get('session_config_path', '') if config_file is not None else ''
+        config_data['config_file'] = os.path.abspath(config_file)
+        config_data['output_dir'] = output_dir
+        config_data['skip_completed'] = skip_completed
+        config_data['num_frames'] = num_frames
+        config_data['extensions'] = extensions
+        config_data['skip_checks'] = skip_checks
+        run_slurm_extract(input_folder, to_extract, config_data, skip_completed)
 
     
 

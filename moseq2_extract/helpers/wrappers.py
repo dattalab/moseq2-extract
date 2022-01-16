@@ -189,7 +189,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     write_image(join(output_dir, 'bground.tiff'), bground_im, scale=True)
 
     # readjust depth range
-    if config_data.get('manual_set_depth_range', False):
+    if not config_data.get('manual_set_depth_range', False):
         # search for depth values between the max distance and the halfway point to the camera
         print('Automatically setting depth range. To manually set range values,'
               ' set "manual_set_depth_range" to True.\n For CLI users: use the --manual-set-depth-range flag.')
@@ -255,6 +255,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     '''
     print('Processing:', input_file)
     # get the basic metadata
+
+    # ensure 'get_cmd' and 'run_cmd' are not in config_data or get_bground_im_file will fail
+    config_data = {k:v for k, v in config_data.items() if k not in ('get_cmd', 'run_cmd', 'extensions')}
 
     status_dict = {
         'complete': False,
@@ -393,7 +396,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
         print(e)
 
     status_dict['complete'] = True
-
+    if status_dict['parameters'].get('true_depth') is None:
+        # config_data.get('true_depth') is numpy.float64 and yaml.safe_dump can't represent the object
+        status_dict['parameters']['true_depth'] = float(config_data.get('true_depth'))
     with open(status_filename, 'w') as f:
         yaml.safe_dump(status_dict, f)
 
