@@ -914,7 +914,7 @@ def clean_dict(dct):
         elif isinstance(e, np.ndarray):
             out = e.tolist()
         elif isinstance(e, np.generic):
-            out = e.item()
+            out = np.asscalar(e)
         else:
             out = e
         return out
