@@ -50,7 +50,7 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<i2", **kwargs):
+def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, movie_dtype="<u2", **kwargs):
     '''
     Reads in data from raw binary file.
 
