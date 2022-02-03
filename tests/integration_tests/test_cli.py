@@ -125,7 +125,8 @@ class CLITests(TestCase):
     def test_find_roi(self):
 
         data_path = 'data/roi_test_depth.dat'
-        output_dir = 'out/'
+        out_path = 'out/'
+        output_dir = 'data/out/'
 
         write_fake_movie(data_path)
 
