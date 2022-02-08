@@ -190,7 +190,7 @@ def extract(input_file, output_dir, num_frames, skip_completed, **config_data):
 @click.option("--extract-out-script", type=click.Path(), default='extract_out.sh', help="Name of bash script file to save extract commands.")
 @click.option('--cluster-type', type=click.Choice(['local', 'slurm']), default='local', help='Platform to train models on')
 @click.option('--prefix', type=str, default='', help='Batch command string to prefix model training command (slurm only).')
-@click.option("--ncpus", "-c", type=int, default=0, help="Number of cores to use for resampling")
+@click.option("--ncpus", "-c", type=int, default=1, help="Number of cores to use in extraction")
 @click.option('--memory', type=str, default="5GB", help="RAM (slurm only)")
 @click.option('--wall-time', type=str, default='3:00:00', help="Wall time (slurm only)")
 @click.option('--partition', type=str, default='short', help="Partition name (slurm only)")
