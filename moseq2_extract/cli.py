@@ -220,6 +220,8 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
         return
 
     if config_data['cluster_type'] == 'local':
+        # the session specific config doesn't get generated in session proc file
+        # session specific config direct used in config_data dictionary in extraction from extract_command function
         run_local_extract(to_extract, config_file, skip_completed)
     else:
         # add paramters to config
@@ -230,6 +232,7 @@ def batch_extract(input_folder, output_dir, skip_completed, num_frames, extensio
         config_data['num_frames'] = num_frames
         config_data['extensions'] = extensions
         config_data['skip_checks'] = skip_checks
+        # run slurm extract will generate a config.yaml in session proc file for slurm
         run_slurm_extract(input_folder, to_extract, config_data, skip_completed)
 
     
