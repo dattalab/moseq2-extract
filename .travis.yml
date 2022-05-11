@@ -23,6 +23,7 @@ jobs:
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update; fi
         - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -y ffmpeg --allow-unauthenticated; fi
       install:
+        - pip install --upgrade importlib_metadata
         - pip install -e .
       before_script:
         - ./scripts/download_test_dataset.sh
