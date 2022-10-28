@@ -263,7 +263,7 @@ def get_stream_names(filename, stream_tag="title"):
 
     out = out.decode("utf-8").rstrip("\n").split("\n")
 
-    return {o: i for i, o in enumerate(out)}
+    return {o.rstrip("\r"): i for i, o in enumerate(out)}
 
 def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timestamp=False,
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
