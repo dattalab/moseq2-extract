@@ -565,6 +565,8 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
         elif filename.lower().endswith('.dat'):
             metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
+            if filename.lower().endswith('.mkv'):
+                kwargs.update({'count_frames': True})
             metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
         print('Error reading movie metadata:', e)
