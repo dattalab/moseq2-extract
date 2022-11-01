@@ -38,7 +38,7 @@ def get_raw_info(filename, bit_depth=16, frame_dims=(512, 424)):
     return file_info
 
 
-def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<i2", tar_object=None):
+def read_frames_raw(filename, frames=None, frame_dims=(512, 424), bit_depth=16, dtype="<u2", tar_object=None):
     """
     Reads in data from raw binary file
 
