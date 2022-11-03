@@ -402,7 +402,8 @@ def clean_frames(frames, max_height=120, prefilter_space=(3,), prefilter_time=No
         # Tail Filter
         if iters_tail is not None and iters_tail > 0:
             filtered_frames[i] = cv2.morphologyEx(filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
-         # Otsu thresholding
+        # Otsu thresholding
+        print('use otsu')
         _,th2 = cv2.threshold(filtered_frames[i],0, int(max_height),cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         filtered_frames[i][th2==0] = 0
 
