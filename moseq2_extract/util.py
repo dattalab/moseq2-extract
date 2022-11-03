@@ -105,8 +105,8 @@ def command_with_config(config_file_param_name):
                 combined = {k:v for k, v in combined.items() if k not in flag_list}
                 # combine original config data and the combined params prioritizing the combined
                 config_data = {**config_data, **combined}
-                with open(config_file, 'w') as f:
-                    yaml.safe_dump(config_data, f)
+                # with open(config_file, 'w') as f:
+                #     yaml.safe_dump(config_data, f)
 
             return super().invoke(ctx)
 
