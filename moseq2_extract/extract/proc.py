@@ -363,7 +363,7 @@ def im_moment_features(IM):
     return features
 
 
-def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
+def clean_frames(frames, max_height=120, prefilter_space=(3,), prefilter_time=None,
                  strel_tail=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
                  iters_tail=None, frame_dtype='uint8',
                  strel_min=cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
@@ -402,6 +402,9 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
         # Tail Filter
         if iters_tail is not None and iters_tail > 0:
             filtered_frames[i] = cv2.morphologyEx(filtered_frames[i], cv2.MORPH_OPEN, strel_tail, iters_tail)
+         # Otsu thresholding
+        _,th2 = cv2.threshold(filtered_frames[i],0, int(max_height),cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        filtered_frames[i][th2==0] = 0
 
     # Temporal Median Filter
     if prefilter_time is not None and np.all(np.array(prefilter_time) > 0):
