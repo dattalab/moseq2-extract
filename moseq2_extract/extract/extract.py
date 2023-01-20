@@ -1,15 +1,15 @@
-'''
+"""
 Extraction helper utility for computing scalar feature values performing cleaning, cropping and rotating operations.
 
-Given a "chunk" or segment of an input depth video, this function will first find and subtract the ROI, then
-optionally perform Expectation Maximization tracking for mouse tracking with occlusions such as
+Given a "chunk" or segment of an input depth video, this function will first find the ROI (the arena), subtract background, then
+optionally perform Expectation Maximization tracking for mouse tracking to optimize fi with occlusions such as
 photometry fibers. Next, it will apply some spatial/temporal filtering before cropping, and aligning the rodent
 such that it is always facing east (with the help of the flip classifier). Finally the scalar values are computed.
 
 It will store each chunk's extracted data and metadata in a dictionary that will be later written to the corresponding
 results_00.h5 file.
 
-'''
+"""
 import cv2
 import numpy as np
 from copy import deepcopy
@@ -40,7 +40,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
                   compute_raw_scalars=False,
                   **kwargs):
-    '''
+    """
     This function looks for a mouse in background-subtracted frames from a chunk of depth video.
     It is called from the moseq2_extract.helpers.extract module.
 
@@ -93,7 +93,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
         scalars - dict of computed scalars (str) mapped to 1d numpy arrays of length=nframes.
         flips - (1d array): list of frame indices where the mouse orientation was flipped.
         parameters - (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.
-    '''
+    """
 
     if bground is not None:
         # Perform background subtraction

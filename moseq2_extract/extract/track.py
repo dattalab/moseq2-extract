@@ -1,6 +1,6 @@
-'''
+"""
 Expectation-Maximization mouse tracking utilities.
-'''
+"""
 
 import cv2
 import numpy as np
@@ -10,7 +10,7 @@ import statsmodels.stats.correlation_tools as stats_tools
 
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
-    '''
+    """
     EM tracker iteration function. Function will iteratively update the mean
     and covariance variables using Expectation Maximization up to the max inputted number
     of iterations.
@@ -31,7 +31,7 @@ def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     -------
     mean (1d numpy array): updated mean
     cov (2d numpy array): updated covariance
-    '''
+    """
 
     prev_likelihood = 0
     ll = 0
@@ -63,7 +63,7 @@ def em_init(depth_frame,
             depth_ceiling,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
             strel_iters=1):
-    '''
+    """
     Initialize EM Mask.
 
     Estimates depth frame contours using OpenCV, and selects the largest chosen contour to create a mask.
@@ -79,7 +79,7 @@ def em_init(depth_frame,
     Returns
     -------
     mouse_mask (2d numpy array): mask of depth frame.
-    '''
+    """
 
     mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
     mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
@@ -102,7 +102,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 depth_floor=10, depth_ceiling=100, progress_bar=True,
                 init_mean=None, init_cov=None, init_frames=10, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
-    '''
+    """
     Naive tracker, use EM update rules to follow a 3D Gaussian
        around the room.
 
@@ -126,7 +126,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     Returns
     -------
     model_parameters (dict): mean and covariance estimates for each frame
-    '''
+    """
 
     # initialize the mean and covariance
 
@@ -271,7 +271,7 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 
 
 def em_get_ll(frames, mean, cov, progress_bar=False):
-    '''
+    """
     Returns mouse tracking log-likelihoods for each frame given tracking parameters.
 
     Parameters
@@ -284,7 +284,7 @@ def em_get_ll(frames, mean, cov, progress_bar=False):
     Returns
     -------
     ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
-    '''
+    """
 
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))

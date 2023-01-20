@@ -1,13 +1,13 @@
-'''
+"""
 ROI detection pre-processing utilities for fitting a plane to an input depth image.
-'''
+"""
 
 import numpy as np
 from tqdm.auto import tqdm
 
 
 def plane_fit3(points):
-    '''
+    """
     Fit a plane to 3 points (min number of points for fitting a plane)
 
     Parameters
@@ -17,7 +17,7 @@ def plane_fit3(points):
     Returns
     -------
     plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
-    '''
+    """
 
     a = points[1]-points[0]
     b = points[2]-points[0]
@@ -39,7 +39,7 @@ def plane_fit3(points):
 
 def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
                  noise_tolerance=30, in_ratio=.1, progress_bar=False, mask=None, **kwargs):
-    '''
+    """
     Naive RANSAC implementation for plane fitting
 
     Parameters
@@ -57,7 +57,7 @@ def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
     -------
     best_plane (1d numpy array): plane fit to data
     dist (1d numpy array): distance of the calculated coordinates and "best plane"
-    '''
+    """
 
     use_points = np.logical_and(depth_image > bg_roi_depth_range[0], depth_image < bg_roi_depth_range[1])
     if np.sum(use_points) == 0:

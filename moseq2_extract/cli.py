@@ -1,10 +1,9 @@
-'''
+"""
 CLI front-end operations. This module contains all the functionality and configurable parameters
 users can alter to most accurately process their data.
 
-Note: These functions simply read all the parameters into a dictionary,
- and then call the corresponding wrapper function with the given input parameters.
-'''
+Note: These functions simply read all the parameters into a dictionary, and then call the corresponding wrapper function with the given input parameters.
+"""
 
 import os
 import click
@@ -35,9 +34,8 @@ def cli():
 
 
 def common_roi_options(function):
-    '''
+    """
     Decorator function for grouping shared ROI related parameters.
-    The parameters included in this function are shared between the find_roi and extract CLI commands.
 
     Parameters
     ----------
@@ -46,7 +44,7 @@ def common_roi_options(function):
     Returns
     -------
     function: Updated function including shared parameters.
-    '''
+    """
 
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
                             help='Size of StructuringElement to dilate roi')(function)
@@ -92,9 +90,8 @@ def common_roi_options(function):
     return function
 
 def common_avi_options(function):
-    '''
+    """
     Decorator function for grouping shared video processing parameters.
-    The included parameters are shared between convert_raw_to_avi() and copy_slice()
 
     Parameters
     ----------
@@ -103,7 +100,7 @@ def common_avi_options(function):
     Returns
     -------
     function: Updated function including shared parameters.
-    '''
+    """
 
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
@@ -115,6 +112,13 @@ def common_avi_options(function):
     return function
 
 def extract_options(function):
+    """_summary_
+
+    Parameters
+    ----------
+    function : _type_
+        _description_
+    """
     function = click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')(function)
     function = click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')(function)
     function = click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')(function)

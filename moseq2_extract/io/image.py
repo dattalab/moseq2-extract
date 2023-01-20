@@ -1,8 +1,8 @@
-'''
+"""
 Image reading/writing functionality.
 
 Specifically for tiff files containing backgrounds, ROIs, etc.
-'''
+"""
 import os
 import ast
 import json
@@ -11,7 +11,7 @@ from skimage.external import tifffile
 from os.path import join, dirname, exists
 
 def read_tiff_files(input_dir):
-    '''
+    """
     Reads ROI output results (Tiff files) located in the given input_directory
      into array variables to be graphed in a jupyter notebook.
 
@@ -23,7 +23,7 @@ def read_tiff_files(input_dir):
     -------
     images (list): list of 2d arrays read from each located tiff file.
     filenames (list): list of corresponding filenames to each read image.
-    '''
+    """
 
     images = []
     filenames = []
@@ -39,7 +39,7 @@ def read_tiff_files(input_dir):
     return images, filenames
 
 def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uint16', compress=0):
-    '''
+    """
     Save image data, possibly with scale factor for easy display.
 
     Parameters
@@ -54,7 +54,7 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
     Returns
     -------
     None
-    '''
+    """
 
     file = filename
 
@@ -82,7 +82,7 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
 
 
 def read_image(filename, scale=True, scale_key='scale_factor'):
-    '''
+    """
     Load image data, possibly with scale factor...
 
     Parameters
@@ -94,7 +94,7 @@ def read_image(filename, scale=True, scale_key='scale_factor'):
     Returns
     -------
     image (2d np array): loaded image
-    '''
+    """
 
     with tifffile.TiffFile(filename) as tif:
         tmp = tif

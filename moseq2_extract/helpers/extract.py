@@ -1,9 +1,9 @@
-'''
+"""
 
 Extraction-helper utilities.
 These functions are primarily called from inside the extract_wrapper() function.
 
-'''
+"""
 
 import numpy as np
 import ruamel.yaml as yaml
@@ -16,7 +16,7 @@ from moseq2_extract.io.video import load_movie_data, write_frames_preview
 from moseq2_extract.helpers.data import check_completion_status
 
 def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_range, offset):
-    '''
+    """
 
     Write extracted frames, frame masks, and scalars to an open h5 file.
 
@@ -31,7 +31,7 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
 
     Returns
     -------
-    '''
+    """
 
     # Writing computed scalars to h5 file
     for scalar in scalars:
@@ -46,7 +46,7 @@ def write_extracted_chunk_to_h5(h5_file, results, config_data, scalars, frame_ra
         h5_file['metadata/extraction/flips'][frame_range] = results['flips'][offset:]
 
 def set_tracking_model_parameters(results, min_height, tracking_model_ll_clip, chunk_overlap, **kwargs):
-    '''
+    """
     Helper function to threshold and clip the masked frame data if use_tracking_model = True.
     Updates the tracking_init_mean and tracking_init_cov variables in config_data.
 
@@ -61,7 +61,7 @@ def set_tracking_model_parameters(results, min_height, tracking_model_ll_clip, c
     -------
     results (dict): updated results dict with thresholded and clipped mask_frames.
     config_data (dict): updated config data parameter dict
-    '''
+    """
 
     # Thresholding and clipping EM-tracked frame mask data
     results['mask_frames'][results['depth_frames'] < min_height] = tracking_model_ll_clip
@@ -74,7 +74,7 @@ def set_tracking_model_parameters(results, min_height, tracking_model_ll_clip, c
     return results, tracking_init_mean, tracking_init_cov
 
 def make_output_movie(results, config_data, offset=0):
-    '''
+    """
     Creates an array for output movie with filtered video and cropped mouse on the top left
 
     Parameters
@@ -86,7 +86,7 @@ def make_output_movie(results, config_data, offset=0):
     Returns
     -------
     output_movie (3D np.array): output movie to write to mp4 file; dims = (nframes, rows, cols).
-    '''
+    """
 
     # Create empty array for output movie with filtered video and cropped mouse on the top left
     nframes, rows, cols = results['chunk'][offset:].shape
@@ -103,7 +103,7 @@ def make_output_movie(results, config_data, offset=0):
 def process_extract_batches(input_file, config_data, bground_im, roi,
                             frame_batches, str_els, output_mov_path,
                             scalars=None, h5_file=None, video_pipe=None, **kwargs):
-    '''
+    """
     Compute extracted frames and save them to h5 files and avi files.
     Given an open h5 file, which is used to store extraction results, and some pre-computed input session data points
     such as the background, ROI, etc.
@@ -127,7 +127,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     Returns
     -------
     config_data (dict): dictionary containing updated extraction validation parameter values
-    '''
+    """
 
     tracking_init_mean = config_data.pop('tracking_init_mean', None)
     tracking_init_cov = config_data.pop('tracking_init_cov', None)
@@ -175,7 +175,7 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
         video_pipe.communicate()
 
 def run_local_extract(to_extract, config_file, skip_extracted=False):
-    '''
+    """
     Runs the extract command on given list of sessions to extract on a local platform.
     This function is meant for the GUI interface to utilize the moseq2-batch extract functionality.
 
@@ -188,7 +188,7 @@ def run_local_extract(to_extract, config_file, skip_extracted=False):
     Returns
     -------
     None
-    '''
+    """
     from moseq2_extract.gui import extract_command
 
     for ext in tqdm(to_extract, desc='Extracting Sessions'):

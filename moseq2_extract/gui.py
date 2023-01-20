@@ -1,10 +1,10 @@
-'''
+"""
 GUI front-end operations accessible from a jupyter notebook.
 
 This module contains all operations included in the CLI module,
 with some additional preprocessing steps and state-retrieval functionality
 to facilitate Jupyter notebook usage.
-'''
+"""
 
 import os
 import ruamel.yaml as yaml
@@ -19,7 +19,7 @@ from moseq2_extract.util import (recursive_find_unextracted_dirs, load_found_ses
 from moseq2_extract.cli import batch_extract
 
 def get_selected_sessions(to_extract, extract_all):
-    '''
+    """
     Given user input, the function will return either selected sessions to extract, or all the sessions.
 
     Parameters
@@ -30,12 +30,12 @@ def get_selected_sessions(to_extract, extract_all):
     Returns
     -------
     to_extract (list): new list of selected sessions to extract.
-    '''
+    """
 
     selected_sess_idx, excluded_sess_idx, ret_extract = [], [], []
 
     def parse_input(s):
-        '''
+        """
         Parses user input, looking for specifically numbered sessions, ranges of sessions,
         and/or sessions to exclude.
 
@@ -49,7 +49,7 @@ def get_selected_sessions(to_extract, extract_all):
         Returns
         -------
 
-        '''
+        """
         if 'e' not in s and '-' not in s:
             if isinstance(literal_eval(s), int):
                 selected_sess_idx.append(int(s))
@@ -108,7 +108,7 @@ def get_selected_sessions(to_extract, extract_all):
 
 @filter_warnings
 def generate_config_command(output_file):
-    '''
+    """
     Generates configuration file to use throughout pipeline.
 
     Parameters
@@ -118,7 +118,7 @@ def generate_config_command(output_file):
     Returns
     -------
     (str): status message.
-    '''
+    """
 
     from .cli import extract
     objs = extract.params
@@ -144,7 +144,7 @@ def generate_config_command(output_file):
 
 @filter_warnings
 def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_extracted=False):
-    '''
+    """
     Searches for all depth files within input_directory with selected extension
 
     Parameters
@@ -158,7 +158,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     Returns
     -------
     None
-    '''
+    """
     # error out early
     if not exists(config_file):
         raise IOError(f'Config file {config_file} does not exist')
@@ -192,7 +192,7 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
         run_slurm_extract(input_dir, to_extract, config_data, skip_extracted)
 
 def generate_index_command(input_dir, output_file):
-    '''
+    """
     Generates Index File based on aggregated sessions
 
     Parameters
@@ -203,7 +203,7 @@ def generate_index_command(input_dir, output_file):
     Returns
     -------
     output_file (str): path to index file.
-    '''
+    """
 
     output_file = generate_index_wrapper(input_dir, output_file)
     print('Index file successfully generated.')
@@ -212,7 +212,7 @@ def generate_index_command(input_dir, output_file):
 
 @filter_warnings
 def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold=0.0):
-    '''
+    """
     Finds all extracted h5, yaml and avi files and copies them all to a
     new directory relabeled with their respective session names.
     Also generates the index file.
@@ -229,7 +229,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     Returns
     -------
     indexpath (str): path to newly generated index file.
-    '''
+    """
 
     output_dir = join(input_dir, output_dir)
 
@@ -241,7 +241,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     return indexpath
 
 def download_flip_command(output_dir, config_file="", selection=1):
-    '''
+    """
     Downloads flip classifier and saves its path in the inputted config file
 
     Parameters
@@ -252,14 +252,14 @@ def download_flip_command(output_dir, config_file="", selection=1):
 
     Returns
     -------
-    '''
+    """
 
     flip_file_wrapper(config_file, output_dir, selected_flip=selection)
 
 
 @filter_warnings
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):
-    '''
+    """
     Computes ROI files given depth file.
     Will list out all available sessions to process and prompts user to input a corresponding session
     index to process.
@@ -276,7 +276,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
     -------
     images (list of 2d arrays): list of 2d array images to graph in Notebook.
     filenames (list): list of paths to respective image paths
-    '''
+    """
 
     files = load_found_session_paths(input_dir, exts)
 
@@ -308,7 +308,7 @@ def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_
 
 @filter_warnings
 def extract_command(input_file, output_dir, config_file, num_frames=None, skip=False):
-    '''
+    """
     Command to extract a full depth file
 
     Parameters
@@ -322,7 +322,7 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     Returns
     -------
     (str): String indicating that wrapper has returned without any interruptions.
-    '''
+    """
 
     config_data = read_yaml(config_file)
 

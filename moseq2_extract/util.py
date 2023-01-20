@@ -1,6 +1,6 @@
-'''
+"""
 General helper/convenience utilities that are implemented throughout the extract package.
-'''
+"""
 import os
 import re
 import cv2
@@ -22,7 +22,7 @@ from os.path import join, exists, splitext, basename, abspath, dirname
 
 
 def filter_warnings(func):
-    '''
+    """
     Applies warnings.simplefilter() to hide extraneous warnings when
      running the main gui functionaity in a Jupyter Notebook.
      The function will filter out: yaml.error.UnsafeLoaderWarning, FutureWarning and UserWarning.
@@ -34,7 +34,7 @@ def filter_warnings(func):
     Returns
     -------
     apply_warning_filters (func): Returns passed function after warnings filtering is completed.
-    '''
+    """
     def apply_warning_filters(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', yaml.error.UnsafeLoaderWarning)
@@ -47,7 +47,7 @@ def filter_warnings(func):
 # from https://stackoverflow.com/questions/46358797/
 # python-click-supply-arguments-and-options-from-a-configuration-file
 def command_with_config(config_file_param_name):
-    '''
+    """
     Function that is run in the CLI to override default CLI variables with the values contained within the
      config_file being passed.
 
@@ -59,7 +59,7 @@ def command_with_config(config_file_param_name):
     -------
     custom_command_class (function): decorator function to update click.Command parameters with the config_file
      parameter values.
-    '''
+    """
 
     class custom_command_class(click.Command):
 
@@ -113,7 +113,7 @@ def command_with_config(config_file_param_name):
     return custom_command_class
 
 def set_bground_to_plane_fit(bground_im, plane, output_dir):
-    '''
+    """
     Replaces median-computed background image with plane fit.
     Only occurs if config_data['use_plane_bground'] == True.
 
@@ -126,7 +126,7 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     Returns
     -------
     bground_im (2D numpy array): Plane fit version of the background image.
-    '''
+    """
 
     xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
@@ -139,7 +139,7 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     return plane_im
 
 def get_frame_range_indices(trim_beginning, trim_ending, nframes):
-    '''
+    """
     Computes the total number of frames to be extracted, given the total number of frames
     and an initial frame index starting point.
 
@@ -154,7 +154,7 @@ def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     nframes (int): total number of frames to extract
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
-    '''
+    """
     assert all((trim_ending >= 0, trim_beginning >= 0)) , "frame_trim arguments must be greater than or equal to 0!"
 
     first_frame_idx = 0
@@ -170,7 +170,7 @@ def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     return total_frames, first_frame_idx, last_frame_idx
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
-    '''
+    """
     Generates batches used to chunk videos prior to extraction.
 
     Parameters
@@ -183,7 +183,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     Returns
     -------
     Yields list of batches
-    '''
+    """
 
     seq = range(offset, nframes)
     out = []
@@ -192,7 +192,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 def load_timestamps(timestamp_file, col=0, alternate=False):
-    '''
+    """
     Read timestamps from space delimited text file.
 
     Parameters
@@ -204,7 +204,7 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
     Returns
     -------
     ts (1D array): list of timestamps
-    '''
+    """
 
     ts = []
     try:
@@ -233,7 +233,7 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
     return ts
 
 def detect_avi_file(finfo):
-    '''
+    """
     Detects the camera type by comparing the read video resolution with known
      outputted dimensions of different camera types.
 
@@ -245,7 +245,7 @@ def detect_avi_file(finfo):
     Returns
     -------
     detected (str): name of the detected camera type.
-    '''
+    """
 
     detected = 'azure'
     potential_camera_dims = {
@@ -274,7 +274,7 @@ def detect_avi_file(finfo):
     return detected
 
 def detect_and_set_camera_parameters(config_data, input_file=None):
-    '''
+    """
     Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
     If no camera_type is inputted, program will assume a kinect camera is being used.
 
@@ -286,7 +286,7 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
     Returns
     -------
     config_data (dict): updated dictionary with bg-roi-weights to use in extraction/ROI retrieval.
-    '''
+    """
 
     # Auto-setting background weights
     camera_type = config_data.get('camera_type')
@@ -340,7 +340,7 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
     return config_data
 
 def check_filter_sizes(config_data):
-    '''
+    """
     Checks if inputted spatial and temporal filter kernel sizes are odd numbers.
     Incrementing the value if not.
 
@@ -352,7 +352,7 @@ def check_filter_sizes(config_data):
     -------
     config_data (dict): Updated configuration dict
 
-    '''
+    """
 
     # Ensure filter kernel sizes are odd
     if config_data['spatial_filter_size'][0] % 2 == 0 and config_data['spatial_filter_size'][0] > 0:
@@ -365,7 +365,7 @@ def check_filter_sizes(config_data):
     return config_data
 
 def generate_missing_metadata(sess_dir, sess_name):
-    '''
+    """
     Generates default metadata.json file for session that does not already include one.
 
     Parameters
@@ -375,7 +375,7 @@ def generate_missing_metadata(sess_dir, sess_name):
 
     Returns
     -------
-    '''
+    """
 
     # generate sample metadata json for each session that is missing one
     sample_meta = {'SubjectName': '', f'SessionName': f'{sess_name}',
@@ -386,7 +386,7 @@ def generate_missing_metadata(sess_dir, sess_name):
         json.dump(sample_meta, fp)
 
 def load_metadata(metadata_file):
-    '''
+    """
     Loads metadata from session metadata.json file.
 
     Parameters
@@ -396,7 +396,7 @@ def load_metadata(metadata_file):
     Returns
     -------
     metadata (dict): key-value pairs of JSON contents
-    '''
+    """
 
     try:
         if not exists(metadata_file):
@@ -411,7 +411,7 @@ def load_metadata(metadata_file):
     return metadata
 
 def load_found_session_paths(input_dir, exts):
-    '''
+    """
     Given an input directory and file extensions, this function will return all
     depth file paths found in the inputted parent (input) directory.
 
@@ -423,7 +423,7 @@ def load_found_session_paths(input_dir, exts):
     Returns
     -------
     files (list): sorted list of all paths to found depth files
-    '''
+    """
 
     if not isinstance(exts, (tuple, list)):
         exts = [exts]
@@ -435,7 +435,7 @@ def load_found_session_paths(input_dir, exts):
     return sorted(files)
 
 def get_strels(config_data):
-    '''
+    """
     Get dictionary object of cv2 StructuringElements for image filtering given
     a dict of configurations parameters.
 
@@ -446,7 +446,7 @@ def get_strels(config_data):
     Returns
     -------
     str_els (dict): dict containing cv2 StructuringElements used for image filtering
-    '''
+    """
 
     str_els = {
         'strel_dilate': select_strel(config_data['bg_roi_shape'], tuple(config_data['bg_roi_dilate'])),
@@ -458,7 +458,7 @@ def get_strels(config_data):
     return str_els
 
 def select_strel(string='e', size=(10, 10)):
-    '''
+    """
     Returns structuring element of specified shape.
     Accepted shapes are 'ellipse' and 'rectangle'. Otherwise, 'ellipse' will be use.
 
@@ -470,7 +470,7 @@ def select_strel(string='e', size=(10, 10)):
     Returns
     -------
     strel (cv2.StructuringElement): selected cv2 StructuringElement to use in video filtering or ROI dilation/erosion.
-    '''
+    """
 
     if string[0].lower() == 'e':
         strel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, size)
@@ -482,7 +482,7 @@ def select_strel(string='e', size=(10, 10)):
     return strel
 
 def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), true_depth=673.1):
-    '''
+    """
     Converts x, y coordinates in pixel space to mm.
 
     http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
@@ -499,7 +499,7 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
     Returns
     -------
     new_coords (list): x,y coordinates in mm
-    '''
+    """
 
     cx = resolution[0] // 2
     cy = resolution[1] // 2
@@ -518,13 +518,13 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
 
 
 def scalar_attributes():
-    '''
+    """
     Gets scalar attributes dict with names paired with descriptions.
 
     Returns
     -------
     attributes (dict): collection of metadata keys and descriptions.
-    '''
+    """
 
     attributes = {
         'centroid_x_px': 'X centroid (pixels)',
@@ -550,7 +550,7 @@ def scalar_attributes():
 
 
 def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
-    '''
+    """
     Converts depth file (.dat, '.mkv') to avi file.
 
     Parameters
@@ -564,7 +564,7 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     Returns
     -------
     None
-    '''
+    """
 
     new_file = f'{splitext(input_file)[0]}.avi'
     print(f'Converting {input_file} to {new_file}')
@@ -591,7 +591,7 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     os.system(base_command)
 
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
-    '''
+    """
     from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
     Creates subarrays of an array, a, with a given stride and window length.
 
@@ -604,7 +604,7 @@ def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     Returns
     -------
     (np.ndarray) - array of subarrays at stride S.
-    '''
+    """
 
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
@@ -612,7 +612,7 @@ def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
 
 
 def dict_to_h5(h5, dic, root='/', annotations=None):
-    '''
+    """
     Save an dict to an h5 file, mounting at root.
     Keys are mapped to group names recursively.
 
@@ -626,7 +626,7 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
     Returns
     -------
     None
-    '''
+    """
 
     if not root.endswith('/'):
         root = root + '/'
@@ -664,7 +664,7 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
 def recursive_find_h5s(root_dir=os.getcwd(),
                        ext='.h5',
                        yaml_string='{}.yaml'):
-    '''
+    """
     Recursively find h5 files, along with yaml files with the same basename
 
     Parameters
@@ -678,7 +678,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     h5s (list): list of found h5 files
     dicts (list): list of found metadata files
     yamls (list): list of found yaml files
-    '''
+    """
     if not ext.startswith('.'):
         ext = '.' + ext
 
@@ -700,7 +700,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
 
 
 def escape_path(path):
-    '''
+    """
     Given current path, will return a path to return to original base directory.
     (Used in recursive h5 search, etc.)
 
@@ -711,13 +711,13 @@ def escape_path(path):
     Returns
     -------
     path (str): path to original base_dir
-    '''
+    """
 
     return re.sub(r'\s', '\ ', path)
 
 
 def clean_file_str(file_str: str, replace_with: str = '-') -> str:
-    '''
+    """
     Removes invalid characters for a file name from a string.
 
     Parameters
@@ -728,7 +728,7 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     Returns
     -------
     out (str): cleaned file string
-    '''
+    """
 
     out = re.sub(r'[ <>:"/\\|?*\']', replace_with, file_str)
     # find any occurrences of `replace_with`, i.e. (--)
@@ -736,7 +736,7 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
 
 
 def load_textdata(data_file, dtype=np.float32):
-    '''
+    """
     Loads timestamp from txt/csv file.
     Timestamps are separated by newlines and have a space-separated data indicator,
     (in most cases, the indicator equals 0)
@@ -750,7 +750,7 @@ def load_textdata(data_file, dtype=np.float32):
     -------
     data (np.ndarray): timestamp data
     timestamps (np.array): time stamp keynames.
-    '''
+    """
 
     data = []
     timestamps = []
@@ -771,7 +771,7 @@ def load_textdata(data_file, dtype=np.float32):
 
 
 def time_str_for_filename(time_str: str) -> str:
-    '''
+    """
     Process the time string supplied by moseq to be used in a filename. This
     removes colons, milliseconds, and timezones.
 
@@ -782,14 +782,14 @@ def time_str_for_filename(time_str: str) -> str:
     Returns
     -------
     out (str): formatted timestamp str
-    '''
+    """
 
     out = time_str.split('.')[0]
     out = out.replace(':', '-').replace('T', '_')
     return out
 
 def build_path(keys: dict, format_string: str, snake_case=True) -> str:
-    '''
+    """
     Produce a new file name using keys collected from extraction h5 files. The format string
     must be using python's formatting specification, i.e. '{subject_name}_{session_name}'.
 
@@ -802,7 +802,7 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
     Returns
     -------
     out (str): a newly formatted filename useable with any operating system
-    '''
+    """
 
     if 'start_time' in keys:
         # process the time value
@@ -814,7 +814,7 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
     return clean_file_str(format_string.format(**keys))
 
 def read_yaml(yaml_file):
-    '''
+    """
     Reads yaml file into dict object
 
     Parameters
@@ -824,13 +824,13 @@ def read_yaml(yaml_file):
     Returns
     -------
     return_dict (dict): dict of yaml contents
-    '''
+    """
 
     with open(yaml_file, 'r') as f:
         return yaml.safe_load(f)
 
 def mouse_threshold_filter(h5file, thresh=0):
-    '''
+    """
     Filters frames in h5 files by threshold value.
      Filters out frames with a nanmean < thresh.
 
@@ -842,7 +842,7 @@ def mouse_threshold_filter(h5file, thresh=0):
     Returns
     -------
     (3d-np boolean array): array of regions to include after threshold filter.
-    '''
+    """
 
     with h5py.File(h5file, 'r') as f:
         # select 1st 1000 frames
@@ -850,7 +850,7 @@ def mouse_threshold_filter(h5file, thresh=0):
     return np.nanmean(frames) > thresh
 
 def _load_h5_to_dict(file: h5py.File, path) -> dict:
-    '''
+    """
     Loads h5 contents to dictionary object.
 
     Parameters
@@ -861,7 +861,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
     Returns
     -------
     ans (dict): a dict with h5 file contents with the same path structure
-    '''
+    """
 
     ans = {}
     for key, item in file[path].items():
@@ -873,7 +873,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 
 
 def h5_to_dict(h5file, path) -> dict:
-    '''
+    """
     Loads h5 contents to dictionary object.
 
     Parameters
@@ -884,7 +884,7 @@ def h5_to_dict(h5file, path) -> dict:
     Returns
     -------
     out (dict): a dict with h5 file contents with the same path structure
-    '''
+    """
 
     if isinstance(h5file, str):
         with h5py.File(h5file, 'r') as f:
@@ -896,7 +896,7 @@ def h5_to_dict(h5file, path) -> dict:
     return out
 
 def clean_dict(dct):
-    '''
+    """
     Standardizes types of dict value.
 
     Parameters
@@ -906,7 +906,7 @@ def clean_dict(dct):
     Returns
     -------
     out (dict): dict object with list value objects.
-    '''
+    """
 
     def clean_entry(e):
         if isinstance(e, dict):
@@ -925,7 +925,7 @@ _underscorer1: Pattern[str] = re.compile(r'(.)([A-Z][a-z]+)')
 _underscorer2 = re.compile('([a-z0-9])([A-Z])')
 
 def camel_to_snake(s):
-    '''
+    """
     Converts CamelCase to snake_case
 
     Parameters
@@ -935,7 +935,7 @@ def camel_to_snake(s):
     Returns
     -------
     (str): string in snake_case
-    '''
+    """
 
     subbed = _underscorer1.sub(r'\1_\2', s)
     return _underscorer2.sub(r'\1_\2', subbed).lower()
@@ -947,7 +947,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
                                     yaml_path='proc/results_00.yaml',
                                     metadata_path='metadata.json',
                                     skip_checks=False):
-    '''
+    """
     Recursively find unextracted (or incompletely extracted) directories
 
     Parameters
@@ -962,7 +962,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     Returns
     -------
     proc_dirs (1d-list): list of paths to each unextracted session's proc/ directory
-    '''
+    """
 
     from moseq2_extract.helpers.data import check_completion_status
 
@@ -988,7 +988,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     return proc_dirs
 
 def click_param_annot(click_cmd):
-    '''
+    """
     Given a click.Command instance, return a dict that maps option names to help strings.
     Currently skips click.Arguments, as they do not have help strings.
 
@@ -999,7 +999,7 @@ def click_param_annot(click_cmd):
     Returns
     -------
     annotations (dict): click.Option.human_readable_name as keys; click.Option.help as values
-    '''
+    """
 
     annotations = {}
     for p in click_cmd.params:
@@ -1008,7 +1008,7 @@ def click_param_annot(click_cmd):
     return annotations
 
 def get_bucket_center(img, true_depth, threshold=650):
-    '''
+    """
     https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
     Finds Centroid coordinates of circular bucket.
 
@@ -1022,7 +1022,7 @@ def get_bucket_center(img, true_depth, threshold=650):
     -------
     cX (int): x-coordinate of circle centroid
     cY (int): y-coordinate of circle centroid
-    '''
+    """
 
     # convert the grayscale image to binary image
     ret, thresh = cv2.threshold(img, threshold, true_depth, 0)
@@ -1037,7 +1037,7 @@ def get_bucket_center(img, true_depth, threshold=650):
     return cX, cY
 
 def make_gradient(width, height, h, k, a, b, theta=0):
-    '''
+    """
     https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
     Creates gradient around bucket floor representing slanted wall values.
     This is done by drawing an "ellipse" of equal x,y radii, resulting in a circle with weighted
@@ -1057,7 +1057,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     -------
     (2d np.ndarray): numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
     to create a gradient from. 0.8 being the proportioned values closest to the circle wall.
-    '''
+    """
 
     # Precalculate constants
     st, ct = math.sin(theta), math.cos(theta)
@@ -1073,7 +1073,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
 
 
 def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir):
-    '''
+    """
     Creates a gradient to represent the dilated (now visible) bucket wall regions.
     Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
     This is done to handle noise attributed by bucket walls being slanted, and thus being picked
@@ -1090,7 +1090,7 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     Returns
     -------
     bground_im (2d np.ndarray): the new background image with a gradient around the floor from high to low depth values.
-    '''
+    """
 
     # store old and new backgrounds
     old_bg = deepcopy(bground_im)
