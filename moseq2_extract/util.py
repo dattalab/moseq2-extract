@@ -1,5 +1,5 @@
 """
-General helper/convenience utilities that are implemented throughout the extract package.
+General utility functions throughout the extract package.
 """
 import os
 import re
@@ -23,7 +23,7 @@ from os.path import join, exists, splitext, basename, abspath, dirname
 
 def filter_warnings(func):
     """
-    Applies warnings.simplefilter() to hide extraneous warnings when
+    Applies warnings.simplefilter() to ignore warnings when
      running the main gui functionaity in a Jupyter Notebook.
      The function will filter out: yaml.error.UnsafeLoaderWarning, FutureWarning and UserWarning.
 
@@ -48,12 +48,11 @@ def filter_warnings(func):
 # python-click-supply-arguments-and-options-from-a-configuration-file
 def command_with_config(config_file_param_name):
     """
-    Function that is run in the CLI to override default CLI variables with the values contained within the
-     config_file being passed.
+    Override default CLI variables with the values contained within the config.yaml being passed.
 
     Parameters
     ----------
-    config_file_param_name (str): name of the parameter to check and update.
+    config_file_param_name (str): path to config file.
 
     Returns
     -------
@@ -119,13 +118,13 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
     Parameters
     ----------
-    bground_im (2D numpy array): Background image computed via median value of depth video.
+    bground_im (2D numpy array): Background image computed via median value in each pixel of depth video.
     plane (2D numpy array): Computed ROI Plane using RANSAC.
     output_dir (str): Path to write updated background image to.
 
     Returns
     -------
-    bground_im (2D numpy array): Plane fit version of the background image.
+    bground_im (2D numpy array): The background image.
     """
 
     xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
@@ -140,8 +139,7 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
 def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     """
-    Computes the total number of frames to be extracted, given the total number of frames
-    and an initial frame index starting point.
+    Compute the total number of frames to be extracted, and find the start and end indices.
 
     Parameters
     ----------
@@ -176,13 +174,13 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     Parameters
     ----------
     nframes (int): total number of frames
-    chunk_size (int): desired chunk size
+    chunk_size (int): the number of desired chunk size
     overlap (int): number of overlapping frames
     offset (int): frame offset
 
     Returns
     -------
-    Yields list of batches
+    out (list): the list of batches
     """
 
     seq = range(offset, nframes)
@@ -193,13 +191,13 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
 
 def load_timestamps(timestamp_file, col=0, alternate=False):
     """
-    Read timestamps from space delimited text file.
+    Read timestamps from space delimited text file for timestamps.
 
     Parameters
     ----------
     timestamp_file (str): path to timestamp file
     col (int): column in ts file read.
-    alternate (boolean): flag set to true if timestamps were saved in a csv file
+    alternate (boolean): specified if timestamps were saved in a csv file. False means txt file and True means csv file.
 
     Returns
     -------
@@ -234,13 +232,12 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
 
 def detect_avi_file(finfo):
     """
-    Detects the camera type by comparing the read video resolution with known
+    Detect the camera type by comparing the read video resolution with known
      outputted dimensions of different camera types.
 
     Parameters
     ----------
     finfo (dict): dictionary containing the file metadata,
-     outputted by moseq2_extract.io.video.get_movie_info().
 
     Returns
     -------
@@ -275,17 +272,17 @@ def detect_avi_file(finfo):
 
 def detect_and_set_camera_parameters(config_data, input_file=None):
     """
-    Reads any inputted camera type and sets the bg_roi_weights to some precomputed values.
-    If no camera_type is inputted, program will assume a kinect camera is being used.
+    Read the camera type and info and set the bg_roi_weights to the precomputed values.
+    If camera_type is None, function will assume kinect is used.
 
     Parameters
     ----------
-    config_data (dict): dictionary containing all input parameters to a CLI/GUI command.
-    input_file (str): path to raw depth avi file; used to run further check for camera-ambiguous file extension.
+    config_data (dict): dictionary containing all input parameters.
+    input_file (str): path to raw depth file
 
     Returns
     -------
-    config_data (dict): updated dictionary with bg-roi-weights to use in extraction/ROI retrieval.
+    config_data (dict): updated dictionary with bg-roi-weights to use for extraction.
     """
 
     # Auto-setting background weights
@@ -341,12 +338,11 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
 
 def check_filter_sizes(config_data):
     """
-    Checks if inputted spatial and temporal filter kernel sizes are odd numbers.
-    Incrementing the value if not.
+    Ensure spatial and temporal filter kernel sizes are odd numbers.
 
     Parameters
     ----------
-    config_data (dict): Configuration dict holding all extraction parameters
+    config_data (dict): a dictionary holding all extraction parameters
 
     Returns
     -------
@@ -366,12 +362,12 @@ def check_filter_sizes(config_data):
 
 def generate_missing_metadata(sess_dir, sess_name):
     """
-    Generates default metadata.json file for session that does not already include one.
+    Generate metadata.json with default avlues for session that does not already include one.
 
     Parameters
     ----------
-    sess_dir (str): Path to directory to create metadata.json file in.
-    sess_name (str): Name of the directory to set the metadata SessionName.
+    sess_dir (str): Path to session directory to create metadata.json file in.
+    sess_name (str): Session Name to set the metadata SessionName.
 
     Returns
     -------
@@ -387,7 +383,7 @@ def generate_missing_metadata(sess_dir, sess_name):
 
 def load_metadata(metadata_file):
     """
-    Loads metadata from session metadata.json file.
+    Load metadata from session metadata.json file.
 
     Parameters
     ----------
@@ -395,7 +391,7 @@ def load_metadata(metadata_file):
 
     Returns
     -------
-    metadata (dict): key-value pairs of JSON contents
+    metadata (dict): metadata dictionary of JSON contents
     """
 
     try:
@@ -412,12 +408,11 @@ def load_metadata(metadata_file):
 
 def load_found_session_paths(input_dir, exts):
     """
-    Given an input directory and file extensions, this function will return all
-    depth file paths found in the inputted parent (input) directory.
+    Find all depth files with the specified extension recursively in input directory.
 
     Parameters
     ----------
-    input_dir (str): path to parent directory holding all the session folders.
+    input_dir (str): path to project base directory holding all the session sub-folders.
     exts (list or str): list of extensions to search for, or a single extension in string form.
 
     Returns
@@ -460,11 +455,10 @@ def get_strels(config_data):
 def select_strel(string='e', size=(10, 10)):
     """
     Returns structuring element of specified shape.
-    Accepted shapes are 'ellipse' and 'rectangle'. Otherwise, 'ellipse' will be use.
 
     Parameters
     ----------
-    string (str): indicates whether to use ellipse or rectangle
+    string (str): string to indicate whether to use ellipse or rectangle
     size (tuple): size of structuring element
 
     Returns
@@ -485,10 +479,6 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
     """
     Converts x, y coordinates in pixel space to mm.
 
-    http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
-    http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
-    http://smeenk.com/kinect-field-of-view-comparison/
-
     Parameters
     ----------
     coords (list): list of x,y pixel coordinates
@@ -500,6 +490,10 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
     -------
     new_coords (list): x,y coordinates in mm
     """
+
+    # http://stackoverflow.com/questions/17832238/kinect-intrinsic-parameters-from-field-of-view/18199938#18199938
+    # http://www.imaginativeuniversal.com/blog/post/2014/03/05/quick-reference-kinect-1-vs-kinect-2.aspx
+    # http://smeenk.com/kinect-field-of-view-comparison/
 
     cx = resolution[0] // 2
     cy = resolution[1] // 2
@@ -523,7 +517,7 @@ def scalar_attributes():
 
     Returns
     -------
-    attributes (dict): collection of metadata keys and descriptions.
+    attributes (dict): a dictionary of metadata keys and descriptions.
     """
 
     attributes = {
@@ -551,14 +545,14 @@ def scalar_attributes():
 
 def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=False, threads=3):
     """
-    Converts depth file (.dat, '.mkv') to avi file.
+    Compress depth file (.dat, '.mkv') to avi file.
 
     Parameters
     ----------
     input_file (str): path to depth file
     chunk_size (int): size of chunks to process at a time
     fps (int): frames per second
-    delete (bool): whether to delete original depth file
+    delete (bool): flag for deleting original depth file
     threads (int): number of threads to write video.
 
     Returns
@@ -592,19 +586,20 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
 
 def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     """
-    from https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
-    Creates subarrays of an array, a, with a given stride and window length.
+    Create subarrays of an array with a given stride and window length.
 
     Parameters
     ----------
-    a (np.ndarray) - array to get subarrarys from.
+    a (np.ndarray) - original array
     L (int) - Window Length
     S (int) - Stride size
 
     Returns
     -------
-    (np.ndarray) - array of subarrays at stride S.
+    (np.ndarray) - array of subarrays
     """
+
+    # https://stackoverflow.com/questions/40084931/taking-subarrays-from-numpy-array-with-given-stride-stepsize/40085052#40085052
 
     nrows = ((a.size-L)//S)+1
     n = a.strides[0]
@@ -701,8 +696,7 @@ def recursive_find_h5s(root_dir=os.getcwd(),
 
 def escape_path(path):
     """
-    Given current path, will return a path to return to original base directory.
-    (Used in recursive h5 search, etc.)
+    Return a path to return to original base directory.
 
     Parameters
     ----------
@@ -738,8 +732,6 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
 def load_textdata(data_file, dtype=np.float32):
     """
     Loads timestamp from txt/csv file.
-    Timestamps are separated by newlines and have a space-separated data indicator,
-    (in most cases, the indicator equals 0)
 
     Parameters
     ----------
@@ -749,7 +741,7 @@ def load_textdata(data_file, dtype=np.float32):
     Returns
     -------
     data (np.ndarray): timestamp data
-    timestamps (np.array): time stamp keynames.
+    timestamps (np.array): the array for the timestamps
     """
 
     data = []
@@ -772,8 +764,7 @@ def load_textdata(data_file, dtype=np.float32):
 
 def time_str_for_filename(time_str: str) -> str:
     """
-    Process the time string supplied by moseq to be used in a filename. This
-    removes colons, milliseconds, and timezones.
+    Process the timestamp to be used in the filename.
 
     Parameters
     ----------
@@ -790,14 +781,13 @@ def time_str_for_filename(time_str: str) -> str:
 
 def build_path(keys: dict, format_string: str, snake_case=True) -> str:
     """
-    Produce a new file name using keys collected from extraction h5 files. The format string
-    must be using python's formatting specification, i.e. '{subject_name}_{session_name}'.
+    Produce a new file name using keys collected from extraction h5 files.
 
     Parameters
     ----------
     keys (dict): dictionary specifying which keys used to produce the new file name
-    format_string (str): the string to reformat using the `keys` dictionary
-    snake_case (bool): whether to save the files with snake_case
+    format_string (str): the string to reformat using the `keys` dictionary i.e. '{subject_name}_{session_name}'.
+    snake_case (bool): flag to save the files with snake_case
 
     Returns
     -------
@@ -815,7 +805,7 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
 
 def read_yaml(yaml_file):
     """
-    Reads yaml file into dict object
+    Read yaml file into a dictionary
 
     Parameters
     ----------
@@ -831,8 +821,7 @@ def read_yaml(yaml_file):
 
 def mouse_threshold_filter(h5file, thresh=0):
     """
-    Filters frames in h5 files by threshold value.
-     Filters out frames with a nanmean < thresh.
+    Filter frames in h5 files by threshold value.
 
     Parameters
     ----------
@@ -874,7 +863,7 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
 
 def h5_to_dict(h5file, path) -> dict:
     """
-    Loads h5 contents to dictionary object.
+    Load h5 contents to dictionary object.
 
     Parameters
     ----------
@@ -897,7 +886,7 @@ def h5_to_dict(h5file, path) -> dict:
 
 def clean_dict(dct):
     """
-    Standardizes types of dict value.
+    Standardize types of dict value.
 
     Parameters
     ----------
@@ -926,7 +915,7 @@ _underscorer2 = re.compile('([a-z0-9])([A-Z])')
 
 def camel_to_snake(s):
     """
-    Converts CamelCase to snake_case
+    Convert CamelCase to snake_case
 
     Parameters
     ----------
@@ -952,7 +941,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
 
     Parameters
     ----------
-    root_dir (os Path-like): path to base directory to start recursive search from.
+    root_dir (str): path to base directory to start recursive search for unextracted folders.
     session_pattern (str): folder name pattern to search for
     extension (str): file extension to search for
     yaml_path (str): path to respective extracted metadata
@@ -989,16 +978,15 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
 
 def click_param_annot(click_cmd):
     """
-    Given a click.Command instance, return a dict that maps option names to help strings.
-    Currently skips click.Arguments, as they do not have help strings.
+    Return a dict that maps option names to help strings from a click.Command instance.
 
     Parameters
     ----------
-    click_cmd (click.Command): command to introspect
+    click_cmd (click.Command): command to annotate
 
     Returns
     -------
-    annotations (dict): click.Option.human_readable_name as keys; click.Option.help as values
+    annotations (dict): dictionary of options and their help messages
     """
 
     annotations = {}
@@ -1009,8 +997,7 @@ def click_param_annot(click_cmd):
 
 def get_bucket_center(img, true_depth, threshold=650):
     """
-    https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
-    Finds Centroid coordinates of circular bucket.
+    Find Centroid coordinates of circular bucket.
 
     Parameters
     ----------
@@ -1024,6 +1011,7 @@ def get_bucket_center(img, true_depth, threshold=650):
     cY (int): y-coordinate of circle centroid
     """
 
+    # https://stackoverflow.com/questions/19768508/python-opencv-finding-circle-sun-coordinates-of-center-the-circle-from-pictu
     # convert the grayscale image to binary image
     ret, thresh = cv2.threshold(img, threshold, true_depth, 0)
 
@@ -1038,10 +1026,7 @@ def get_bucket_center(img, true_depth, threshold=650):
 
 def make_gradient(width, height, h, k, a, b, theta=0):
     """
-    https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
-    Creates gradient around bucket floor representing slanted wall values.
-    This is done by drawing an "ellipse" of equal x,y radii, resulting in a circle with weighted
-    depth values from highest to lowest surrounding the circumference of the circle
+    Create gradient around bucket floor representing slanted wall values.
 
     Parameters
     ----------
@@ -1059,6 +1044,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     to create a gradient from. 0.8 being the proportioned values closest to the circle wall.
     """
 
+    # https://stackoverflow.com/questions/49829783/draw-a-gradual-change-ellipse-in-skimage/49848093#49848093
     # Precalculate constants
     st, ct = math.sin(theta), math.cos(theta)
     aa, bb = a ** 2, b ** 2
@@ -1076,13 +1062,10 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     """
     Creates a gradient to represent the dilated (now visible) bucket wall regions.
     Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
-    This is done to handle noise attributed by bucket walls being slanted, and thus being picked
-    up as large noise depth values. Moreover, to appropriately subtract the background from input
-    images during extraction without obscuring the rodent, or including unwanted wall regions.
-
+    
     Parameters
     ----------
-    bground_im (2d np.ndarray): the bucket floor image computed as the median distance throughout the session.
+    bground_im (2d np.ndarray): the computed background image.
     config_data (dict): dictionary containing helper user configuration parameters.
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
     output_dir (str): path to save newly computed background to use.
