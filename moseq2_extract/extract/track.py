@@ -11,26 +11,22 @@ import statsmodels.stats.correlation_tools as stats_tools
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
     """
-    EM tracker iteration function. Function will iteratively update the mean
-    and covariance variables using Expectation Maximization up to the max inputted number
+    Use EM tracker to iteratively update the mean and covariance variables using Expectation Maximization up to the max inputted number
     of iterations.
-
-    Note: the rate/probability at which the mean and cov are updated are dependent on the tolerance
-    variable epsilon.
 
     Parameters
     ----------
-    data (3d numpy array): nx3, x, y, z coordinates to use
-    mean (1d numpy array): dx1, current mean estimate
-    cov (2d numpy array): dxd, current covariance estimate
+    data (numpy.array): frame, x, y, z coordinates to use
+    mean (numpy.array): dx1, current mean estimate
+    cov (numpy.array): current covariance estimate
     lambd (float): constant to add to diagonal of covariance matrix
     epsilon (float): tolerance on change in likelihood to terminate iteration
     max_iter (int): maximum number of EM iterations
 
     Returns
     -------
-    mean (1d numpy array): updated mean
-    cov (2d numpy array): updated covariance
+    mean (1d (numpy.array): updated mean
+    cov (2d (numpy.array): updated covariance
     """
 
     prev_likelihood = 0
@@ -64,13 +60,11 @@ def em_init(depth_frame,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
             strel_iters=1):
     """
-    Initialize EM Mask.
-
-    Estimates depth frame contours using OpenCV, and selects the largest chosen contour to create a mask.
+    Estimate depth frame contours using OpenCV, and select the largest chosen contour to initialize a mask for EM tracking.
 
     Parameters
     ----------
-    depth_frame (2d numpy array): depth frame to initialize mask with.
+    depth_frame (numpy.array): depth frame to initialize mask with.
     depth_floor (float): distance from camera to bucket floor.
     depth_ceiling (float): max depth value.
     init_strel (cv2.structuringElement): structuring Element to compute mask.
@@ -78,7 +72,7 @@ def em_init(depth_frame,
 
     Returns
     -------
-    mouse_mask (2d numpy array): mask of depth frame.
+    mouse_mask (numpy.array): mask of depth frame.
     """
 
     mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
@@ -103,13 +97,12 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 init_mean=None, init_cov=None, init_frames=10, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
     """
-    Naive tracker, use EM update rules to follow a 3D Gaussian
-       around the room.
+    Naive tracker, use EM update rules to follow a 3D Gaussian around the room.
 
     Parameters
     ----------
-    frames (3d numpy array): filtered frames - nframes x r x c.
-    raw_frames (3d numpy array): chunk to track mouse in.
+    frames (numpy.array): filtered frames.
+    raw_frames (numpy.array): chunk to track mouse in.
     segment (bool): use only the largest blob for em updates
     ll_threshold (float): threshold on log likelihood for segmentation
     rho_mean (float): smoothing parameter for the mean
@@ -272,18 +265,18 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 
 def em_get_ll(frames, mean, cov, progress_bar=False):
     """
-    Returns mouse tracking log-likelihoods for each frame given tracking parameters.
+    Return mouse tracking log-likelihoods for each frame given tracking parameters.
 
     Parameters
     ----------
-    frames (3d numpy array): depth frames
-    mean (2d numpy array): frames x d, mean estimates
-    cov (3d numpy array): frames x d x d, covariance estimates
+    frames (3d (numpy.array): depth frames
+    mean (2d (numpy.array): frames x d, mean estimates
+    cov (3d (numpy.array): frames x d x d, covariance estimates
     progress_bar (bool): use a progress bar
 
     Returns
     -------
-    ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
+    ll (3d (numpy.array): frames x rows x columns, log likelihood of all pixels in each frame
     """
 
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))

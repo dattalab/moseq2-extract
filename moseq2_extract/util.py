@@ -118,13 +118,13 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
 
     Parameters
     ----------
-    bground_im (2D numpy array): Background image computed via median value in each pixel of depth video.
-    plane (2D numpy array): Computed ROI Plane using RANSAC.
+    bground_im (2D (numpy.array): Background image computed via median value in each pixel of depth video.
+    plane (2D (numpy.array): Computed ROI Plane using RANSAC.
     output_dir (str): Path to write updated background image to.
 
     Returns
     -------
-    bground_im (2D numpy array): The background image.
+    bground_im (2D (numpy.array): The background image.
     """
 
     xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
@@ -741,7 +741,7 @@ def load_textdata(data_file, dtype=np.float32):
     Returns
     -------
     data (np.ndarray): timestamp data
-    timestamps (np.array): the array for the timestamps
+    timestamps (numpy.array): the array for the timestamps
     """
 
     data = []

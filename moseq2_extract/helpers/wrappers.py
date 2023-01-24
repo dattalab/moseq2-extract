@@ -30,7 +30,7 @@ from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attribu
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
     """
-    Copy's user specified metadata from h5path to a yaml file.
+    Copy user specified metadata from h5path to a yaml file.
 
     Parameters
     ----------
@@ -64,7 +64,7 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 @filter_warnings
 def generate_index_wrapper(input_dir, output_file):
     """
-    Generates index file containing a summary of all extracted sessions.
+    Generate index file containing a summary of all extracted sessions.
 
     Parameters
     ----------
@@ -73,7 +73,7 @@ def generate_index_wrapper(input_dir, output_file):
 
     Returns
     -------
-    output_file (str): path to index file.
+    output_file (str): path to index file (moseq2-index.yaml).
     """
 
     # gather the h5s and the pca scores file
@@ -105,9 +105,7 @@ def generate_index_wrapper(input_dir, output_file):
 
 def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold=0.0):
     """
-    Copies all the h5, yaml and avi files generated from all successful extractions to
-    a new directory to hold all the necessary data to continue down the MoSeq pipeline.
-    Then generates an index file in the base directory/input_dir.
+    Aggregate results to one folder and generate index file (moseq2-index.yaml).
 
     Parameters
     ----------
@@ -153,7 +151,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
 
 def get_roi_wrapper(input_file, config_data, output_dir=None):
     """
-    Wrapper function to compute ROI given depth file.
+    Compute ROI given depth file.
 
     Parameters
     ----------
@@ -238,16 +236,16 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False):
     """
-    Wrapper function to run extract function for both GUI and CLI.
+    Extract depth videos.
 
     Parameters
     ----------
     input_file (str): path to depth file
     output_dir (str): path to directory to save results in.
     config_data (dict): dictionary containing extraction parameters.
-    num_frames (int): number of frames to extract. All if None.
+    num_frames (int): number of frames to extract.
     skip (bool): indicates whether to skip file if already extracted
-    extract (function): extraction function state (Only passed by CLI)
+    extract (function): extraction function state
 
     Returns
     -------
@@ -407,7 +405,7 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 @filter_warnings
 def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     """
-    Wrapper function to download and save flip classifiers.
+    Download and save flip classifiers.
 
     Parameters
     ----------
@@ -468,15 +466,14 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
 
 def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping):
     """
-    Wrapper function used to convert/compress a raw depth file into
-     an avi file (with depth values) that is 8x smaller.
+    compress a raw depth file into an avi file (with depth values) that is 8x smaller.
 
     Parameters
     ----------
     input_file (str): Path to depth file to convert
-    output_file (str): Path to avi output file
+    output_file (str): Path to output avi file
     chunk_size (int): Size of frame chunks to iteratively process
-    fps (int): Frames per second.
+    fps (int): frame rate.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
     mapping (str or int): Indicate which video stream to from the inputted file
@@ -516,7 +513,7 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
 
 def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
     """
-    Wrapper function to copy a segment of an input depth recording into a new video file.
+    Copy a segment of an input depth recording into a new video file.
 
     Parameters
     ----------

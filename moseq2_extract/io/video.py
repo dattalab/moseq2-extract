@@ -1,5 +1,5 @@
 """
-Video and video-metadata read/write functionality.
+Video and video-metadata read/write functions.
 """
 
 import os
@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 
 def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     """
-    Gets info from a raw data file with specified frame dimensions and bit depth.
+    Get info from a raw data file with specified frame dimensions and bit depth.
 
     Parameters
     ----------
-    filename (string): name of raw data file
+    filename (str): name of raw data file
     bit_depth (int): bits per pixel (default: 16)
     frame_dims (tuple): wxh or hxw of each frame
 
@@ -103,12 +103,12 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 # https://gist.github.com/hiwonjoon/035a1ead72a767add4b87afe03d0dd7b
 def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **kwargs):
     """
-    Get dimensions of data compressed using ffv1, along with duration via ffmpeg.
+    Get file metadata from videos.
 
     Parameters
     ----------
-    filename (string): name of file to read video metadata from.
-    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    filename (str): name of file to read video metadata from.
+    mapping (str): chooses the stream to read from files.
     threads (int): number of threads to simultanoues run the ffprobe command
     count_frames (bool): indicates whether to count the frames individually.
 
@@ -229,9 +229,8 @@ def write_frames(filename, frames, threads=6, fps=30,
 
 def get_stream_names(filename, stream_tag="title"):
     """
-    Runs an FFProbe command to determine whether an input video file contains multiple streams, and
-     returns a stream_name to paired int values to extract the desired stream.
-    If no streams are detected, then the 0th (default) stream will be returned and used.
+    Run an FFProbe command to determine whether an input video file contains multiple streams, and
+    returns a stream_name to paired int values to extract the desired stream.
 
     Parameters
     ----------
@@ -241,7 +240,7 @@ def get_stream_names(filename, stream_tag="title"):
     Returns
     -------
     out (dict): Dictionary of string to int pairs for the included streams in the mkv file.
-     Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
+    Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
     """
 
     command = [
@@ -269,28 +268,27 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
                 pixel_format='gray16le', movie_dtype='uint16', frame_size=None,
                 slices=24, slicecrc=1, mapping='DEPTH', get_cmd=False, finfo=None, **kwargs):
     """
-    Reads in frames from the .mp4/.avi file using a pipe from ffmpeg.
+    Read in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
     Parameters
     ----------
     filename (str): filename to get frames from
-    frames (list or 1d numpy array): list of frames to grab
+    frames (list or 1d (numpy.array): list of frames to grab
     threads (int): number of threads to use for decode
-    fps (int): frame rate of camera in Hz
+    fps (int): frame rate of camera
     frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
-     if True, indicates azure relative start_time timestamps (i.e. first frame timestamp == 0.000).
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frame_size (str): wxh frame size in pixels
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
-    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format).
+    mapping (str): the stream to read from mkv files.
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
     finfo (dict): dictionary containing video file metadata
 
     Returns
     -------
-    video (3d numpy array):  frames x h x w
+    video (numpy.array):  frames x rows x columns
     """
 
     if finfo is None:
@@ -351,12 +349,12 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
 def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='uint16',
              frames_is_timestamp=True, timestamps=None, **kwargs):
     """
-    Reads in frames from a .mkv file using a pipe from ffmpeg.
+    Read in frames from a .mkv file using a pipe from ffmpeg.
 
     Parameters
     ----------
     filename (str): filename to get frames from
-    frames (list or 1d numpy array): list of frame indices to read
+    frames (list or 1d (numpy.array): list of frame indices to read
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
     frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
@@ -374,7 +372,7 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
 
     Returns
     -------
-    video (3d numpy array):  frames x h x w
+    video (3d (numpy.array):  frames x rows x columns
     """
 
     if timestamps is None and exists(filename):
@@ -398,8 +396,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
                          pipe=None, close_pipe=True, frame_range=None,
                          progress_bar=False):
     """
-    Simple command to pipe frames to an ffv1 file.
-    Writes out a false-colored mp4 video.
+    Simple command to pipe frames to an ffv1 file. Writes out a false-colored mp4 video.
 
     Parameters
     ----------
@@ -491,14 +488,11 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
 
 def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, **kwargs):
     """
-
-    Parses file extension to check whether to read the data using ffmpeg (read_frames)
-    or to read the frames directly from the file into a numpy array (read_frames_raw).
-    Supports files with extensions ['.dat', '.mkv', '.avi']
+    Parse file extension and load the movie data into numpy array.
 
     Parameters
     ----------
-    filename (str): Path to file to read video from.
+    filename (str): Path to video.
     frames (int or list): Frame indices to read in to output array.
     frame_size (tuple): Video dimensions (nrows, ncols)
     bit_depth (int): Number of bits per pixel, corresponds to image resolution.
@@ -506,7 +500,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
     Returns
     -------
-    frame_data (3D np.ndarray): Read video as numpy array. (nframes, nrows, ncols)
+    frame_data (numpy.ndarray): Read video as numpy array. (nframes, nrows, ncols)
     """
 
     if type(frames) is int:
@@ -544,14 +538,14 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
 
 def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
     """
-    Returns dict of movie metadata. Supports files with extensions ['.dat', '.mkv', '.avi']
+    Return dict of movie metadata.
 
     Parameters
     ----------
     filename (str): path to video file
     frame_dims (tuple): video dimensions
     bit_depth (int): integer indicating data type encoding
-    mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
+    mapping (str): the stream to read from mkv files
     threads (int): number of threads to simultaneously read timestamps stored within the raw data file.
 
     Returns
@@ -574,7 +568,7 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
 
 def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     """
-    Runs a ffprobe command to extract the timestamps from the .mkv file, and pipes the
+    Run a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
 
     Parameters

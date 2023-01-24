@@ -1,8 +1,5 @@
 """
-
-Data selection, writing, and loading utilities.
-Contains helper functions to aid mostly in handling/storing data during extraction.
-Remainder of functions are used in the data aggregation process.
+Contains helper functions for handling/storing data during extraction.
 
 """
 import os
@@ -22,12 +19,12 @@ from moseq2_extract.util import h5_to_dict, load_timestamps, load_metadata, read
 
 def check_completion_status(status_filename):
     """
-    Reads a results_00.yaml (status file) and checks whether the session has been
-    fully extracted. Returns True if yes, and False if not and if the file doesn't exist.
+    Read a results_00.yaml (status file) and checks whether the session has been
+    fully extracted.
 
     Parameters
     ----------
-    status_filename (str): path to results_00.yaml containing extraction status
+    status_filename (str): path to results_00.yaml
 
     Returns
     -------
@@ -40,14 +37,7 @@ def check_completion_status(status_filename):
 
 def build_index_dict(files_to_use):
     """
-    Given a list of files and respective metadatas to include in an index file,
-    creates a dictionary that will be saved later as the index file.
-    It will contain all the inputted file paths with their respective uuids, group names, and metadata.
-
-    Note: This is a direct helper function for generate_index_wrapper().
-
-    You can expect the following structure from file_tup elements:
-     ('path_to_extracted_h5', 'path_to_extracted_yaml', {file_status_dict})
+    Create a dictionary for the index file from a list of files and respective metadatas.
 
     Parameters
     ----------
@@ -87,7 +77,7 @@ def build_index_dict(files_to_use):
 
 def load_extraction_meta_from_h5s(to_load, snake_case=True):
     """
-    aggregate_results() Helper Function to load extraction metadata from h5 files.
+    Load extraction metadata from h5 files.
 
     Parameters
     ----------
@@ -132,8 +122,7 @@ def load_extraction_meta_from_h5s(to_load, snake_case=True):
 
 def build_manifest(loaded, format, snake_case=True):
     """
-    aggregate_results() Helper Function.
-    Builds a manifest file used to contain extraction result metadata from h5 and yaml files.
+    Build a manifest file used to contain extraction result metadata from h5 and yaml files.
 
     Parameters
     ----------
@@ -205,7 +194,7 @@ def build_manifest(loaded, format, snake_case=True):
 
 def copy_manifest_results(manifest, output_dir):
     """
-    Copies all consolidated manifest results to their respective output files.
+    Copy all consolidated manifest results to their respective output files.
 
     Parameters
     ----------
@@ -254,9 +243,7 @@ def copy_manifest_results(manifest, output_dir):
 
 def handle_extract_metadata(input_file, dirname):
     """
-    Extracts metadata from input depth files, either raw or compressed.
-    Locates metadata JSON file, and timestamps.txt file, then loads them into variables
-    to be used to extract_wrapper.
+    Extract metadata and timestamp in the extraction.
 
     Parameters
     ----------
@@ -318,9 +305,7 @@ def handle_extract_metadata(input_file, dirname):
 def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, scalars_attrs,
                       nframes, roi, bground_im, first_frame, first_frame_idx, last_frame_idx, **kwargs):
     """
-    This is a helper function for extract_wrapper(); handles writing the following metadata
-    to an open results_00.h5 file:
-    Acquisition metadata, extraction metadata, computed scalars, timestamps, and original frames/frames_mask.
+    write acquisition metadata, extraction metadata, computed scalars, timestamps, and original frames/frames_mask to extracted h5.
 
     Parameters
     ----------
@@ -330,10 +315,10 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     status_dict (dict): dictionary that helps indicate if the session has been extracted fully.
     scalars_attrs (dict): dict of computed scalar attributes and descriptions to save.
     nframes (int): number of frames being recorded
-    roi (2d np.ndarray): Computed 2D ROI Image.
-    bground_im (2d np.ndarray): Computed 2D Background Image.
-    first_frame (2d np.ndarray): Computed 2D First Frame Image.
-    timestamps (np.array): Array of session timestamps.
+    roi (np.ndarray): Computed 2D ROI Image.
+    bground_im (np.ndarray): Computed 2D Background Image.
+    first_frame (np.ndarray): Computed 2D First Frame Image.
+    timestamps (numpy.array): Array of session timestamps.
     kwargs (dict): additional keyword arguments.
 
     Returns

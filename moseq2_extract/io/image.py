@@ -12,16 +12,15 @@ from os.path import join, dirname, exists
 
 def read_tiff_files(input_dir):
     """
-    Reads ROI output results (Tiff files) located in the given input_directory
-     into array variables to be graphed in a jupyter notebook.
+    Read ROI output results (Tiff files) located in the given input_directory.
 
     Parameters
     ----------
-    input_dir (str): path to directory containing ROI files AKA tiff files.
+    input_dir (str): path to directory containing ROI files.
 
     Returns
     -------
-    images (list): list of 2d arrays read from each located tiff file.
+    images (list): list of 2d arrays of the ROIs.
     filenames (list): list of corresponding filenames to each read image.
     """
 
@@ -40,12 +39,12 @@ def read_tiff_files(input_dir):
 
 def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uint16', compress=0):
     """
-    Save image data, possibly with scale factor for easy display.
+    Save image data.
 
     Parameters
     ----------
-    filename (str): path to file to write to.
-    image (2d numpy array): the (unscaled) 2-D image to save
+    filename (str): path to output file
+    image (2d (numpy.array): the (unscaled) 2-D image to save
     scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
     frame_dtype (str): array data type
@@ -83,12 +82,12 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
 
 def read_image(filename, scale=True, scale_key='scale_factor'):
     """
-    Load image data, possibly with scale factor...
+    Load image data
 
     Parameters
     ----------
-    filename (str): path to file to write to.
-    scale (bool): indicates whether to scale image
+    filename (str): path to output file
+    scale (bool): flag that indicates whether to scale image
     scale_key (str): indicates scale factor.
 
     Returns

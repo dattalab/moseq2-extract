@@ -12,16 +12,16 @@ def plane_fit3(points):
 
     Parameters
     ----------
-    points (2d numpy array): each row is a group of points, columns correspond to x,y,z.
+    points (numpy.array): each row is a group of points, columns correspond to x,y,z.
 
     Returns
     -------
-    plane (1d numpy array): linear plane fit-->a*x+b*y+c*z+d
+    plane (1d (numpy.array): linear plane fit-->a*x+b*y+c*z+d
     """
 
     a = points[1]-points[0]
     b = points[2]-points[0]
-    # cross prod
+    # cross prod to make sure the three points make an area, hence a plane.
     normal = np.array([[a[1]*b[2]-a[2]*b[1]],
                        [a[2]*b[0]-a[0]*b[2]],
                        [a[0]*b[1]-a[1]*b[0]]]).astype('float') 
@@ -40,23 +40,23 @@ def plane_fit3(points):
 def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
                  noise_tolerance=30, in_ratio=.1, progress_bar=False, mask=None, **kwargs):
     """
-    Naive RANSAC implementation for plane fitting
+    Fit a plane using a naive RANSAC implementation
 
     Parameters
     ----------
-    depth_image (2d numpy array): hxw, background image to fit plane to
+    depth_image (numpy.array): background image to fit plane to
     bg_roi_depth_range (tuple): min/max depth (mm) to consider pixels for plane
     iters (int): number of RANSAC iterations
-    noise_tolerance (float): dist. from plane to consider a point an inlier
-    in_ratio (float): frac. of points required to consider a plane fit good
+    noise_tolerance (float): distance from plane to consider a point an inlier
+    in_ratio (float): fraction of points required to consider a plane fit good
     progress_bar (bool): display progress bar
-    mask (bool 2d np.array): boolean mask to find region to use
+    mask (numpy.array): boolean mask to find region to use
     kwargs (dict): dictionary containing extra keyword arguments from moseq2_extract.proc.get_roi()
 
     Returns
     -------
-    best_plane (1d numpy array): plane fit to data
-    dist (1d numpy array): distance of the calculated coordinates and "best plane"
+    best_plane (numpy.array): plane fit to data
+    dist (numpy.array): distance of the calculated coordinates and "best plane"
     """
 
     use_points = np.logical_and(depth_image > bg_roi_depth_range[0], depth_image < bg_roi_depth_range[1])

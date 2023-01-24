@@ -23,19 +23,17 @@ from moseq2_extract.util import convert_pxs_to_mm, strided_app
 
 def get_flips(frames, flip_file=None, smoothing=None):
     """
-    Predicts frames where mouse orientation is flipped to later correct.
-    If the given flip file is not found or valid, a warning will be emitted and the
-    video will not be flipped.
+    Predict frames where mouse orientation is flipped to later correct.
 
     Parameters
     ----------
-    frames (3d numpy array): frames x r x c, cropped mouse
-    flip_file (str): path to joblib dump of scipy random forest classifier
+    frames (numpy.array): frames x rows x columns, cropped mouse
+    flip_file (str): path to pre-trained scipy random forest classifier
     smoothing (int): kernel size for median filter smoothing of random forest probabilities
 
     Returns
     -------
-    flips (bool array):  true for flips
+    flips (numpy.array):  true for flips
     """
 
     try:
@@ -71,12 +69,12 @@ def get_largest_cc(frames, progress_bar=False):
 
     Parameters
     ----------
-    frames (3d numpy array): frames x r x c, uncropped mouse
+    frames (numpy.array): frames x rows x columns, uncropped mouse
     progress_bar (bool): display progress bar
 
     Returns
     -------
-    flips (3d bool array):  frames x r x c, true where blob was found
+    flips (numpy.array):  frames x rows x columns, true where blob was found
     """
 
     foreground_obj = np.zeros((frames.shape), 'bool')
@@ -92,19 +90,18 @@ def get_largest_cc(frames, progress_bar=False):
 
 def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=None, **kwargs):
     """
-    Returns background from file. If the file is not found, session frames will be read in
-     and a median frame (background) will be computed.
+    Load or compute background from file.
 
     Parameters
     ----------
-    frames_file (str): path to data with frames
+    frames_file (str): path to the depth video
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
     kwargs (dict): extra keyword arguments
 
     Returns
     -------
-    bground (2d numpy array):  r x c, background image
+    bground ((numpy.array): background image
     """
 
     if output_dir is None:
@@ -142,15 +139,15 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
 
 def get_bbox(roi):
     """
-    Given a binary mask, return an array with the x and y boundaries
+    return an array with the x and y boundaries given ROI.
 
     Parameters
     ----------
-    roi (2d np.ndarray): ROI boolean mask to calculate bounding box.
+    roi (np.ndarray): ROI boolean mask to calculate bounding box.
 
     Returns
     -------
-    bbox (2d np.ndarray): Bounding Box around ROI
+    bbox (np.ndarray): Bounding Box around ROI
     """
 
     y, x = np.where(roi > 0)
@@ -163,12 +160,12 @@ def get_bbox(roi):
 
 def threshold_chunk(chunk, min_height, max_height):
     """
-    Thresholds out depth values that are less than min_height and larger than
+    Threshold out depth values that are less than min_height and larger than
     max_height.
 
     Parameters
     ----------
-    chunk (3D np.ndarray): Chunk of frames to threshold (nframes, width, height)
+    chunk (np.ndarray): Chunk of frames to threshold (nframes, width, height)
     min_height (int): Minimum depth values to include after thresholding.
     max_height (int): Maximum depth values to include after thresholding.
     dilate_iterations (int): Number of iterations the ROI was dilated.
@@ -202,8 +199,8 @@ def get_roi(depth_image,
 
     Parameters
     ----------
-    depth_image (2d np.ndarray): Singular depth image frame.
-    strel_dilate (cv2.StructuringElement - Rectangle): dilation shape to use.
+    depth_image (np.ndarray): Singular depth image frame.
+    strel_dilate (cv2.StructuringElement): dilation shape to use.
     dilate_iterations (int): number of dilation iterations.
     erode_iterations (int): number of erosion iterations.
     strel_erode (int): image erosion kernel size.
@@ -219,7 +216,7 @@ def get_roi(depth_image,
 
     Returns
     -------
-    rois (list): list of 2d roi images.
+    rois (list): list of detected roi images.
     roi_plane (2d np.ndarray): computed ROI Plane using RANSAC.
     bboxes (list): list of computed bounding boxes for each respective ROI.
     label_im (list): list of scikit-image image properties
@@ -307,16 +304,16 @@ def get_roi(depth_image,
 
 def apply_roi(frames, roi):
     """
-    Apply ROI to data, consider adding constraints (e.g. mod32==0).
+    Apply ROI to data.
 
     Parameters
     ----------
-    frames (3d np.ndarray): input frames to apply ROI.
-    roi (2d np.ndarray): selected ROI to extract from input images.
+    frames (np.ndarray): input frames to apply ROI.
+    roi (np.ndarray): selected ROI to extract from input images.
 
     Returns
     -------
-    cropped_frames (3d np.ndarray): Frames cropped around ROI Bounding Box.
+    cropped_frames (np.ndarray): Frames cropped around ROI Bounding Box.
     """
 
     # yeah so fancy indexing slows us down by 3-5x
@@ -333,7 +330,7 @@ def im_moment_features(IM):
 
     Parameters
     ----------
-    IM (2d numpy array): depth image
+    IM ((numpy.array): depth image
 
     Returns
     -------
@@ -480,7 +477,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
 
 def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=False):
     """
-    Crops mouse from image and orients it s.t it is always facing east.
+    Crop mouse from image and orients it such that the head is pointing right
 
     Parameters
     ----------
@@ -536,11 +533,11 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
 
 def compute_scalars(frames, track_features, min_height=10, max_height=100, true_depth=673.1):
     """
-    Computes scalars.
+    Compute extracted scalars.
 
     Parameters
     ----------
-    frames (3d np.ndarray): frames x r x c, uncropped mouse
+    frames (np.ndarray): frames x r x c, uncropped mouse
     track_features (dict):  dictionary with tracking variables (centroid and orientation)
     min_height (float): minimum height of the mouse
     max_height (float): maximum height of the mouse
@@ -630,8 +627,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
 def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_sig=3,
                           angle_hampel_span=None, angle_hampel_sig=3):
     """
-    Filters computed extraction features using Hampel Filtering.
-    Used to detect and filter out outliers.
+    Filter computed extraction features using Hampel Filtering.
 
     Parameters
     ----------
@@ -675,17 +671,17 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
 
 def model_smoother(features, ll=None, clips=(-300, -125)):
     """
-    Spatial feature filtering.
+    Apply spatial feature filtering.
 
     Parameters
     ----------
     features (dict): dictionary of extraction scalar features
-    ll (np.array): list of loglikelihoods of pixels in frame
+    ll (numpy.array): list of loglikelihoods of pixels in frame
     clips (tuple): tuple to ensure video is indexed properly
 
     Returns
     -------
-    features (dict) - smoothed version of input features
+    features (dict): smoothed version of input features
     """
 
     if ll is None or clips is None or (clips[0] >= clips[1]):
