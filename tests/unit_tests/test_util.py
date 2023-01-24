@@ -306,7 +306,7 @@ class TestExtractUtils(TestCase):
             'erode_iterations': 'Number of erosion iterations to decrease bucket floor size. (Special Cases Only)',
             'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
             'output_dir': 'Output directory to save the results h5 file',
-            'use_plane_bground': 'Use a plane fit for the background. Useful for mice that don\'t move much',
+            'use_plane_bground': 'Use a plane fit for the background. Useful when mice don\'t move much',
             'recompute_bg': 'Overwrite previously computed background image',
             'config_file': None,
             'progress_bar': 'Show verbose progress bars.'
