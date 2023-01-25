@@ -1,15 +1,7 @@
 """
 Extraction helper utility for computing scalar feature values performing cleaning, cropping and rotating operations.
-
-Given a "chunk" or segment of an input depth video, this function will first find the ROI (the arena), subtract background, then
-optionally perform Expectation Maximization tracking for mouse tracking to optimize fi with occlusions such as
-photometry fibers. Next, it will apply some spatial/temporal filtering before cropping, and aligning the rodent
-such that it is always facing east (with the help of the flip classifier). Finally the scalar values are computed.
-
-It will store each chunk's extracted data and metadata in a dictionary that will be later written to the corresponding
-results_00.h5 file.
-
 """
+
 import cv2
 import numpy as np
 from copy import deepcopy
@@ -40,14 +32,13 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
                   compute_raw_scalars=False,
                   **kwargs):
+                      
     """
     Extract mouse from the depth videos.
 
-    Parameters
-    ----------
+    Args:
     chunk (np.ndarray): chunk to extract - (chunksize, height, width)
-    use_tracking_model (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
-        basis to the mouse's body and determine if pixels are mouse vs cable.
+    use_tracking_model (bool): The EM tracker uses expectation-maximization to fit improve mouse detection.
     spatial_filter_size (tuple): spatial kernel size used in median filtering.
     temporal_filter_size (tuple): temporal kernel size used in median filtering.
     tail_filter_iters (int): number of filtering iterations on mouse tail
@@ -63,7 +54,6 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     rho_mean (int): smoothing parameter for the mean
     rho_cov (int): smoothing parameter for the covariance
     tracking_ll_threshold (float):  threshold for calling pixels a cable vs a mouse (usually between -16 to -12).
-        If the log-likelihood falls below this value, pixels are considered cable.
     tracking_model_segment (bool): boolean for whether to use only the largest blob for EM updates.
     tracking_init_mean (float): Initialized mean value for EM Tracking
     tracking_init_cov (float): Initialized covariance value for EM Tracking
@@ -83,12 +73,11 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     tracking_model_init (str): Method for tracking model initialization
     compute_raw_scalars (bool): Compute scalars from unfiltered crop-rotated data.
 
-    Returns
-    -------
+    Returns:
     results (dict): dict object containing the following keys:
-    chunk (numpy.array): bg subtracted and applied ROI version of original video chunk
-    depth_frames(numpy.array): cropped and oriented mouse video chunk
-    mask_frames (numpy.array): cropped and oriented mouse video chunk
+    chunk (numpy.ndarray): bg subtracted and applied ROI version of original video chunk
+    depth_frames(numpy.ndarray): cropped and oriented mouse video chunk
+    mask_frames (numpy.ndarray): cropped and oriented mouse video chunk
     scalars (dict): computed scalars (str) mapped to 1d numpy arrays of length=nframes.
     flips(1d array): list of frame indices where the mouse orientation was flipped.
     parameters (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.

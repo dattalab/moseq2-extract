@@ -34,12 +34,10 @@ def common_roi_options(function):
     """
     Decorator function for grouping shared ROI related parameters.
 
-    Parameters
-    ----------
+    Args:
     function: Function to add enclosed parameters to as click options.
 
-    Returns
-    -------
+    Returns:
     function: Updated function including shared parameters.
     """
 
@@ -90,12 +88,10 @@ def common_avi_options(function):
     """
     Decorator function for grouping shared video processing parameters.
 
-    Parameters
-    ----------
+    Args:
     function: Function to add enclosed parameters to as click options.
 
-    Returns
-    -------
+    Returns:
     function: Updated function including shared parameters.
     """
 
@@ -112,12 +108,10 @@ def extract_options(function):
     """
     Decorator function for grouping shared extraction prameters.
 
-    Parameters
-    ----------
+    Args:
     function : Function to add enclosed parameters to as click options.
     
-    Returns
-    -------
+    Returns:
     function: Updated function including shared parameters.
     """
 

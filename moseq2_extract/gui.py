@@ -1,9 +1,5 @@
 """
 GUI front-end operations accessible from a jupyter notebook.
-
-This module contains all operations included in the CLI module,
-with some additional preprocessing steps and state-retrieval functionality
-to facilitate Jupyter notebook usage.
 """
 
 import os
@@ -20,15 +16,13 @@ from moseq2_extract.cli import batch_extract
 
 def get_selected_sessions(to_extract, extract_all):
     """
-    Given user input, the function will return either selected sessions to extract, or all the sessions.
+    Return either selected sessions to extract, or all the sessions given user input, the function will 
 
-    Parameters
-    ----------
+    Args:
     to_extract (list): list of paths to sessions to extract
     extract_all (bool): boolean to include all sessions and skip user-input prompt.
 
-    Returns
-    -------
+    Returns:
     to_extract (list): new list of selected sessions to extract.
     """
 
@@ -36,19 +30,11 @@ def get_selected_sessions(to_extract, extract_all):
 
     def parse_input(s):
         """
-        Parses user input, looking for specifically numbered sessions, ranges of sessions,
+        Parse user input for specifically numbered sessions, ranges of sessions,
         and/or sessions to exclude.
-
-        Function will alter the parent functions variables {selected_sess_idx, excluded_sess_idx} according to the
-        user input.
-        Parameters
-        ----------
+        
+        Args:
         s (str): User input session indices.
-        Examples: "1", or "1,2,3" == "1-3", or "e 1-3" to exclude sessions 1-3.
-
-        Returns
-        -------
-
         """
         if 'e' not in s and '-' not in s:
             if isinstance(literal_eval(s), int):
@@ -109,14 +95,12 @@ def get_selected_sessions(to_extract, extract_all):
 @filter_warnings
 def generate_config_command(output_file):
     """
-    Generates configuration file (config.yaml) to use throughout pipeline.
+    Generate configuration file (config.yaml) to use throughout pipeline.
 
-    Parameters
-    ----------
+    Args:
     output_file (str): path to saved config file.
 
-    Returns
-    -------
+    Returns:
     (str): status message.
     """
 
@@ -147,17 +131,13 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
     """
     Find and extract all depth files with specified extensions within input_dir
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to directory containing all session folders
     config_file (str): path to config file
     ext (str): file extension for depth files to search for
     extract_all (bool): if True, auto searches for all sessions, else, prompts user to select sessions individually.
     skip_extracted (bool): indicates whether to skip already extracted session.
 
-    Returns
-    -------
-    None
     """
     # error out early
     if not exists(config_file):
@@ -193,15 +173,13 @@ def extract_found_sessions(input_dir, config_file, ext, extract_all=True, skip_e
 
 def generate_index_command(input_dir, output_file):
     """
-    Generates Index File (moseq2-index.yaml) based on aggregated sessions
+    Generate Index File (moseq2-index.yaml) based on aggregated sessions
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to folder with aggregated results
     output_file (str): path to index file
 
-    Returns
-    -------
+    Returns:
     output_file (str): path to index file.
     """
 
@@ -213,12 +191,11 @@ def generate_index_command(input_dir, output_file):
 @filter_warnings
 def aggregate_extract_results_command(input_dir, format, output_dir, mouse_threshold=0.0):
     """
-    Finds all extracted h5, yaml and mp4 files and copies them all to a
+    Find all extracted h5, yaml and mp4 files and copies them all to a
     new directory relabeled with their respective session names.
     Also generates the index file (moseq2-index.yaml).
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to base directory to recursively search for extracted files
     format (str): filename format for info to include in filenames
     output_dir (str): path to directory to save all aggregated results
@@ -226,8 +203,7 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
     in the aggregated sesssions to ensure sessions with no extracted mouse is not included in the aggregated sessions.
      
 
-    Returns
-    -------
+    Returns:
     indexpath (str): path to generated index file (moseq2-index.yaml).
     """
 
@@ -242,16 +218,14 @@ def aggregate_extract_results_command(input_dir, format, output_dir, mouse_thres
 
 def download_flip_command(output_dir, config_file="", selection=1):
     """
-    Downloads flip classifier and saves its path to config file (config.yaml)
+    Download flip classifier and saves its path to config file (config.yaml)
 
-    Parameters
-    ----------
+    Args:
     output_dir (str): path to output directory to save flip classifier
     config_file (str): path to config file (config.yaml)
     selection (int): index of which flip file to download (default is Adult male C57 classifer)
 
-    Returns
-    -------
+    Returns:
     """
 
     flip_file_wrapper(config_file, output_dir, selected_flip=selection)
@@ -261,19 +235,15 @@ def download_flip_command(output_dir, config_file="", selection=1):
 def find_roi_command(input_dir, config_file, exts=['dat', 'mkv', 'avi'], select_session=False, default_session=0):
     """
     Compute ROI files given depth file.
-    Will list out all available sessions to process and prompts user to input a corresponding session
-    index to process.
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to directory containing depth file
     config_file (str): path to config file
     exts (list): list of supported extensions
     select_session (bool): list all found sessions and allow user to select specific session to analyze via user-prompt
     default_session (int): index of the default session to find ROI for
 
-    Returns
-    -------
+    Returns:
     images (list of 2d arrays): list of 2d array images to graph in Notebook.
     filenames (list): list of paths to respective image paths
     """
@@ -311,16 +281,14 @@ def extract_command(input_file, output_dir, config_file, num_frames=None, skip=F
     """
     Extract depth file
 
-    Parameters
-    ----------
+    Args:
     input_file (str): path to depth file to extract.
     output_dir (str): path to output directory.
     config_file (str): path to config file (config.yaml).
     num_frames (int): number of frames to extract. If None, all frames are extracted.
     skip (bool): skip already extracted file.
 
-    Returns
-    -------
+    Returns:
     (str): String indicating that the extracted is completed.
     """
 

@@ -25,15 +25,13 @@ def get_flips(frames, flip_file=None, smoothing=None):
     """
     Predict frames where mouse orientation is flipped to later correct.
 
-    Parameters
-    ----------
-    frames (numpy.array): frames x rows x columns, cropped mouse
+    Args:
+    frames (numpy.ndarray): frames x rows x columns, cropped mouse
     flip_file (str): path to pre-trained scipy random forest classifier
     smoothing (int): kernel size for median filter smoothing of random forest probabilities
 
-    Returns
-    -------
-    flips (numpy.array):  true for flips
+    Returns:
+    flips (numpy.array):  array for flips
     """
 
     try:
@@ -67,14 +65,12 @@ def get_largest_cc(frames, progress_bar=False):
     """
     Returns largest connected component blob in image
 
-    Parameters
-    ----------
-    frames (numpy.array): frames x rows x columns, uncropped mouse
+    Args:
+    frames (numpy.ndarray): frames x rows x columns, uncropped mouse
     progress_bar (bool): display progress bar
 
-    Returns
-    -------
-    flips (numpy.array):  frames x rows x columns, true where blob was found
+    Returns:
+    foreground_obj (numpy.ndarray):  frames x rows x columns, true where blob was found
     """
 
     foreground_obj = np.zeros((frames.shape), 'bool')
@@ -92,16 +88,14 @@ def get_bground_im_file(frames_file, frame_stride=500, med_scale=5, output_dir=N
     """
     Load or compute background from file.
 
-    Parameters
-    ----------
+    Args:
     frames_file (str): path to the depth video
     frame_stride (int): stride size between frames for median bground calculation
     med_scale (int): kernel size for median blur for background images.
     kwargs (dict): extra keyword arguments
 
-    Returns
-    -------
-    bground ((numpy.array): background image
+    Returns:
+    bground (numpy.ndarray): background image
     """
 
     if output_dir is None:
@@ -141,12 +135,10 @@ def get_bbox(roi):
     """
     return an array with the x and y boundaries given ROI.
 
-    Parameters
-    ----------
+    Args:
     roi (np.ndarray): ROI boolean mask to calculate bounding box.
 
-    Returns
-    -------
+    Returns:
     bbox (np.ndarray): Bounding Box around ROI
     """
 
@@ -163,15 +155,13 @@ def threshold_chunk(chunk, min_height, max_height):
     Threshold out depth values that are less than min_height and larger than
     max_height.
 
-    Parameters
-    ----------
+    Args:
     chunk (np.ndarray): Chunk of frames to threshold (nframes, width, height)
     min_height (int): Minimum depth values to include after thresholding.
     max_height (int): Maximum depth values to include after thresholding.
     dilate_iterations (int): Number of iterations the ROI was dilated.
 
-    Returns
-    -------
+    Returns:
     chunk (3D np.ndarray): Updated frame chunk.
     """
 
@@ -197,8 +187,7 @@ def get_roi(depth_image,
     """
     Compute an ROI using RANSAC plane fitting and simple blob features.
 
-    Parameters
-    ----------
+    Args:
     depth_image (np.ndarray): Singular depth image frame.
     strel_dilate (cv2.StructuringElement): dilation shape to use.
     dilate_iterations (int): number of dilation iterations.
@@ -214,10 +203,9 @@ def get_roi(depth_image,
     get_all_data (bool): If True, returns all ROI data, else, only return ROIs and computed Planes
     kwargs (dict) Dictionary containing `bg_roi_depth_range` parameter for plane_ransac()
 
-    Returns
-    -------
+    Returns:
     rois (list): list of detected roi images.
-    roi_plane (2d np.ndarray): computed ROI Plane using RANSAC.
+    roi_plane (np.ndarray): computed ROI Plane using RANSAC.
     bboxes (list): list of computed bounding boxes for each respective ROI.
     label_im (list): list of scikit-image image properties
     ranks (list): list of ROI ranks.
@@ -306,13 +294,11 @@ def apply_roi(frames, roi):
     """
     Apply ROI to data.
 
-    Parameters
-    ----------
+    Args:
     frames (np.ndarray): input frames to apply ROI.
     roi (np.ndarray): selected ROI to extract from input images.
 
-    Returns
-    -------
+    Returns:
     cropped_frames (np.ndarray): Frames cropped around ROI Bounding Box.
     """
 
@@ -328,14 +314,11 @@ def im_moment_features(IM):
     """
     Use the method of moments and centralized moments to get image properties.
 
-    Parameters
-    ----------
-    IM ((numpy.array): depth image
+    Args:
+    IM (numpy.ndarray): depth image
 
-    Returns
-    -------
-    features (dict): returns a dictionary with orientation,
-        centroid, and ellipse axis length
+    Returns:
+    features (dict): returns a dictionary with orientation, centroid, and ellipse axis length
     """
 
     tmp = cv2.moments(IM)
@@ -368,9 +351,8 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     """
     Simple temporal and/or spatial filtering, median filter and morphological opening.
 
-    Parameters
-    ----------
-    frames (3d np.ndarray): Frames (nframes x r x c) to filter.
+    Args:
+    frames (np.ndarray): Frames (frames x rows x columns) to filter.
     prefilter_space (tuple): kernel size for spatial filtering
     prefilter_time (tuple): kernel size for temporal filtering
     strel_tail (cv2.StructuringElement): Element for tail filtering.
@@ -380,9 +362,8 @@ def clean_frames(frames, prefilter_space=(3,), prefilter_time=None,
     iters_min (int): minimum number of filtering iterations
     progress_bar (bool): display progress bar
 
-    Returns
-    -------
-    filtered_frames (3d np array): frame x r x c
+    Returns:
+    filtered_frames (numpy.ndarray): frames x rows x columns
     """
 
     # seeing enormous speed gains w/ opencv
@@ -413,8 +394,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     """
     Use image moments to compute features of the largest object in the frame
 
-    Parameters
-    ----------
+    Args:
     frames (3d np.ndarray): input frames
     frame_threshold (int): threshold in mm separating floor from mouse
     mask (3d np.ndarray): input frame mask for parts not to filter.
@@ -422,8 +402,7 @@ def get_frame_features(frames, frame_threshold=10, mask=np.array([]),
     use_cc (bool): Use connected components.
     progress_bar (bool): Display progress bar.
 
-    Returns
-    -------
+    Returns:
     features (dict of lists): dictionary with simple image features
     mask (3d np.ndarray): input frame mask.
     """
@@ -479,15 +458,13 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
     """
     Crop mouse from image and orients it such that the head is pointing right
 
-    Parameters
-    ----------
+    Args:
     frames (3d np.ndarray): frames to crop and rotate
     features (dict): dict of extracted features, found in result_00.h5 files.
     crop_size (tuple): size of cropped image.
     progress_bar (bool): Display progress bar.
 
-    Returns
-    -------
+    Returns:
     cropped_frames (3d np.ndarray): Crop and rotated frames.
     """
 
@@ -535,16 +512,14 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     """
     Compute extracted scalars.
 
-    Parameters
-    ----------
+    Args:
     frames (np.ndarray): frames x r x c, uncropped mouse
     track_features (dict):  dictionary with tracking variables (centroid and orientation)
     min_height (float): minimum height of the mouse
     max_height (float): maximum height of the mouse
     true_depth (float): detected true depth
 
-    Returns
-    -------
+    Returns:
     features (dict): dictionary of scalars
     """
 
@@ -629,16 +604,14 @@ def feature_hampel_filter(features, centroid_hampel_span=None, centroid_hampel_s
     """
     Filter computed extraction features using Hampel Filtering.
 
-    Parameters
-    ----------
+    Args:
     features (dict): dictionary of video features
     centroid_hampel_span (int): Centroid Hampel Span Filtering Kernel Size
     centroid_hampel_sig (int): Centroid Hampel Signal Filtering Kernel Size
     angle_hampel_span (int): Angle Hampel Span Filtering Kernel Size
     angle_hampel_sig (int): Angle Hampel Span Filtering Kernel Size
 
-    Returns
-    -------
+    Returns:
     features (dict): filtered version of input dict.
     """
     if centroid_hampel_span is not None and centroid_hampel_span > 0:
@@ -673,14 +646,12 @@ def model_smoother(features, ll=None, clips=(-300, -125)):
     """
     Apply spatial feature filtering.
 
-    Parameters
-    ----------
+    Args:
     features (dict): dictionary of extraction scalar features
-    ll (numpy.array): list of loglikelihoods of pixels in frame
+    ll (numpy.array): array of loglikelihoods of pixels in frame
     clips (tuple): tuple to ensure video is indexed properly
 
-    Returns
-    -------
+    Returns:
     features (dict): smoothed version of input features
     """
 

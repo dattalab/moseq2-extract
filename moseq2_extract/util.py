@@ -27,12 +27,10 @@ def filter_warnings(func):
      running the main gui functionaity in a Jupyter Notebook.
      The function will filter out: yaml.error.UnsafeLoaderWarning, FutureWarning and UserWarning.
 
-    Parameters
-    ----------
+    Args:
     func (function): function to silence enclosed warnings.
 
-    Returns
-    -------
+    Returns:
     apply_warning_filters (func): Returns passed function after warnings filtering is completed.
     """
     def apply_warning_filters(*args, **kwargs):
@@ -50,14 +48,12 @@ def command_with_config(config_file_param_name):
     """
     Override default CLI variables with the values contained within the config.yaml being passed.
 
-    Parameters
-    ----------
+    Args:
     config_file_param_name (str): path to config file.
 
-    Returns
-    -------
+    Returns:
     custom_command_class (function): decorator function to update click.Command parameters with the config_file
-     parameter values.
+    parameter values.
     """
 
     class custom_command_class(click.Command):
@@ -116,15 +112,13 @@ def set_bground_to_plane_fit(bground_im, plane, output_dir):
     Replaces median-computed background image with plane fit.
     Only occurs if config_data['use_plane_bground'] == True.
 
-    Parameters
-    ----------
-    bground_im (2D (numpy.array): Background image computed via median value in each pixel of depth video.
-    plane (2D (numpy.array): Computed ROI Plane using RANSAC.
+    Args:
+    bground_im (numpy.ndarray): Background image computed via median value in each pixel of depth video.
+    plane (numpy.ndarray): Computed ROI Plane using RANSAC.
     output_dir (str): Path to write updated background image to.
 
-    Returns
-    -------
-    bground_im (2D (numpy.array): The background image.
+    Returns:
+    bground_im (numpy.ndarray): The background image.
     """
 
     xx, yy = np.meshgrid(np.arange(bground_im.shape[1]), np.arange(bground_im.shape[0]))
@@ -141,14 +135,12 @@ def get_frame_range_indices(trim_beginning, trim_ending, nframes):
     """
     Compute the total number of frames to be extracted, and find the start and end indices.
 
-    Parameters
-    ----------
+    Args:
     trim_beginning (int): number of frames to remove from beginning of recording
     trim_ending (int): number of frames to remove from ending of recording
     nframes (int): total number of requested frames to extract
 
-    Returns
-    -------
+    Returns:
     nframes (int): total number of frames to extract
     first_frame_idx (int): index of the frame to begin extraction from
     last_frame_idx (int): index of the last frame in the extraction
@@ -171,15 +163,13 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     """
     Generates batches used to chunk videos prior to extraction.
 
-    Parameters
-    ----------
+    Args:
     nframes (int): total number of frames
     chunk_size (int): the number of desired chunk size
     overlap (int): number of overlapping frames
     offset (int): frame offset
 
-    Returns
-    -------
+    Returns:
     out (list): the list of batches
     """
 
@@ -193,14 +183,12 @@ def load_timestamps(timestamp_file, col=0, alternate=False):
     """
     Read timestamps from space delimited text file for timestamps.
 
-    Parameters
-    ----------
+    Args:
     timestamp_file (str): path to timestamp file
     col (int): column in ts file read.
     alternate (boolean): specified if timestamps were saved in a csv file. False means txt file and True means csv file.
 
-    Returns
-    -------
+    Returns:
     ts (1D array): list of timestamps
     """
 
@@ -235,12 +223,10 @@ def detect_avi_file(finfo):
     Detect the camera type by comparing the read video resolution with known
      outputted dimensions of different camera types.
 
-    Parameters
-    ----------
+    Args:
     finfo (dict): dictionary containing the file metadata,
 
-    Returns
-    -------
+    Returns:
     detected (str): name of the detected camera type.
     """
 
@@ -275,13 +261,11 @@ def detect_and_set_camera_parameters(config_data, input_file=None):
     Read the camera type and info and set the bg_roi_weights to the precomputed values.
     If camera_type is None, function will assume kinect is used.
 
-    Parameters
-    ----------
+    Args:
     config_data (dict): dictionary containing all input parameters.
     input_file (str): path to raw depth file
 
-    Returns
-    -------
+    Returns:
     config_data (dict): updated dictionary with bg-roi-weights to use for extraction.
     """
 
@@ -340,12 +324,10 @@ def check_filter_sizes(config_data):
     """
     Ensure spatial and temporal filter kernel sizes are odd numbers.
 
-    Parameters
-    ----------
+    Args:
     config_data (dict): a dictionary holding all extraction parameters
 
-    Returns
-    -------
+    Returns:
     config_data (dict): Updated configuration dict
 
     """
@@ -364,13 +346,11 @@ def generate_missing_metadata(sess_dir, sess_name):
     """
     Generate metadata.json with default avlues for session that does not already include one.
 
-    Parameters
-    ----------
+    Args:
     sess_dir (str): Path to session directory to create metadata.json file in.
     sess_name (str): Session Name to set the metadata SessionName.
 
-    Returns
-    -------
+    Returns:
     """
 
     # generate sample metadata json for each session that is missing one
@@ -385,12 +365,10 @@ def load_metadata(metadata_file):
     """
     Load metadata from session metadata.json file.
 
-    Parameters
-    ----------
+    Args:
     metadata_file (str): path to metadata file
 
-    Returns
-    -------
+    Returns:
     metadata (dict): metadata dictionary of JSON contents
     """
 
@@ -410,13 +388,11 @@ def load_found_session_paths(input_dir, exts):
     """
     Find all depth files with the specified extension recursively in input directory.
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to project base directory holding all the session sub-folders.
     exts (list or str): list of extensions to search for, or a single extension in string form.
 
-    Returns
-    -------
+    Returns:
     files (list): sorted list of all paths to found depth files
     """
 
@@ -434,12 +410,10 @@ def get_strels(config_data):
     Get dictionary object of cv2 StructuringElements for image filtering given
     a dict of configurations parameters.
 
-    Parameters
-    ----------
+    Args:
     config_data (dict): dict containing cv2 Structuring Element parameters
 
-    Returns
-    -------
+    Returns:
     str_els (dict): dict containing cv2 StructuringElements used for image filtering
     """
 
@@ -456,13 +430,11 @@ def select_strel(string='e', size=(10, 10)):
     """
     Returns structuring element of specified shape.
 
-    Parameters
-    ----------
+    Args:
     string (str): string to indicate whether to use ellipse or rectangle
     size (tuple): size of structuring element
 
-    Returns
-    -------
+    Returns:
     strel (cv2.StructuringElement): selected cv2 StructuringElement to use in video filtering or ROI dilation/erosion.
     """
 
@@ -479,15 +451,13 @@ def convert_pxs_to_mm(coords, resolution=(512, 424), field_of_view=(70.6, 60), t
     """
     Converts x, y coordinates in pixel space to mm.
 
-    Parameters
-    ----------
+    Args:
     coords (list): list of x,y pixel coordinates
     resolution (tuple): image dimensions
     field_of_view (tuple): width and height scaling params
     true_depth (float): detected true depth
 
-    Returns
-    -------
+    Returns:
     new_coords (list): x,y coordinates in mm
     """
 
@@ -515,8 +485,7 @@ def scalar_attributes():
     """
     Gets scalar attributes dict with names paired with descriptions.
 
-    Returns
-    -------
+    Returns:
     attributes (dict): a dictionary of metadata keys and descriptions.
     """
 
@@ -547,17 +516,13 @@ def convert_raw_to_avi_function(input_file, chunk_size=2000, fps=30, delete=Fals
     """
     Compress depth file (.dat, '.mkv') to avi file.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): path to depth file
     chunk_size (int): size of chunks to process at a time
     fps (int): frames per second
     delete (bool): flag for deleting original depth file
     threads (int): number of threads to write video.
 
-    Returns
-    -------
-    None
     """
 
     new_file = f'{splitext(input_file)[0]}.avi'
@@ -588,14 +553,12 @@ def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
     """
     Create subarrays of an array with a given stride and window length.
 
-    Parameters
-    ----------
+    Args:
     a (np.ndarray) - original array
     L (int) - Window Length
     S (int) - Stride size
 
-    Returns
-    -------
+    Returns:
     (np.ndarray) - array of subarrays
     """
 
@@ -611,16 +574,12 @@ def dict_to_h5(h5, dic, root='/', annotations=None):
     Save an dict to an h5 file, mounting at root.
     Keys are mapped to group names recursively.
 
-    Parameters
-    ----------
+    Args:
     h5 (h5py.File instance): h5py.file object to operate on
     dic (dict): dictionary of data to write
     root (string): group on which to add additional groups and datasets
     annotations (dict): annotation data to add to corresponding h5 datasets. Should contain same keys as dic.
-
-    Returns
-    -------
-    None
+    
     """
 
     if not root.endswith('/'):
@@ -662,14 +621,12 @@ def recursive_find_h5s(root_dir=os.getcwd(),
     """
     Recursively find h5 files, along with yaml files with the same basename
 
-    Parameters
-    ----------
+    Args:
     root_dir (str): path to base directory to begin recursive search in.
     ext (str): extension to search for
     yaml_string (str): string for filename formatting when saving data
 
-    Returns
-    -------
+    Returns:
     h5s (list): list of found h5 files
     dicts (list): list of found metadata files
     yamls (list): list of found yaml files
@@ -698,12 +655,10 @@ def escape_path(path):
     """
     Return a path to return to original base directory.
 
-    Parameters
-    ----------
+    Args:
     path (str): path to current working dir
 
-    Returns
-    -------
+    Returns:
     path (str): path to original base_dir
     """
 
@@ -714,13 +669,11 @@ def clean_file_str(file_str: str, replace_with: str = '-') -> str:
     """
     Removes invalid characters for a file name from a string.
 
-    Parameters
-    ----------
+    Args:
     file_str (str): filename substring to replace
     replace_with (str): value to replace str with
 
-    Returns
-    -------
+    Returns:
     out (str): cleaned file string
     """
 
@@ -733,13 +686,11 @@ def load_textdata(data_file, dtype=np.float32):
     """
     Loads timestamp from txt/csv file.
 
-    Parameters
-    ----------
+    Args:
     data_file (str): path to timestamp file
     dtype (dtype): data type of timestamps
 
-    Returns
-    -------
+    Returns:
     data (np.ndarray): timestamp data
     timestamps (numpy.array): the array for the timestamps
     """
@@ -766,12 +717,10 @@ def time_str_for_filename(time_str: str) -> str:
     """
     Process the timestamp to be used in the filename.
 
-    Parameters
-    ----------
+    Args:
     time_str (str): time str to format
 
-    Returns
-    -------
+    Returns:
     out (str): formatted timestamp str
     """
 
@@ -783,14 +732,12 @@ def build_path(keys: dict, format_string: str, snake_case=True) -> str:
     """
     Produce a new file name using keys collected from extraction h5 files.
 
-    Parameters
-    ----------
+    Args:
     keys (dict): dictionary specifying which keys used to produce the new file name
     format_string (str): the string to reformat using the `keys` dictionary i.e. '{subject_name}_{session_name}'.
     snake_case (bool): flag to save the files with snake_case
 
-    Returns
-    -------
+    Returns:
     out (str): a newly formatted filename useable with any operating system
     """
 
@@ -807,12 +754,10 @@ def read_yaml(yaml_file):
     """
     Read yaml file into a dictionary
 
-    Parameters
-    ----------
+    Args:
     yaml_file (str): path to yaml file
 
-    Returns
-    -------
+    Returns:
     return_dict (dict): dict of yaml contents
     """
 
@@ -823,13 +768,11 @@ def mouse_threshold_filter(h5file, thresh=0):
     """
     Filter frames in h5 files by threshold value.
 
-    Parameters
-    ----------
+    Args:
     h5file (str): path to h5 file
     thresh (int): threshold at which to apply filter
 
-    Returns
-    -------
+    Returns:
     (3d-np boolean array): array of regions to include after threshold filter.
     """
 
@@ -842,13 +785,11 @@ def _load_h5_to_dict(file: h5py.File, path) -> dict:
     """
     Loads h5 contents to dictionary object.
 
-    Parameters
-    ----------
+    Args:
     h5file (h5py.File): file path to the given h5 file or the h5 file handle
     path (str): path to the base dataset within the h5 file
 
-    Returns
-    -------
+    Returns:
     ans (dict): a dict with h5 file contents with the same path structure
     """
 
@@ -865,13 +806,11 @@ def h5_to_dict(h5file, path) -> dict:
     """
     Load h5 contents to dictionary object.
 
-    Parameters
-    ----------
+    Args:
     h5file (str or h5py.File): file path to the given h5 file or the h5 file handle
     path (str): path to the base dataset within the h5 file
 
-    Returns
-    -------
+    Returns:
     out (dict): a dict with h5 file contents with the same path structure
     """
 
@@ -888,12 +827,10 @@ def clean_dict(dct):
     """
     Standardize types of dict value.
 
-    Parameters
-    ----------
+    Args:
     dct (dict): dict object with mixed type value objects.
 
-    Returns
-    -------
+    Returns:
     out (dict): dict object with list value objects.
     """
 
@@ -917,12 +854,10 @@ def camel_to_snake(s):
     """
     Convert CamelCase to snake_case
 
-    Parameters
-    ----------
+    Args:
     s (str): CamelCase string to convert to snake_case.
 
-    Returns
-    -------
+    Returns:
     (str): string in snake_case
     """
 
@@ -939,8 +874,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     """
     Recursively find unextracted (or incompletely extracted) directories
 
-    Parameters
-    ----------
+    Args:
     root_dir (str): path to base directory to start recursive search for unextracted folders.
     session_pattern (str): folder name pattern to search for
     extension (str): file extension to search for
@@ -948,8 +882,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     metadata_path (str): path to relative metadata.json files
     skip_checks (bool): indicates whether to check if the files exist at the given relative paths
 
-    Returns
-    -------
+    Returns:
     proc_dirs (1d-list): list of paths to each unextracted session's proc/ directory
     """
 
@@ -980,12 +913,10 @@ def click_param_annot(click_cmd):
     """
     Return a dict that maps option names to help strings from a click.Command instance.
 
-    Parameters
-    ----------
+    Args:
     click_cmd (click.Command): command to annotate
 
-    Returns
-    -------
+    Returns:
     annotations (dict): dictionary of options and their help messages
     """
 
@@ -999,14 +930,12 @@ def get_bucket_center(img, true_depth, threshold=650):
     """
     Find Centroid coordinates of circular bucket.
 
-    Parameters
-    ----------
-    img (2d np.ndaarray): original background image.
+    Args:
+    img (np.ndaarray): original background image.
     true_depth (float): distance value from camera to bucket floor (automatically pre-computed)
     threshold (float): distance values to accept region into detected circle. (used to reduce fall noise interference)
 
-    Returns
-    -------
+    Returns:
     cX (int): x-coordinate of circle centroid
     cY (int): y-coordinate of circle centroid
     """
@@ -1028,8 +957,7 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     """
     Create gradient around bucket floor representing slanted wall values.
 
-    Parameters
-    ----------
+    Args:
     width (int): bounding box width
     height (int) bounding box height
     h (int): centroid x coordinate
@@ -1038,9 +966,8 @@ def make_gradient(width, height, h, k, a, b, theta=0):
     b (int): y-radius of drawn ellipse
     theta (float): degree to rotate ellipse in radians. (has no effect if drawing a circle)
 
-    Returns
-    -------
-    (2d np.ndarray): numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
+    Returns:
+    np.ndarray: numpy array with weighted values from 0.08 -> 0.8 representing the proportion of values
     to create a gradient from. 0.8 being the proportioned values closest to the circle wall.
     """
 
@@ -1063,16 +990,14 @@ def graduate_dilated_wall_area(bground_im, config_data, strel_dilate, output_dir
     Creates a gradient to represent the dilated (now visible) bucket wall regions.
     Only is used if background is dilated to capture larger rodents in convex shaped buckets (\_/).
     
-    Parameters
-    ----------
-    bground_im (2d np.ndarray): the computed background image.
+    Args:
+    bground_im (np.ndarray): the computed background image.
     config_data (dict): dictionary containing helper user configuration parameters.
     strel_dilate (cv2.structuringElement): dilation structuring element used to dilate background image.
     output_dir (str): path to save newly computed background to use.
 
-    Returns
-    -------
-    bground_im (2d np.ndarray): the new background image with a gradient around the floor from high to low depth values.
+    Returns:
+    bground_im (np.ndarray): the new background image with a gradient around the floor from high to low depth values.
     """
 
     # store old and new backgrounds

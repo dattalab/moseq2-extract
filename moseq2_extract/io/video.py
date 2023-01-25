@@ -17,14 +17,12 @@ def get_raw_info(filename, bit_depth=16, frame_size=(512, 424)):
     """
     Get info from a raw data file with specified frame dimensions and bit depth.
 
-    Parameters
-    ----------
+    Args:
     filename (str): name of raw data file
     bit_depth (int): bits per pixel (default: 16)
     frame_dims (tuple): wxh or hxw of each frame
 
-    Returns
-    -------
+    Returns:
     file_info (dict): dictionary containing depth file metadata
     """
 
@@ -54,16 +52,14 @@ def read_frames_raw(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     """
     Reads in data from raw binary file.
 
-    Parameters
-    ----------
+    Args:
     filename (string): name of raw data file
     frames (list or range): frames to extract
     frame_dims (tuple): wxh of frames in pixels
     bit_depth (int): bits per pixel (default: 16)
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
 
-    Returns
-    -------
+    Returns:
     chunk (numpy ndarray): nframes x h x w
     """
 
@@ -105,15 +101,13 @@ def get_video_info(filename, mapping='DEPTH', threads=8, count_frames=False, **k
     """
     Get file metadata from videos.
 
-    Parameters
-    ----------
+    Args:
     filename (str): name of file to read video metadata from.
     mapping (str): chooses the stream to read from files.
     threads (int): number of threads to simultanoues run the ffprobe command
     count_frames (bool): indicates whether to count the frames individually.
 
-    Returns
-    -------
+    Returns:
     out_dict (dict): dictionary containing video file metadata
     """
 
@@ -167,8 +161,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     """
     Write frames to avi file using the ffv1 lossless encoder
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to file to write to.
     frames (np.ndarray): frames to write
     threads (int): number of threads to write video
@@ -183,8 +176,7 @@ def write_frames(filename, frames, threads=6, fps=30,
     frame_size (tuple): shape/dimensions of image.
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing)
 
-    Returns
-    -------
+    Returns:
     pipe (subProcess.Pipe): indicates whether video writing is complete.
     """
 
@@ -232,13 +224,11 @@ def get_stream_names(filename, stream_tag="title"):
     Run an FFProbe command to determine whether an input video file contains multiple streams, and
     returns a stream_name to paired int values to extract the desired stream.
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to video file to get streams from.
     stream_tag (str): value of the stream tags for ffprobe command to return
 
-    Returns
-    -------
+    Returns:
     out (dict): Dictionary of string to int pairs for the included streams in the mkv file.
     Dict will be used to choose the correct mapping number to choose which stream to read in read_frames().
     """
@@ -270,10 +260,9 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     """
     Read in frames from the .mp4/.avi file using a pipe from ffmpeg.
 
-    Parameters
-    ----------
+    Args:
     filename (str): filename to get frames from
-    frames (list or 1d (numpy.array): list of frames to grab
+    frames (list or numpy.ndarray): list of frames to grab
     threads (int): number of threads to use for decode
     fps (int): frame rate of camera
     frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
@@ -286,9 +275,8 @@ def read_frames(filename, frames=range(0,), threads=6, fps=30, frames_is_timesta
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
     finfo (dict): dictionary containing video file metadata
 
-    Returns
-    -------
-    video (numpy.array):  frames x rows x columns
+    Returns:
+    video (numpy.ndarray):  frames x rows x columns
     """
 
     if finfo is None:
@@ -351,14 +339,12 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     """
     Read in frames from a .mkv file using a pipe from ffmpeg.
 
-    Parameters
-    ----------
+    Args:
     filename (str): filename to get frames from
-    frames (list or 1d (numpy.array): list of frame indices to read
+    frames (list or numpy.ndarray): list of frame indices to read
     pixel_format (str): ffmpeg pixel format of data
     movie_dtype (str): An indicator for numpy to store the piped ffmpeg-read video in memory for processing.
-    frames_is_timestamp (bool): if False, indicates timestamps represent kinect v2 absolute machine timestamps,
-     if True, indicates azure relative start_time timestamps (i.e. first frame timestamp == 0.000).
+    frames_is_timestamp (bool): if False, use machine timestamp if True, use frame as timestamp
     timestamps (list): array of timestamps to slice into using the frame indices
     threads (int): number of threads to use for decode
     fps (int): frame rate of camera in Hz
@@ -367,12 +353,10 @@ def read_mkv(filename, frames=range(0,), pixel_format='gray16be', movie_dtype='u
     slices (int): number of slices to use for decode
     slicecrc (int): check integrity of slices
     mapping (int): ffmpeg channel mapping; "o:mapping"; chooses the stream to read from mkv files.
-     (Will default to if video is not an mkv format)
     get_cmd (bool): indicates whether function should return ffmpeg command (instead of executing).
 
-    Returns
-    -------
-    video (3d (numpy.array):  frames x rows x columns
+    Returns:
+    video (numpy.ndarray):  frames x rows x columns
     """
 
     if timestamps is None and exists(filename):
@@ -398,8 +382,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     """
     Simple command to pipe frames to an ffv1 file. Writes out a false-colored mp4 video.
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to file to write to.
     frames (np.ndarray): frames to write
     threads (int): number of threads to write video
@@ -418,8 +401,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     frame_range (range()): frame indices to write on video
     progress_bar (bool): If True, displays a TQDM progress bar for the video writing progress.
 
-    Returns
-    -------
+    Returns:
     pipe (subProcess.Pipe): indicates whether video writing is complete.
     """
 
@@ -490,16 +472,14 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     """
     Parse file extension and load the movie data into numpy array.
 
-    Parameters
-    ----------
+    Args:
     filename (str): Path to video.
     frames (int or list): Frame indices to read in to output array.
     frame_size (tuple): Video dimensions (nrows, ncols)
     bit_depth (int): Number of bits per pixel, corresponds to image resolution.
     kwargs (dict): Any additional parameters that could be required in read_frames_raw().
 
-    Returns
-    -------
+    Returns:
     frame_data (numpy.ndarray): Read video as numpy array. (nframes, nrows, ncols)
     """
 
@@ -540,16 +520,14 @@ def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH
     """
     Return dict of movie metadata.
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to video file
     frame_dims (tuple): video dimensions
     bit_depth (int): integer indicating data type encoding
     mapping (str): the stream to read from mkv files
     threads (int): number of threads to simultaneously read timestamps stored within the raw data file.
 
-    Returns
-    -------
+    Returns:
     metadata (dict): dictionary containing video file metadata
     """
 
@@ -571,14 +549,12 @@ def load_timestamps_from_movie(input_file, threads=8, mapping='DEPTH'):
     Run a ffprobe command to extract the timestamps from the .mkv file, and pipes the
     output data to a csv file.
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to input file to extract timestamps from.
     threads (int): number of threads to simultaneously read timestamps
     mapping (str): chooses the stream to read from mkv files. (Will default to if video is not an mkv format)
 
-    Returns
-    -------
+    Returns:
     timestamps (list): list of float values representing timestamps for each frame.
     """
 

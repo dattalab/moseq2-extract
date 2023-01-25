@@ -14,12 +14,10 @@ def read_tiff_files(input_dir):
     """
     Read ROI output results (Tiff files) located in the given input_directory.
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to directory containing ROI files.
 
-    Returns
-    -------
+    Returns:
     images (list): list of 2d arrays of the ROIs.
     filenames (list): list of corresponding filenames to each read image.
     """
@@ -41,18 +39,14 @@ def write_image(filename, image, scale=True, scale_factor=None, frame_dtype='uin
     """
     Save image data.
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to output file
-    image (2d (numpy.array): the (unscaled) 2-D image to save
+    image (numpy.ndarray): the (unscaled) 2-D image to save
     scale (bool): flag to scale the image between the bounds of `dtype`
     scale_factor (int): factor by which to scale image
     frame_dtype (str): array data type
     compress (int): image compression level
 
-    Returns
-    -------
-    None
     """
 
     file = filename
@@ -84,15 +78,13 @@ def read_image(filename, scale=True, scale_key='scale_factor'):
     """
     Load image data
 
-    Parameters
-    ----------
+    Args:
     filename (str): path to output file
     scale (bool): flag that indicates whether to scale image
     scale_key (str): indicates scale factor.
 
-    Returns
-    -------
-    image (2d np array): loaded image
+    Returns:
+    image (numpy.ndarray): loaded image
     """
 
     with tifffile.TiffFile(filename) as tif:

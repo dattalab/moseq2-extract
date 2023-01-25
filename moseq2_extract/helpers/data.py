@@ -22,12 +22,10 @@ def check_completion_status(status_filename):
     Read a results_00.yaml (status file) and checks whether the session has been
     fully extracted.
 
-    Parameters
-    ----------
+    Args:
     status_filename (str): path to results_00.yaml
 
-    Returns
-    -------
+    Returns:
     complete (bool): If True, data has been extracted to completion.
     """
 
@@ -39,12 +37,10 @@ def build_index_dict(files_to_use):
     """
     Create a dictionary for the index file from a list of files and respective metadatas.
 
-    Parameters
-    ----------
+    Args:
     files_to_use (list): list of paths to extracted h5 files.
 
-    Returns
-    -------
+    Returns:
     output_dict (dict): index-file dictionary containing all aggregated extractions.
     """
 
@@ -79,13 +75,11 @@ def load_extraction_meta_from_h5s(to_load, snake_case=True):
     """
     Load extraction metadata from h5 files.
 
-    Parameters
-    ----------
+    Args:
     to_load (list): list of paths to h5 files.
     snake_case (bool): whether to save the files using snake_case
 
-    Returns
-    -------
+    Returns:
     loaded (list): list of loaded h5 dicts.
     """
 
@@ -124,14 +118,12 @@ def build_manifest(loaded, format, snake_case=True):
     """
     Build a manifest file used to contain extraction result metadata from h5 and yaml files.
 
-    Parameters
-    ----------
+    Args:
     loaded (list of dicts): list of dicts containing loaded h5 data.
     format (str): filename format indicating the new name for the metadata files in the aggregate_results dir.
     snake_case (bool): whether to save the files using snake_case
 
-    Returns
-    -------
+    Returns:
     manifest (dict): dictionary of extraction metadata.
     """
 
@@ -196,14 +188,10 @@ def copy_manifest_results(manifest, output_dir):
     """
     Copy all consolidated manifest results to their respective output files.
 
-    Parameters
-    ----------
+    Args:
     manifest (dict): manifest dictionary containing all extraction h5 metadata to save
     output_dir (str): path to directory where extraction results will be aggregated.
 
-    Returns
-    -------
-    None
     """
 
     if not exists(output_dir):
@@ -245,13 +233,11 @@ def handle_extract_metadata(input_file, dirname):
     """
     Extract metadata and timestamp in the extraction.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): path to input file to extract
     dirname (str): path to directory where extraction files reside.
 
-    Returns
-    -------
+    Returns:
     acquisition_metadata (dict): key-value pairs of JSON contents
     timestamps (1D array): list of loaded timestamps
     tar (bool): indicator for whether the file is compressed.
@@ -307,8 +293,7 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     """
     write acquisition metadata, extraction metadata, computed scalars, timestamps, and original frames/frames_mask to extracted h5.
 
-    Parameters
-    ----------
+    Args:
     h5_file (h5py.File object): opened h5 file object to write to.
     acquisition_metadata (dict): Dictionary containing extracted session acquisition metadata.
     config_data (dict): dictionary object containing all required extraction parameters. (auto generated)
@@ -321,9 +306,6 @@ def create_extract_h5(h5_file, acquisition_metadata, config_data, status_dict, s
     timestamps (numpy.array): Array of session timestamps.
     kwargs (dict): additional keyword arguments.
 
-    Returns
-    -------
-    None
     """
 
     h5_file.create_dataset('metadata/uuid', data=status_dict['uuid'])

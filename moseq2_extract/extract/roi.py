@@ -10,13 +10,11 @@ def plane_fit3(points):
     """
     Fit a plane to 3 points (min number of points for fitting a plane)
 
-    Parameters
-    ----------
-    points (numpy.array): each row is a group of points, columns correspond to x,y,z.
+    Args:
+    points (numpy.ndarray): each row is a group of points, columns correspond to x,y,z.
 
-    Returns
-    -------
-    plane (1d (numpy.array): linear plane fit-->a*x+b*y+c*z+d
+    Returns:
+    plane (numpy.array): linear plane fit-->a*x+b*y+c*z+d
     """
 
     a = points[1]-points[0]
@@ -42,19 +40,17 @@ def plane_ransac(depth_image, bg_roi_depth_range=(650, 750), iters=1000,
     """
     Fit a plane using a naive RANSAC implementation
 
-    Parameters
-    ----------
-    depth_image (numpy.array): background image to fit plane to
+    Args:
+    depth_image (numpy.ndarray): background image to fit plane to
     bg_roi_depth_range (tuple): min/max depth (mm) to consider pixels for plane
     iters (int): number of RANSAC iterations
     noise_tolerance (float): distance from plane to consider a point an inlier
     in_ratio (float): fraction of points required to consider a plane fit good
     progress_bar (bool): display progress bar
-    mask (numpy.array): boolean mask to find region to use
+    mask (numpy.ndarray): boolean mask to find region to use
     kwargs (dict): dictionary containing extra keyword arguments from moseq2_extract.proc.get_roi()
 
-    Returns
-    -------
+    Returns:
     best_plane (numpy.array): plane fit to data
     dist (numpy.array): distance of the calculated coordinates and "best plane"
     """
