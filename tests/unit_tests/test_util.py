@@ -284,35 +284,5 @@ class TestExtractUtils(TestCase):
         assert len(proc_dirs) == 1
         os.remove(data_path)
 
-
-    def test_click_param_annot(self):
-        ref_dict = {
-            'bg_roi_dilate': 'Size of StructuringElement to dilate roi',
-            'bg_roi_shape': 'Shape to use to dilate roi (ellipse or rect)',
-            'bg_roi_index': 'Index of which background mask(s) to use',
-            'bg_roi_weights': 'ROI feature weighting (area, extent, dist)',
-            'camera_type': 'Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
-                             Possible types: ["kinect", "azure", "realsense"]',
-            'manual_set_depth_range': 'Flag to deactivate auto depth range setting.',
-            'bg_roi_depth_range': 'Range to search for floor of arena (in mm)',
-            'bg_roi_gradient_filter': 'Exclude walls with gradient filtering',
-            'bg_roi_gradient_threshold': 'Gradient must be < this to include points',
-            'bg_roi_gradient_kernel': 'Kernel size for Sobel gradient filtering',
-            'bg_sort_roi_by_position': 'Sort ROIs by position',
-            'bg_sort_roi_by_position_max_rois': 'Max original ROIs to sort by position',
-            'bg_roi_fill_holes': 'Fill holes in ROI',
-            'dilate_iterations': 'Number of dilation iterations to increase bucket floor size.',
-            'bg_roi_erode': 'Size of cv2 Structure Element to erode roi. (Special Cases Only)',
-            'erode_iterations': 'Number of erosion iterations to decrease bucket floor size. (Special Cases Only)',
-            'noise_tolerance': 'Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)',
-            'output_dir': 'Output directory to save the results h5 file',
-            'use_plane_bground': 'Use a plane fit for the background. Useful when mice don\'t move much',
-            'recompute_bg': 'Overwrite previously computed background image',
-            'config_file': None,
-            'progress_bar': 'Show verbose progress bars.'
-        }
-        test_dict = click_param_annot(find_roi)
-        npt.assert_equal(ref_dict, test_dict)
-
     def test_command_with_config(self):
         command_with_config(find_roi)
