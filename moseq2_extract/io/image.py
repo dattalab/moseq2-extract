@@ -1,7 +1,5 @@
 """
 Image reading/writing functionality.
-
-Specifically for tiff files containing backgrounds, ROIs, etc.
 """
 import os
 import ast

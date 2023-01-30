@@ -1,6 +1,5 @@
 """
 Contains helper functions for handling/storing data during extraction.
-
 """
 import os
 import h5py

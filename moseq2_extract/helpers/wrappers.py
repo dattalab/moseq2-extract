@@ -1,8 +1,5 @@
 """
-
-Wrapper functions for all functionality afforded by MoSeq2-Extract.
-These functions perform all the data processing from start to finish, and are shared between the CLI and GUI.
-
+Wrapper functions for data processing in extraction.
 """
 import os
 import sys

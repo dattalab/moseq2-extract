@@ -1,8 +1,5 @@
 """
-
-Extraction-helper utilities.
-These functions are primarily called from inside the extract_wrapper() function.
-
+Extraction-helper utility functions.
 """
 
 import numpy as np
