@@ -1,10 +1,6 @@
-'''
-CLI front-end operations. This module contains all the functionality and configurable parameters
-users can alter to most accurately process their data.
-
-Note: These functions simply read all the parameters into a dictionary,
- and then call the corresponding wrapper function with the given input parameters.
-'''
+"""
+CLI for extracting the depth data.
+"""
 
 import os
 import click
@@ -35,56 +31,53 @@ def cli():
 
 
 def common_roi_options(function):
-    '''
+    """
     Decorator function for grouping shared ROI related parameters.
-    The parameters included in this function are shared between the find_roi and extract CLI commands.
 
-    Parameters
-    ----------
+    Args:
     function: Function to add enclosed parameters to as click options.
 
-    Returns
-    -------
+    Returns:
     function: Updated function including shared parameters.
-    '''
+    """
 
     function = click.option('--bg-roi-dilate', default=(10, 10), type=(int, int),
                             help='Size of StructuringElement to dilate roi')(function)
     function = click.option('--bg-roi-shape', default='ellipse', type=str,
-                            help='Shape to use to dilate roi (ellipse or rect)')(function)
+                            help='Shape to use to detect roi (ellipse or rect)')(function)
     function = click.option('--bg-roi-index', default=0, type=int,
-                            help='Index of which background mask(s) to use')(function)
+                            help='Index of which detected ROI mask to use')(function)
     function = click.option('--bg-roi-weights', default=(1, .1, 1), type=(float, float, float),
-                            help='ROI feature weighting (area, extent, dist)')(function)
+                            help='ROI feature weighting (area, extent, dist to center)')(function)
     function = click.option('--camera-type', default='auto', type=click.Choice(["auto", "kinect", "azure", "realsense"]),
-                            help='Helper parameter: auto-sets bg-roi-weights to precomputed values for different camera types. \
+                            help='Camera type used for recording for auto-sets bg-roi-weights to precomputed values for different camera types. \
                              Possible types: ["kinect", "azure", "realsense"]')(function)
     function = click.option('--manual-set-depth-range', is_flag=True,
                             help='Flag to deactivate auto depth range setting.')(function)
     function = click.option('--bg-roi-depth-range', default=(650, 750), type=(float, float),
                             help='Range to search for floor of arena (in mm)')(function)
     function = click.option('--bg-roi-gradient-filter', default=False, type=bool,
-                            help='Exclude walls with gradient filtering')(function)
+                            help='Use graident filter to exclude walls for detected ROI')(function)
     function = click.option('--bg-roi-gradient-threshold', default=3000, type=float,
-                            help='Gradient must be < this to include points')(function)
+                            help='Gradient must be less than threshold to include points')(function)
     function = click.option('--bg-roi-gradient-kernel', default=7, type=int,
                             help='Kernel size for Sobel gradient filtering')(function)
     function = click.option('--bg-roi-fill-holes', default=True, type=bool, help='Fill holes in ROI')(function)
     function = click.option('--bg-sort-roi-by-position', default=False, type=bool,
                             help='Sort ROIs by position')(function)
     function = click.option('--bg-sort-roi-by-position-max-rois', default=2, type=int,
-                            help='Max original ROIs to sort by position')(function)
+                            help='The number of maximum ROIs sorted by area')(function)
     function = click.option('--dilate-iterations', default=1, type=int,
                             help='Number of dilation iterations to increase bucket floor size.')(function)
     function = click.option('--bg-roi-erode', default=(1, 1), type=(int, int),
-                            help='Size of cv2 Structure Element to erode roi. (Special Cases Only)')(function)
+                            help='Size of cv2 Structure Element to erode roi.')(function)
     function = click.option('--erode-iterations', default=0, type=int,
-                            help='Number of erosion iterations to decrease bucket floor size. (Special Cases Only)')(function)
+                            help='Number of erosion iterations to decrease bucket floor size.')(function)
     function = click.option('--noise-tolerance', default=30, type=int,
-                            help='Extent of noise to accept during RANSAC Plane ROI computation. (Special Cases Only)')(function)
+                            help='Extent of noise to accept during RANSAC Plane ROI computation.')(function)
     function = click.option('--output-dir', default='proc', help='Output directory to save the results h5 file')(function)
     function = click.option('--use-plane-bground', is_flag=True,
-                            help='Use a plane fit for the background. Useful for mice that don\'t move much')(function)
+                            help='Use a plane fit for the background. Useful when mice don\'t move much')(function)
     function = click.option('--recompute-bg', default=False, help='Overwrite previously computed background image')(
         function)
     function = click.option("--config-file", type=click.Path())(function)
@@ -92,18 +85,15 @@ def common_roi_options(function):
     return function
 
 def common_avi_options(function):
-    '''
+    """
     Decorator function for grouping shared video processing parameters.
-    The included parameters are shared between convert_raw_to_avi() and copy_slice()
 
-    Parameters
-    ----------
+    Args:
     function: Function to add enclosed parameters to as click options.
 
-    Returns
-    -------
+    Returns:
     function: Updated function including shared parameters.
-    '''
+    """
 
     function = click.option('-o', '--output-file', type=click.Path(), default=None, help='Path to output file')(function)
     function = click.option('-b', '--chunk-size', type=int, default=3000, help='Chunk size')(function)
@@ -115,14 +105,24 @@ def common_avi_options(function):
     return function
 
 def extract_options(function):
+    """
+    Decorator function for grouping shared extraction prameters.
+
+    Args:
+    function : Function to add enclosed parameters to as click options.
+    
+    Returns:
+    function: Updated function including shared parameters.
+    """
+
     function = click.option('--crop-size', '-c', default=(80, 80), type=(int, int), help='Width and height of cropped mouse image')(function)
     function = click.option('--num-frames', '-n', default=None, type=int, help='Number of frames to extract. Will extract full session if set to None.')(function)
-    function = click.option('--min-height', default=10, type=int, help='Min mouse height from floor (mm)')(function)
-    function = click.option('--max-height', default=120, type=int, help='Max mouse height from floor (mm)')(function)
+    function = click.option('--min-height', default=10, type=int, help='Min mouse height threshold from floor (mm)')(function)
+    function = click.option('--max-height', default=120, type=int, help='Max mouse height threshold from floor (mm)')(function)
     function = click.option('--detected-true-depth', default='auto', type=str, help='Option to override automatic depth estimation during extraction. \
 This is only a debugging parameter, for cases where dilate_iterations > 1, otherwise has no effect. Either "auto" or an int value.')(function)
     function = click.option('--compute-raw-scalars', is_flag=True, help="Compute scalar values from raw cropped frames.")(function)
-    function = click.option('--flip-classifier', default=None, help='Location of the flip classifier used to properly orient the mouse (.pkl file)')(function)
+    function = click.option('--flip-classifier', default=None, help='path to the flip classifier used to properly orient the mouse (.pkl file)')(function)
     function = click.option('--flip-classifier-smoothing', default=51, type=int, help='Number of frames to smooth flip classifier probabilities')(function)
     function = click.option('--graduate-walls', default=False, type=bool, help="Graduates and dilates the background image to compensate for slanted bucket walls. \\_/")(function)
     function = click.option('--widen-radius', default=0, type=int, help="Number of pixels to increase/decrease radius by when graduating bucket walls.")(function)
@@ -159,7 +159,7 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
 
     return function
 
-@cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI and background distance to subtract from frames when extracting.")
+@cli.command(name="find-roi", cls=command_with_config('config_file'), help="Finds the ROI (the arena) and background to subtract from frames when extracting.")
 @click.argument('input-file', type=click.Path(exists=True))
 @common_roi_options
 def find_roi(input_file, output_dir, **config_data):
@@ -246,7 +246,7 @@ def download_flip_file(config_file, output_dir):
     flip_file_wrapper(config_file, output_dir)
 
 
-@cli.command(name="generate-config", help="Generates a configuration file that holds editable options for extraction parameters.")
+@cli.command(name="generate-config", help="Generates a configuration file (config.yaml) that holds editable options for extraction parameters.")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
 def generate_config(output_file):
 
@@ -258,7 +258,7 @@ def generate_config(output_file):
 
     print('Successfully generated config file in base directory.')
 
-@cli.command(name='generate-index', help='Generates an index YAML file containing all extracted session metadata.')
+@cli.command(name='generate-index', help='Generates an index file (moseq2-index.yaml) that contains all extracted session metadata.')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--output-file', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'moseq2-index.yaml'), help="Location for storing index")
 def generate_index(input_dir, output_file):
@@ -268,7 +268,7 @@ def generate_index(input_dir, output_file):
     if output_file is not None:
         print(f'Index file: {output_file} was successfully generated.')
 
-@cli.command(name='aggregate-results', help='Copies all extracted results (h5, yaml, avi) files from all extracted sessions to a new directory,')
+@cli.command(name='aggregate-results', help='Copies all extracted results (h5, yaml, mp4) files from all extracted sessions to a new directory for modeling and analysis')
 @click.option('--input-dir', '-i', type=click.Path(), default=os.getcwd(), help='Directory to find h5 files')
 @click.option('--format', '-f', type=str, default='{start_time}_{session_name}_{subject_name}', help='New file name formats from resepective metadata')
 @click.option('--output-dir', '-o', type=click.Path(), default=os.path.join(os.getcwd(), 'aggregate_results/'), help="Location for storing all results together")
@@ -277,7 +277,7 @@ def aggregate_extract_results(input_dir, format, output_dir, mouse_threshold):
 
     aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold)
 
-@cli.command(name="convert-raw-to-avi", help='Converts/Compresses a raw depth file into an avi file (with depth values) that is 8x smaller.')
+@cli.command(name="convert-raw-to-avi", help='Loss less compresses a raw depth file (dat) into an avi file that is 8x smaller.')
 @click.argument('input-file', type=click.Path(exists=True, resolve_path=False))
 @common_avi_options
 def convert_raw_to_avi(input_file, output_file, chunk_size, fps, delete, threads, mapping):

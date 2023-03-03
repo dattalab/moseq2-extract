@@ -1,9 +1,6 @@
-'''
-
-Wrapper functions for all functionality afforded by MoSeq2-Extract.
-These functions perform all the data processing from start to finish, and are shared between the CLI and GUI.
-
-'''
+"""
+Wrapper functions for data processing in extraction.
+"""
 import os
 import sys
 import uuid
@@ -29,18 +26,14 @@ from moseq2_extract.util import select_strel, gen_batch_sequence, scalar_attribu
                         h5_to_dict, detect_and_set_camera_parameters, get_frame_range_indices, check_filter_sizes, get_strels
 
 def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
-    '''
-    Copy's user specified metadata from h5path to a yaml file.
+    """
+    Copy user specified metadata from h5path to a yaml file.
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to directory containing h5 files
     h5_metadata_path (str): path within h5 to desired metadata to copy to yaml.
-
-    Returns
-    -------
-    None
-    '''
+    
+    """
 
     h5s, dicts, yamls = recursive_find_h5s(input_dir)
     to_load = [(tmp, yml, file) for tmp, yml, file in zip(
@@ -63,18 +56,16 @@ def copy_h5_metadata_to_yaml_wrapper(input_dir, h5_metadata_path):
 
 @filter_warnings
 def generate_index_wrapper(input_dir, output_file):
-    '''
-    Generates index file containing a summary of all extracted sessions.
+    """
+    Generate index file containing a summary of all extracted sessions.
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): directory to search for extracted sessions.
     output_file (str): preferred name of the index file.
 
-    Returns
-    -------
-    output_file (str): path to index file.
-    '''
+    Returns:
+    output_file (str): path to index file (moseq2-index.yaml).
+    """
 
     # gather the h5s and the pca scores file
     # uuids should match keys in the scores file
@@ -104,22 +95,18 @@ def generate_index_wrapper(input_dir, output_file):
     return output_file
 
 def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_threshold=0.0):
-    '''
-    Copies all the h5, yaml and avi files generated from all successful extractions to
-    a new directory to hold all the necessary data to continue down the MoSeq pipeline.
-    Then generates an index file in the base directory/input_dir.
+    """
+    Aggregate results to one folder and generate index file (moseq2-index.yaml).
 
-    Parameters
-    ----------
+    Args:
     input_dir (str): path to base directory containing all session folders
     format (str): string format for metadata to use as the new aggregated filename
     output_dir (str): name of the directory to create and store all results in
     mouse_threshold (float): threshold value of mean frame depth to include session frames
 
-    Returns
-    -------
+    Returns:
     indexpath (str): path to generated index file including all aggregated session information.
-    '''
+    """
 
     h5s, dicts, _ = recursive_find_h5s(input_dir)
 
@@ -130,7 +117,7 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
     mtf = partial(mouse_threshold_filter, thresh=mouse_threshold)
 
     def filter_h5(args):
-        '''remove h5's that should be skipped or extraction wasn't complete'''
+        """remove h5's that should be skipped or extraction wasn't complete"""
         _dict, _h5 = args
         return complete(_dict) and not_in_output(_h5) and mtf(_h5) and ('sample' not in _dict)
 
@@ -152,21 +139,19 @@ def aggregate_extract_results_wrapper(input_dir, format, output_dir, mouse_thres
     return indexpath
 
 def get_roi_wrapper(input_file, config_data, output_dir=None):
-    '''
-    Wrapper function to compute ROI given depth file.
+    """
+    Compute ROI given depth file.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): path to depth file.
     config_data (dict): dictionary of ROI extraction parameters.
     output_dir (str): path to desired directory to save results in.
 
-    Returns
-    -------
-    roi (2d array): ROI image to plot in GUI
-    bground_im (2d array): Background image to plot in GUI
-    first_frame (2d array): First frame image to plot in GUI
-    '''
+    Returns:
+    roi (numpy.ndarray): ROI image to plot in GUI
+    bground_im (numpy.ndarray): Background image to plot in GUI
+    first_frame (numpy.ndarray): First frame image to plot in GUI
+    """
 
     if output_dir is None:
         output_dir = join(dirname(input_file), 'proc')
@@ -237,22 +222,20 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     return roi, bground_im, first_frame
 
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False):
-    '''
-    Wrapper function to run extract function for both GUI and CLI.
+    """
+    Extract depth videos.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): path to depth file
     output_dir (str): path to directory to save results in.
     config_data (dict): dictionary containing extraction parameters.
-    num_frames (int): number of frames to extract. All if None.
+    num_frames (int): number of frames to extract.
     skip (bool): indicates whether to skip file if already extracted
-    extract (function): extraction function state (Only passed by CLI)
+    extract (function): extraction function state
 
-    Returns
-    -------
+    Returns:
     output_dir (str): path to directory containing extraction
-    '''
+    """
     print('Processing:', input_file)
     # get the basic metadata
 
@@ -406,19 +389,17 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
 @filter_warnings
 def flip_file_wrapper(config_file, output_dir, selected_flip=None):
-    '''
-    Wrapper function to download and save flip classifiers.
+    """
+    Download and save flip classifiers.
 
-    Parameters
-    ----------
+    Args:
     config_file (str): path to config file
     output_dir (str): path to directory to save classifier in.
     selected_flip (int or str): int: index of desired flip classifier; str: path to flip file
 
-    Returns
-    -------
+    Returns:
     None
-    '''
+    """
 
     flip_files = {
         'large mice with fibers':
@@ -467,23 +448,20 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
         print('Unexpected error:', e)
 
 def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete, threads, mapping):
-    '''
-    Wrapper function used to convert/compress a raw depth file into
-     an avi file (with depth values) that is 8x smaller.
+    """
+    compress a raw depth file into an avi file (with depth values) that is 8x smaller.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): Path to depth file to convert
-    output_file (str): Path to avi output file
+    output_file (str): Path to output avi file
     chunk_size (int): Size of frame chunks to iteratively process
-    fps (int): Frames per second.
+    fps (int): frame rate.
     delete (bool): Delete the original depth file if True.
     threads (int): Number of threads used to encode video.
     mapping (str or int): Indicate which video stream to from the inputted file
 
-    Returns
-    -------
-    '''
+    Returns:
+    """
 
     if output_file is None:
         base_filename = splitext(basename(input_file))[0]
@@ -515,11 +493,10 @@ def convert_raw_to_avi_wrapper(input_file, output_file, chunk_size, fps, delete,
         os.remove(input_file)
 
 def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, delete, threads, mapping):
-    '''
-    Wrapper function to copy a segment of an input depth recording into a new video file.
+    """
+    Copy a segment of an input depth recording into a new video file.
 
-    Parameters
-    ----------
+    Args:
     input_file (str): Path to depth file to read segment from
     output_file (str): Path to outputted video file with copied slice.
     copy_slice (2-tuple): Frame range to copy from input file.
@@ -529,9 +506,8 @@ def copy_slice_wrapper(input_file, output_file, copy_slice, chunk_size, fps, del
     threads (int): Number of threads used to encode video.
     mapping (str or int): Indicate which video stream to from the inputted file
 
-    Returns
-    -------
-    '''
+    Returns:
+    """
 
     if output_file is None:
         base_filename = splitext(basename(input_file))[0]

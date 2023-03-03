@@ -1,15 +1,7 @@
-'''
+"""
 Extraction helper utility for computing scalar feature values performing cleaning, cropping and rotating operations.
+"""
 
-Given a "chunk" or segment of an input depth video, this function will first find and subtract the ROI, then
-optionally perform Expectation Maximization tracking for mouse tracking with occlusions such as
-photometry fibers. Next, it will apply some spatial/temporal filtering before cropping, and aligning the rodent
-such that it is always facing east (with the help of the flip classifier). Finally the scalar values are computed.
-
-It will store each chunk's extracted data and metadata in a dictionary that will be later written to the corresponding
-results_00.h5 file.
-
-'''
 import cv2
 import numpy as np
 from copy import deepcopy
@@ -40,21 +32,19 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
                   model_smoothing_clips=(-300, -150), tracking_model_init='raw',
                   compute_raw_scalars=False,
                   **kwargs):
-    '''
-    This function looks for a mouse in background-subtracted frames from a chunk of depth video.
-    It is called from the moseq2_extract.helpers.extract module.
+                      
+    """
+    Extract mouse from the depth videos.
 
-    Parameters
-    ----------
-    chunk (3d np.ndarray): chunk to extract - (chunksize, height, width)
-    use_tracking_model (bool): The EM tracker uses expectation-maximization to fit a 3D gaussian on a frame-by-frame
-        basis to the mouse's body and determine if pixels are mouse vs cable.
+    Args:
+    chunk (np.ndarray): chunk to extract - (chunksize, height, width)
+    use_tracking_model (bool): The EM tracker uses expectation-maximization to fit improve mouse detection.
     spatial_filter_size (tuple): spatial kernel size used in median filtering.
     temporal_filter_size (tuple): temporal kernel size used in median filtering.
     tail_filter_iters (int): number of filtering iterations on mouse tail
     iters_min (int): minimum tail filtering filter kernel size
-    strel_tail (cv2::StructuringElement - Ellipse): filtering kernel size to filter out mouse tail.
-    strel_min (cv2::StructuringElement - Rectangle): filtering kernel size to filter mouse body in cable recording cases.
+    strel_tail (cv2::StructuringElement): filtering kernel size to filter out mouse tail.
+    strel_min (cv2::StructuringElement): filtering kernel size to filter mouse body in cable recording cases.
     min_height (int): minimum (mm) distance of mouse to floor.
     max_height (int): maximum (mm) distance of mouse to floor.
     mask_threshold (int): Threshold on log-likelihood to include pixels for centroid and angle calculation
@@ -64,7 +54,6 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     rho_mean (int): smoothing parameter for the mean
     rho_cov (int): smoothing parameter for the covariance
     tracking_ll_threshold (float):  threshold for calling pixels a cable vs a mouse (usually between -16 to -12).
-        If the log-likelihood falls below this value, pixels are considered cable.
     tracking_model_segment (bool): boolean for whether to use only the largest blob for EM updates.
     tracking_init_mean (float): Initialized mean value for EM Tracking
     tracking_init_cov (float): Initialized covariance value for EM Tracking
@@ -75,7 +64,7 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     save_path: (str): Path to save extracted results
     progress_bar (bool): Display progress bar
     crop_size (tuple): size of the cropped mouse image.
-    true_depth (float): previously computed detected true depth value.
+    true_depth (float): the computed detected true depth value for the middle of the arena
     centroid_hampel_span (int): Hampel filter span kernel size
     centroid_hampel_sig (int):  Hampel filter standard deviation
     angle_hampel_span (int): Angle filter span kernel size
@@ -84,16 +73,15 @@ def extract_chunk(chunk, use_tracking_model=False, spatial_filter_size=(3,),
     tracking_model_init (str): Method for tracking model initialization
     compute_raw_scalars (bool): Compute scalars from unfiltered crop-rotated data.
 
-    Returns
-    -------
-    results: (dict) - dict object containing the following keys:
-        chunk - 3d array (nframes, height, width): bg subtracted and applied ROI version of original video chunk
-        depth_frames - 3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
-        mask_frames -  3d array (nframes, crop_height, crop_width): cropped and oriented mouse video chunk
-        scalars - dict of computed scalars (str) mapped to 1d numpy arrays of length=nframes.
-        flips - (1d array): list of frame indices where the mouse orientation was flipped.
-        parameters - (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.
-    '''
+    Returns:
+    results (dict): dict object containing the following keys:
+    chunk (numpy.ndarray): bg subtracted and applied ROI version of original video chunk
+    depth_frames(numpy.ndarray): cropped and oriented mouse video chunk
+    mask_frames (numpy.ndarray): cropped and oriented mouse video chunk
+    scalars (dict): computed scalars (str) mapped to 1d numpy arrays of length=nframes.
+    flips(1d array): list of frame indices where the mouse orientation was flipped.
+    parameters (dict): mean and covariance estimates for each frame (if em_tracking=True), otherwise None.
+    """
 
     if bground is not None:
         # Perform background subtraction
