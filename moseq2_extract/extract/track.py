@@ -1,6 +1,6 @@
-'''
+"""
 Expectation-Maximization mouse tracking utilities.
-'''
+"""
 
 import cv2
 import numpy as np
@@ -10,28 +10,22 @@ import statsmodels.stats.correlation_tools as stats_tools
 
 
 def em_iter(data, mean, cov, lamd=.1, epsilon=1e-1, max_iter=25):
-    '''
-    EM tracker iteration function. Function will iteratively update the mean
-    and covariance variables using Expectation Maximization up to the max inputted number
+    """
+    Use EM tracker to iteratively update the mean and covariance variables using Expectation Maximization up to the max inputted number
     of iterations.
 
-    Note: the rate/probability at which the mean and cov are updated are dependent on the tolerance
-    variable epsilon.
-
-    Parameters
-    ----------
-    data (3d numpy array): nx3, x, y, z coordinates to use
-    mean (1d numpy array): dx1, current mean estimate
-    cov (2d numpy array): dxd, current covariance estimate
+    Args:
+    data (numpy.ndarray): frame, x, y, z coordinates to use
+    mean (numpy.array): dx1, current mean estimate
+    cov (numpy.array): current covariance estimate
     lambd (float): constant to add to diagonal of covariance matrix
     epsilon (float): tolerance on change in likelihood to terminate iteration
     max_iter (int): maximum number of EM iterations
 
-    Returns
-    -------
-    mean (1d numpy array): updated mean
-    cov (2d numpy array): updated covariance
-    '''
+    Returns:
+    mean (numpy.array): updated mean
+    cov (numpy.array): updated covariance
+    """
 
     prev_likelihood = 0
     ll = 0
@@ -63,23 +57,19 @@ def em_init(depth_frame,
             depth_ceiling,
             init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)),
             strel_iters=1):
-    '''
-    Initialize EM Mask.
+    """
+    Estimate depth frame contours using OpenCV, and select the largest chosen contour to initialize a mask for EM tracking.
 
-    Estimates depth frame contours using OpenCV, and selects the largest chosen contour to create a mask.
-
-    Parameters
-    ----------
-    depth_frame (2d numpy array): depth frame to initialize mask with.
+    Args:
+    depth_frame (numpy.ndarray): depth frame to initialize mask with.
     depth_floor (float): distance from camera to bucket floor.
     depth_ceiling (float): max depth value.
     init_strel (cv2.structuringElement): structuring Element to compute mask.
     strel_iters (int): number of morphological iterations.
 
-    Returns
-    -------
-    mouse_mask (2d numpy array): mask of depth frame.
-    '''
+    Returns:
+    mouse_mask (numpy.ndarray): mask of depth frame.
+    """
 
     mask = np.logical_and(depth_frame > depth_floor, depth_frame < depth_ceiling)
     mask = cv2.morphologyEx(mask.astype('uint8'), cv2.MORPH_OPEN, init_strel, strel_iters)
@@ -102,14 +92,12 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
                 depth_floor=10, depth_ceiling=100, progress_bar=True,
                 init_mean=None, init_cov=None, init_frames=10, init_method='raw',
                 init_strel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))):
-    '''
-    Naive tracker, use EM update rules to follow a 3D Gaussian
-       around the room.
+    """
+    Naive tracker, use EM update rules to follow a 3D Gaussian around the room.
 
-    Parameters
-    ----------
-    frames (3d numpy array): filtered frames - nframes x r x c.
-    raw_frames (3d numpy array): chunk to track mouse in.
+    Args:
+    frames (numpy.ndarray): filtered frames.
+    raw_frames (numpy.ndarray): chunk to track mouse in.
     segment (bool): use only the largest blob for em updates
     ll_threshold (float): threshold on log likelihood for segmentation
     rho_mean (float): smoothing parameter for the mean
@@ -123,10 +111,9 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
     init_method (str): mode in which to process inputs
     init_strel (cv2.structuringElement): structuring Element to compute mask.
 
-    Returns
-    -------
+    Returns:
     model_parameters (dict): mean and covariance estimates for each frame
-    '''
+    """
 
     # initialize the mean and covariance
 
@@ -271,20 +258,18 @@ def em_tracking(frames, raw_frames, segment=True, ll_threshold=-30, rho_mean=0, 
 
 
 def em_get_ll(frames, mean, cov, progress_bar=False):
-    '''
-    Returns mouse tracking log-likelihoods for each frame given tracking parameters.
+    """
+    Return mouse tracking log-likelihoods for each frame given tracking parameters.
 
-    Parameters
-    ----------
-    frames (3d numpy array): depth frames
-    mean (2d numpy array): frames x d, mean estimates
-    cov (3d numpy array): frames x d x d, covariance estimates
+    Args:
+    frames (numpy.ndarray): depth frames
+    mean (numpy.array): frames x d, mean estimates
+    cov (numpy.array): frames x d x d, covariance estimates
     progress_bar (bool): use a progress bar
 
-    Returns
-    -------
-    ll (3d numpy array): frames x rows x columns, log likelihood of all pixels in each frame
-    '''
+    Returns:
+    ll (numpy.ndarray): frames x rows x columns, log likelihood of all pixels in each frame
+    """
 
     xx, yy = np.meshgrid(np.arange(frames.shape[2]), np.arange(frames.shape[1]))
     coords = np.vstack((xx.ravel(), yy.ravel()))
