@@ -533,9 +533,9 @@ def get_movie_info(filename, bit_depth=16, mapping='DEPTH', threads=8, **kwargs)
 
     try:
         if type(filename) is tarfile.TarFile:
-            metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
+            metadata = get_raw_info(filename, frame_size=kwargs['frame_size'], bit_depth=bit_depth)
         elif filename.lower().endswith('.dat'):
-            metadata = get_raw_info(filename, frame_size=frame_size, bit_depth=bit_depth)
+            metadata = get_raw_info(filename, frame_size=kwargs['frame_size'], bit_depth=bit_depth)
         elif filename.lower().endswith(('.avi', '.mkv')):
             metadata = get_video_info(filename, mapping=mapping, threads=threads, **kwargs)
     except AttributeError as e:
