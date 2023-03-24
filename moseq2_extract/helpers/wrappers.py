@@ -165,6 +165,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
 
     if config_data.get('finfo') is None:
         config_data['finfo'] = get_movie_info(input_file, **config_data)
+    print('make sure this is the correct frame size', config_data['finfo'])
 
     # checks camera type to set appropriate bg_roi_weights
     config_data = detect_and_set_camera_parameters(config_data, input_file)
