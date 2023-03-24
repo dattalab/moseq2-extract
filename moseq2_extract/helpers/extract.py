@@ -119,7 +119,6 @@ def process_extract_batches(input_file, config_data, bground_im, roi,
     for i, frame_range in enumerate(tqdm(frame_batches, desc='Processing batches')):
         raw_chunk = load_movie_data(input_file,
                                     frame_range,
-                                    frame_size=bground_im.shape[::-1],
                                     **config_data)
 
         offset = config_data['chunk_overlap'] if i > 0 else 0

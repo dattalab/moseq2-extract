@@ -468,7 +468,7 @@ def write_frames_preview(filename, frames=np.empty((0,)), threads=6,
     else:
         return pipe
 
-def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, **kwargs):
+def load_movie_data(filename, frames=None, bit_depth=16, **kwargs):
     """
     Parse file extension and load the movie data into numpy array.
 
@@ -489,27 +489,23 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
         if type(filename) is tarfile.TarFile:
             frame_data = read_frames_raw(filename,
                                          frames=frames,
-                                         frame_size=frame_size,
                                          bit_depth=bit_depth,
                                          **kwargs)
         elif filename.lower().endswith('.dat'):
             frame_data = read_frames_raw(filename,
                                          frames=frames,
-                                         frame_size=frame_size,
                                          bit_depth=bit_depth,
                                          **kwargs)
         elif filename.lower().endswith('.mkv'):
-            frame_data = read_mkv(filename, frames, frame_size=frame_size, **kwargs)
+            frame_data = read_mkv(filename, frames, **kwargs)
         elif filename.lower().endswith('.avi'):
             frame_data = read_frames(filename, frames,
-                                     frame_size=frame_size,
                                      **kwargs)
 
     except AttributeError as e:
         print('Error reading movie:', e)
         frame_data = read_frames_raw(filename,
                                      frames=frames,
-                                     frame_size=frame_size,
                                      bit_depth=bit_depth,
                                      **kwargs)
         
