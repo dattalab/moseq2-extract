@@ -516,7 +516,7 @@ def load_movie_data(filename, frames=None, frame_size=(512, 424), bit_depth=16, 
     return frame_data
 
 
-def get_movie_info(filename, frame_size=(512, 424), bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
+def get_movie_info(filename, bit_depth=16, mapping='DEPTH', threads=8, **kwargs):
     """
     Return dict of movie metadata.
 

@@ -144,6 +144,7 @@ This is only a debugging parameter, for cases where dilate_iterations > 1, other
     function = click.option('--chunk-overlap', default=0, type=int, help='Frames overlapped in each chunk. Useful for cable tracking')(function)
     function = click.option('--write-movie', default=True, type=bool, help='Write a results output movie including an extracted mouse')(function)
     function = click.option('--frame-dtype', default='uint8', type=click.Choice(['uint8', 'uint16']), help='Data type for processed frames')(function)
+    function = click.option('--frame-size', default=(512, 424), type=(int, int), help='Frame size for the depth video')(function)
     function = click.option('--movie-dtype', default='<i2', help='Data type for raw frames read in for extraction')(function)
     function = click.option('--pixel-format', default='gray16le', type=str, help='Pixel format for reading in .avi and .mkv videos')(function)
     function = click.option('--centroid-hampel-span', default=0, type=int, help='Hampel filter span')(function)
