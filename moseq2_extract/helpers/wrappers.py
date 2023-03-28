@@ -404,12 +404,14 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     """
 
     flip_files = {
-        'large mice with fibers':
+        'large mice with fibers (K2)':
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl",
-        'adult male c57s':
+        'adult male c57s (K2)':
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl",
-        'mice with Inscopix cables':
-            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
+        'mice with Inscopix cables (K2)':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl",
+        'adult male c57s (Azure)':
+            "https://moseq-data.s3.amazonaws.com/flip-classifier-azure-temp.pkl"
     }
 
     key_list = list(flip_files)
