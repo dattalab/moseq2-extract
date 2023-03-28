@@ -108,7 +108,7 @@ def generate_config_command(output_file, camera_type='k2'):
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    if camera_type!='k2':
+    if camera_type=='azure':
         params['bg_roi_depth_range'] = [550, 650]
         params['spatial_filter_size'] = [5]
         params['tail_filter_size'] = [15, 15]
