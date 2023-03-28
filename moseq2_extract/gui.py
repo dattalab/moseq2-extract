@@ -93,7 +93,7 @@ def get_selected_sessions(to_extract, extract_all):
     return ret_extract
 
 @filter_warnings
-def generate_config_command(output_file, azure=False):
+def generate_config_command(output_file, camera_type='k2'):
     """
     Generate configuration file (config.yaml) to use throughout pipeline.
 
@@ -108,7 +108,7 @@ def generate_config_command(output_file, azure=False):
     objs = extract.params
 
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
-    if azure:
+    if camera_type!='k2':
         params['bg_roi_depth_range'] = [550, 650]
         params['spatial_filter_size'] = [5]
         params['tail_filter_size'] = [15, 15]
