@@ -248,10 +248,16 @@ def download_flip_file(config_file, output_dir):
 
 @cli.command(name="generate-config", help="Generates a configuration file (config.yaml) that holds editable options for extraction parameters.")
 @click.option('--output-file', '-o', type=click.Path(), default='config.yaml')
-def generate_config(output_file):
+@click.option('--camera-type', default='k2', type=str, help='specify the camera type (k2 or azure), default is k2')
+
+def generate_config(output_file, camera_type):
 
     objs = extract.params
     params = {tmp.name: tmp.default for tmp in objs if not tmp.required}
+    if camera_type=='azure':
+        params['bg_roi_depth_range'] = [550, 650]
+        params['spatial_filter_size'] = [5]
+        params['tail_filter_size'] = [15, 15]
 
     with open(output_file, 'w') as f:
         yaml.safe_dump(params, f)

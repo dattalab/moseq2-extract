@@ -164,6 +164,7 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     config_data['output_dir'] = output_dir
 
     if config_data.get('finfo') is None:
+        # when depth video is .avi, frame_size/dim is read directly from the video
         config_data['finfo'] = get_movie_info(input_file, **config_data)
 
     # checks camera type to set appropriate bg_roi_weights
@@ -185,7 +186,8 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
         adjusted_bg_depth_range = bground_im[cY][cX]
         config_data['bg_roi_depth_range'] = [int(adjusted_bg_depth_range-50), int(adjusted_bg_depth_range+50)]
 
-    first_frame = load_movie_data(input_file, 0, **config_data) # there is a tar object flag that must be set!!
+    # pass in config_data['finfo']['dims'] for frame size otherwise frame size is hard coded to 512x424
+    first_frame = load_movie_data(input_file, 0, frame_size=config_data['finfo']['dims'], **config_data) # there is a tar object flag that must be set!!
     write_image(join(output_dir, 'first_frame.tiff'), first_frame, scale=True,
                 scale_factor=config_data['bg_roi_depth_range'])
 
@@ -402,12 +404,14 @@ def flip_file_wrapper(config_file, output_dir, selected_flip=None):
     """
 
     flip_files = {
-        'large mice with fibers':
+        'large mice with fibers (K2)':
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_largemicewithfiber.pkl",
-        'adult male c57s':
+        'adult male c57s (K2)':
             "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_c57_10to13weeks.pkl",
-        'mice with Inscopix cables':
-            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl"
+        'mice with Inscopix cables (K2)':
+            "https://storage.googleapis.com/flip-classifiers/flip_classifier_k2_inscopix.pkl",
+        'adult male c57s (Azure)':
+            "https://moseq-data.s3.amazonaws.com/flip-classifier-azure-temp.pkl"
     }
 
     key_list = list(flip_files)
