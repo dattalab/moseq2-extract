@@ -1,8 +1,8 @@
 # MoSeq2-Extract: Depth Video Rodent-Tracking Toolkit
  
 [![Build Status](https://travis-ci.com/dattalab/moseq2-extract.svg?token=gvoikVySDHEmvHT7Dbed&branch=test-suite)](https://travis-ci.com/dattalab/moseq2-extract)
-  
 [![codecov](https://codecov.io/gh/dattalab/moseq2-extract/branch/test-suite/graph/badge.svg?token=ICPjpMMwYZ)](https://codecov.io/gh/dattalab/moseq2-extract)
+[![DOI](https://zenodo.org/badge/120829989.svg)](https://zenodo.org/badge/latestdoi/120829989)
 
 # [Documentation: MoSeq2 Wiki](https://github.com/dattalab/moseq2-app/wiki)
 You can find more information about MoSeq Pipeline, installation, step-by-step instructions, documentation for Command Line Interface(CLI), tutorials etc in [MoSeq2 Wiki](https://github.com/dattalab/moseq2-app/wiki).
