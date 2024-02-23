@@ -893,7 +893,7 @@ def recursive_find_unextracted_dirs(root_dir=os.getcwd(),
     proc_dirs = []
     for root, _, files in os.walk(root_dir):
         for file in files:
-            if file.endswith(extension):  # test for uncompressed session
+            if file.endswith(extension) and not file.startswith("ir"):  # test for uncompressed session
                 status_file = join(root, yaml_path)
                 metadata_file = join(root, metadata_path)
             elif session_archive_pattern.fullmatch(file):  # test for compressed session
