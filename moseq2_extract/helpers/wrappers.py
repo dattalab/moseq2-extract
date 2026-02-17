@@ -378,8 +378,26 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
 
     config_data["finfo"] = get_movie_info(input_file, **config_data)
 
-    if config_data["finfo"]["nframes"] is None:
-        config_data["finfo"]["nframes"] = len(config_data["timestamps"])
+    nframes_from_video = config_data["finfo"]["nframes"]
+    n_timestamps = len(config_data["timestamps"]) if config_data["timestamps"] is not None else 0
+
+    if nframes_from_video is None:
+        warnings.warn(
+            f"Could not determine frame count from the depth video in "
+            f"'{in_dirname}'. This can happen if the video format is "
+            f"unrecognized or the file is empty. Falling back to "
+            f"depth_ts.txt timestamp count ({n_timestamps}). Cannot verify "
+            f"that the depth video and depth_ts.txt have the same length — "
+            f"please check manually."
+        )
+        config_data["finfo"]["nframes"] = n_timestamps
+    elif n_timestamps > 0 and nframes_from_video != n_timestamps:
+        raise ValueError(
+            f"Frame count mismatch in '{in_dirname}': "
+            f"the depth video has {nframes_from_video} frames but "
+            f"depth_ts.txt has {n_timestamps} timestamps. "
+            f"This session's data appears to be corrupt or incomplete."
+        )
 
     status_dict["metadata"] = acquisition_metadata  # update status dict
 
