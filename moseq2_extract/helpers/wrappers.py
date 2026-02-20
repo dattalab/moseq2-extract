@@ -4,9 +4,11 @@ Wrapper functions for data processing in extraction.
 
 import os
 import sys
+import math
 import uuid
 import h5py
 import shutil
+import joblib
 import warnings
 from glob import glob
 import numpy as np
@@ -330,6 +332,63 @@ def get_roi_wrapper(input_file, config_data, output_dir=None):
     return roi, bground_im, first_frame
 
 
+def validate_flip_classifier(config_data):
+    """
+    Validate that the flip classifier is compatible with the configured crop size.
+
+    Raises ValueError early if the flip classifier expects a different number of
+    input features than the crop size would produce, rather than failing silently
+    during extraction.
+
+    Args:
+    config_data (dict): extraction configuration containing 'flip_classifier' and 'crop_size'
+    """
+    flip_classifier = config_data.get("flip_classifier")
+    if not flip_classifier:
+        return
+
+    if not exists(flip_classifier):
+        return
+
+    crop_size = config_data.get("crop_size", (80, 80))
+
+    try:
+        clf = joblib.load(flip_classifier)
+    except Exception:
+        return
+
+    n_features = getattr(clf, "n_features_", None)
+    if n_features is None:
+        return
+
+    actual_features = crop_size[0] * crop_size[1]
+    if actual_features == n_features:
+        return
+
+    expected_crop = int(math.sqrt(n_features))
+    raise ValueError(
+        f"\nFlip classifier / crop size mismatch!\n\n"
+        f"  Your crop_size is {tuple(crop_size)} ({actual_features} pixels per frame),\n"
+        f"  but the flip classifier at\n"
+        f"    '{flip_classifier}'\n"
+        f"  expects {n_features} pixels (i.e. crop_size ({expected_crop}, {expected_crop})).\n\n"
+        f"  This typically happens when the flip classifier and camera type don't match.\n"
+        f"  The pre-trained flip classifiers are camera-specific:\n"
+        f"    - Kinect v2 (K2) classifiers expect crop_size (80, 80)\n"
+        f"    - Azure / Orbbec classifiers expect crop_size (120, 120)\n"
+        f"  If you generated your config with one camera type but downloaded\n"
+        f"  the flip classifier for a different camera, they won't be compatible.\n\n"
+        f"  To fix this, either:\n"
+        f"  1. Change crop_size in your config.yaml to ({expected_crop}, {expected_crop})\n"
+        f"     to match your current flip classifier.\n"
+        f"  2. Download a flip classifier that matches your current crop_size by\n"
+        f"     re-running the download step with the correct selection:\n"
+        f"       CLI:      moseq2-extract download-flip-file config.yaml\n"
+        f"       Notebook: change the 'selection' parameter in the download cell\n"
+        f"                 (selection=1 for K2, selection=3 for Azure/Orbbec)"
+    )
+
+
 def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=False):
     """
     Extract depth videos.
@@ -346,6 +405,9 @@ def extract_wrapper(input_file, output_dir, config_data, num_frames=None, skip=F
     output_dir (str): path to directory containing extraction
     """
     print("Processing:", input_file)
+
+    validate_flip_classifier(config_data)
+
     # get the basic metadata
 
     # ensure 'get_cmd' and 'run_cmd' are not in config_data or get_bground_im_file will fail

@@ -41,18 +41,9 @@ def get_flips(frames, flip_file=None, smoothing=None):
 
     flip_class = np.where(clf.classes_ == 1)[0]
 
-    try:
-        probas = clf.predict_proba(
-            frames.reshape((-1, frames.shape[1] * frames.shape[2]))
-        )
-    except ValueError:
-        if hasattr(clf, "n_features_") and int(np.sqrt(clf.n_features_)) != frames.shape[-1]:
-            print('WARNING: Input crop-size is not compatible with flip classifier.')
-            accepted_crop = int(np.sqrt(clf.n_features_))
-            print(f'Adjust the crop-size to ({accepted_crop}, {accepted_crop}) to use this flip classifier.')
-        print("Frames shape:", frames.shape)
-        print('The extracted data will NOT be flipped!')
-        probas = np.array([[0]*len(frames), [1]*len(frames)]).T # default output; indicating no flips
+    probas = clf.predict_proba(
+        frames.reshape((-1, frames.shape[1] * frames.shape[2]))
+    )
 
     if smoothing:
         for i in range(probas.shape[1]):
