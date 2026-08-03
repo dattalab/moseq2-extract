@@ -503,7 +503,7 @@ def scalar_attributes():
         'velocity_3d_mm': '3D velocity (mm / frame), note that missing frames are not accounted for',
         'width_mm': 'Mouse width (mm)',
         'length_mm': 'Mouse length (mm)',
-        'area_mm': 'Mouse area (mm)',
+        'area_mm': 'Mouse area (mm^2)',
         'height_ave_mm': 'Mouse average height (mm)',
         'angle': 'Angle (radians, unwrapped)',
         'velocity_theta': 'Angular component of velocity (arctan(vel_x, vel_y))'

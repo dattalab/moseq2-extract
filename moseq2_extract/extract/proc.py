@@ -501,6 +501,25 @@ def crop_and_rotate_frames(frames, features, crop_size=(80, 80), progress_bar=Fa
     return cropped_frames
 
 
+def _area_px_to_mm2(area_px, px_to_mm):
+    """
+    Convert a pixel-count area into physical area.
+
+    ``px_to_mm`` holds two independent per-axis scale factors in mm/px, so a
+    pixel count converts to an area by the product of both factors, not by a
+    single linear factor. Using one linear factor leaves the result in px * mm.
+
+    Args:
+    area_px (np.ndarray): nframes, mask area measured in pixels
+    px_to_mm (np.ndarray): nframes x 2, per-axis conversion factors in mm/px
+
+    Returns:
+    area_mm (np.ndarray): nframes, area in mm^2
+    """
+
+    return area_px * px_to_mm[:, 0] * px_to_mm[:, 1]
+
+
 def compute_scalars(frames, track_features, min_height=10, max_height=100, true_depth=673.1):
     """
     Compute extracted scalars.
@@ -561,7 +580,7 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
 
     features['width_mm'] = features['width_px'] * px_to_mm[:, 1]
     features['length_mm'] = features['length_px'] * px_to_mm[:, 0]
-    features['area_mm'] = features['area_px'] * px_to_mm.mean(axis=1)
+    features['area_mm'] = _area_px_to_mm2(features['area_px'], px_to_mm)
 
     features['angle'] = track_features['orientation']
 
