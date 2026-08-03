@@ -45,7 +45,7 @@ setup(
                       'scikit-image==0.16.2', 'scikit-learn==0.20.3', 'opencv-python==4.1.2.30',
                       'ruamel.yaml==0.16.5'],
     python_requires='>=3.6,<3.8',
-    entry_points={'console_scripts': ['moseq2-extract = moseq2_extract.cli:cli']},
+    entry_points={'console_scripts': ['moseq2-extract-negative-proof = moseq2_extract.cli:cli']},
     extras_require={
         "docs": [
             "sphinx",
