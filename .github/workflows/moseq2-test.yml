@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Build the candidate wheel and run its affected MoSeq2 tests
-        uses: dattalab/moseq2-test@0748bdd9d47a07ed053a1d9f4a9dd4f9187bdbf1
+        uses: dattalab/moseq2-test@f900aafc9c3b39d1c996528d1413e835b54bb9a2
         with:
           package: moseq2-extract
           source: ${{ github.workspace }}
