@@ -3,6 +3,7 @@ import re
 import cv2
 import glob
 import numpy as np
+import pytest
 import numpy.testing as npt
 from unittest import TestCase
 from moseq2_extract.io.image import read_image
@@ -15,6 +16,7 @@ from moseq2_extract.extract.proc import (
     clean_frames,
     get_largest_cc,
     feature_hampel_filter,
+    _area_px_to_mm2,
 )
 
 
@@ -167,6 +169,53 @@ class TestExtractProc(TestCase):
         npt.assert_almost_equal(fake_scalars["velocity_3d_px"], 0, 1)
         npt.assert_almost_equal(fake_scalars["velocity_theta"], 0, 1)
         npt.assert_almost_equal(fake_scalars["area_px"], np.sum(tmp_image), 0.1)
+
+    def test_compute_scalars_area_mm_scales_quadratically_with_depth(self):
+        # convert_pxs_to_mm is linear in true_depth, so doubling true_depth
+        # doubles both per-axis mm/px factors. An area therefore has to scale by
+        # 4, while any single linear factor would only scale it by 2.
+        #
+        # This is a metamorphic test of the scaling law: pixel inputs are held
+        # fixed while only true_depth varies. It is not a claim that the two
+        # depths represent physically consistent recordings.
+        frames = np.zeros((1, 424, 512), dtype="float32")
+        frames[0, 88:90, 136:138] = 20.0
+
+        # Float centroid on purpose: an integer centroid array is truncated by
+        # the zeros_like call in convert_pxs_to_mm, which is a separate issue.
+        track_features = {
+            "centroid": np.array([[137.0, 89.0]]),
+            "orientation": np.array([0.0]),
+            "axis_length": np.array([[4.0, 2.0]]),
+        }
+
+        area_at_d = compute_scalars(
+            frames, track_features, min_height=10, max_height=100,
+            true_depth=500.0,
+        )["area_mm"][0]
+        area_at_2d = compute_scalars(
+            frames, track_features, min_height=10, max_height=100,
+            true_depth=1000.0,
+        )["area_mm"][0]
+
+        assert area_at_d > 0
+        assert area_at_2d / area_at_d == pytest.approx(4.0, rel=1e-6)
+
+    def test_area_px_to_mm2_scales_with_each_axis_independently(self):
+        # The depth test above cannot distinguish the product of both axis
+        # factors from the square of their mean, since true_depth scales both
+        # factors together. Scaling one axis at a time pins the product.
+        area_px = np.array([4.0])
+        px_to_mm = np.array([[0.5, 0.25]])
+
+        base = _area_px_to_mm2(area_px, px_to_mm)[0]
+        assert base == pytest.approx(4.0 * 0.5 * 0.25, rel=1e-12)
+
+        x_scaled = _area_px_to_mm2(area_px, px_to_mm * np.array([[3.0, 1.0]]))[0]
+        y_scaled = _area_px_to_mm2(area_px, px_to_mm * np.array([[1.0, 3.0]]))[0]
+
+        assert x_scaled / base == pytest.approx(3.0, rel=1e-12)
+        assert y_scaled / base == pytest.approx(3.0, rel=1e-12)
 
     def test_get_largest_cc(self):
 
