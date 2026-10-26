@@ -397,7 +397,12 @@ def read_frames(
         print("Error:", err)
         return None
 
-    video = np.frombuffer(out, dtype=movie_dtype).reshape(
+    dtype = np.dtype(movie_dtype)
+    if pixel_format.endswith('be'):
+        dtype = dtype.newbyteorder('>')
+    elif pixel_format.endswith('le'):
+        dtype = dtype.newbyteorder('<')
+    video = np.frombuffer(out, dtype=dtype).reshape(
         (len(frames), frame_size[1], frame_size[0])
     )
 
