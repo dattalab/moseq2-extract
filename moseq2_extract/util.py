@@ -493,7 +493,6 @@ def scalar_attributes():
         'centroid_x_px': 'X centroid (pixels)',
         'centroid_y_px': 'Y centroid (pixels)',
         'velocity_2d_px': '2D velocity (pixels / frame), note that missing frames are not accounted for',
-        'velocity_3d_px': '3D velocity (pixels / frame), note that missing frames are not accounted for, also height is in mm, not pixels for calculation',
         'width_px': 'Mouse width (pixels)',
         'length_px': 'Mouse length (pixels)',
         'area_px': 'Mouse area (pixels)',

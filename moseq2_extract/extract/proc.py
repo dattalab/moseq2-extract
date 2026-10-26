@@ -559,7 +559,6 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
         'centroid_x_px': np.zeros((nframes,), 'float32'),
         'centroid_y_px': np.zeros((nframes,), 'float32'),
         'velocity_2d_px': np.zeros((nframes,), 'float32'),
-        'velocity_3d_px': np.zeros((nframes,), 'float32'),
         'width_px': np.zeros((nframes,), 'float32'),
         'length_px': np.zeros((nframes,), 'float32'),
         'area_px': np.zeros((nframes,)),
@@ -613,8 +612,6 @@ def compute_scalars(frames, track_features, min_height=10, max_height=100, true_
     vel_z = np.diff(np.concatenate((features['height_ave_mm'][:1], features['height_ave_mm'])))
 
     features['velocity_2d_px'] = np.hypot(vel_x, vel_y)
-    features['velocity_3d_px'] = np.sqrt(
-        np.square(vel_x)+np.square(vel_y)+np.square(vel_z))
 
     vel_x = np.diff(np.concatenate((features['centroid_x_mm'][:1], features['centroid_x_mm'])))
     vel_y = np.diff(np.concatenate((features['centroid_y_mm'][:1], features['centroid_y_mm'])))
