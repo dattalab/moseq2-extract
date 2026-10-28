@@ -1,4 +1,6 @@
 # MoSeq2-Extract: Depth Video Rodent-Tracking Toolkit
+
+**This repository is archived.** `moseq2-extract` now lives in [dattalab/moseq2-app](https://github.com/dattalab/moseq2-app/tree/main/packages/moseq2-extract), with the rest of MoSeq2. Open issues and pull requests there.
  
 [![Build Status](https://travis-ci.com/dattalab/moseq2-extract.svg?token=gvoikVySDHEmvHT7Dbed&branch=test-suite)](https://travis-ci.com/dattalab/moseq2-extract)
 [![codecov](https://codecov.io/gh/dattalab/moseq2-extract/branch/test-suite/graph/badge.svg?token=ICPjpMMwYZ)](https://codecov.io/gh/dattalab/moseq2-extract)
