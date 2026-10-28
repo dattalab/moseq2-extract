@@ -4,6 +4,7 @@ Video and video-metadata read/write functions.
 
 import os
 import av
+import functools
 from fractions import Fraction
 import cv2
 import tarfile
@@ -123,6 +124,34 @@ def _video_stream(container, mapping):
     return container.streams.video[mapping]
 
 
+@functools.lru_cache(maxsize=8)
+def _frame_timestamps(filename, index, fingerprint):
+    """Every frame's presentation timestamp, in the stream's own time base.
+
+    A container is not indexed by frame number, so the only thing that says
+    where frame *n* is, is the timestamp of the *n*th frame. Working one out
+    from the rate the stream declares instead would be at the mercy of what
+    that rate says: Matroska often carries a guessed or millisecond-quantised
+    rate, and a recording that dropped frames did not run at its nominal one.
+
+    Reading them costs a demux of the file, without decoding any of it, so
+    the list is kept for as long as the file it came from is unchanged.
+    """
+    with _open(filename) as container:
+        stream = container.streams.video[index]
+        return tuple(
+            packet.pts
+            for packet in container.demux(stream)
+            if packet.pts is not None and packet.size
+        )
+
+
+def _fingerprint(filename):
+    """What makes a cached timestamp list stale."""
+    stat = os.stat(filename)
+    return stat.st_size, stat.st_mtime_ns
+
+
 def get_video_info(filename, mapping="DEPTH", threads=8, count_frames=False, **kwargs):
     """
     Get file metadata from videos.
@@ -150,7 +179,11 @@ def get_video_info(filename, mapping="DEPTH", threads=8, count_frames=False, **k
         # that asks for every frame tests this and falls back to the
         # timestamps, where 0 would read nothing and report success.
         if count_frames:
-            nframes = sum(1 for _ in container.demux(stream))
+            # Demuxing ends with a zero-size flush packet, which is not a
+            # frame and must not be counted as one: a frame count one past
+            # the end reaches gen_batch_sequence and the last batch asks
+            # for a frame the file does not hold.
+            nframes = sum(1 for packet in container.demux(stream) if packet.size)
         else:
             nframes = stream.frames or None
 
@@ -353,14 +386,17 @@ def read_frames(
 
         width, height = frame_size or (stream.width, stream.height)
 
-        # Where the first requested frame sits on the stream's own clock.
-        # A stream does not have to begin at zero: a recording muxed with
-        # reordering delay starts a frame or two in, and frame 0 is that
-        # first timestamp rather than the origin. The seek lands on or
-        # before the target, because a decoder has to start from a
-        # keyframe, so the frames before it are decoded and dropped.
-        origin = stream.start_time or 0
-        first = origin + int(frames[0] / (stream.base_rate * stream.time_base))
+        # Where the first requested frame actually sits, read from the file
+        # rather than worked out from the rate it declares. The seek lands on
+        # or before it, because a decoder has to start from a keyframe, so
+        # the frames in between are decoded and dropped.
+        timestamps = _frame_timestamps(str(filename), stream.index, _fingerprint(filename))
+        if frames[0] >= len(timestamps):
+            raise ValueError(
+                f"{filename} holds {len(timestamps)} frames and frame "
+                f"{frames[0]} was requested"
+            )
+        first = timestamps[frames[0]]
         container.seek(first, stream=stream)
 
         video = []
@@ -660,8 +696,10 @@ def load_timestamps_from_movie(input_file, threads=8, mapping="DEPTH"):
 
     with _open(input_file) as container:
         stream = _video_stream(container, mapping)
-        return [
-            float(packet.pts * stream.time_base)
-            for packet in container.demux(stream)
-            if packet.pts is not None
-        ]
+        time_base = stream.time_base
+        index = stream.index
+
+    return [
+        float(pts * time_base)
+        for pts in _frame_timestamps(str(input_file), index, _fingerprint(input_file))
+    ]
