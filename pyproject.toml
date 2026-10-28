@@ -53,18 +53,6 @@ dependencies = [
     "tifffile>=2024.7.24",
 ]
 
-# ffmpeg is not a Python package and cannot go in `dependencies`: the package
-# invokes `ffmpeg` and `ffprobe` as subprocesses and takes whatever is on PATH.
-# PEP 725 is the declaration for that, and nothing consumes it yet -- pip
-# ignores this table -- so the enforcement is the check at the CLI entry point
-# in moseq2_extract/cli.py and the note in README.md. This is the machine
-# readable record of the same requirement.
-[external]
-dependencies = [
-    "virtual:executable/ffmpeg",
-    "virtual:executable/ffprobe",
-]
-
 [project.optional-dependencies]
 docs = [
     "sphinx",
