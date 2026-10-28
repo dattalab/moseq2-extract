@@ -4,6 +4,7 @@ Video and video-metadata read/write functions.
 
 import os
 import av
+from fractions import Fraction
 import cv2
 import tarfile
 import numpy as np
@@ -191,7 +192,12 @@ class _VideoWriter:
 
     def __init__(self, filename, codec, pix_fmt, frame_size, fps, threads):
         self.container = av.open(str(filename), "w")
-        self.stream = self.container.add_stream(codec, rate=fps)
+        # A rate is a rational, and callers hand this one in as whatever
+        # their config or CLI made of it: an int, a float from a `type=float`
+        # option, or a string from a yaml file. 1000 is enough denominator
+        # for the broadcast rates (30000/1001 and friends) a camera reports.
+        rate = Fraction(str(fps)).limit_denominator(1000)
+        self.stream = self.container.add_stream(codec, rate=rate)
         self.stream.width, self.stream.height = frame_size
         self.stream.pix_fmt = pix_fmt
         self.stream.thread_type = "AUTO"
@@ -347,10 +353,14 @@ def read_frames(
 
         width, height = frame_size or (stream.width, stream.height)
 
-        # Where the first requested frame sits on the stream's own clock. The
-        # seek lands on or before it, because a decoder has to start from a
+        # Where the first requested frame sits on the stream's own clock.
+        # A stream does not have to begin at zero: a recording muxed with
+        # reordering delay starts a frame or two in, and frame 0 is that
+        # first timestamp rather than the origin. The seek lands on or
+        # before the target, because a decoder has to start from a
         # keyframe, so the frames before it are decoded and dropped.
-        first = int(frames[0] / (stream.base_rate * stream.time_base))
+        origin = stream.start_time or 0
+        first = origin + int(frames[0] / (stream.base_rate * stream.time_base))
         container.seek(first, stream=stream)
 
         video = []
